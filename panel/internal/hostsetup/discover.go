@@ -141,7 +141,12 @@ func parseCloudInitNetwork(data []byte, hostName string) (machine.Network, error
 		case "Network.DNS":
 			network.Nameservers = append(network.Nameservers, strings.Fields(value)...)
 		case "Network.Domains":
-			network.Search = append(network.Search, strings.Fields(value)...)
+			for _, domain := range strings.Fields(value) {
+				// systemd-resolved never searches "localhost", which Hostinger's cloud-init emits.
+				if domain != "localhost" {
+					network.Search = append(network.Search, domain)
+				}
+			}
 		case "Route.Gateway":
 			gateways = append(gateways, value)
 		default:

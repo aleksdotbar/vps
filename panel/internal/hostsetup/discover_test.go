@@ -43,7 +43,7 @@ func TestHostingerNetworkBecomesStaticMachineNetwork(t *testing.T) {
 		len(item.IPv4Addresses) != 1 || item.IPv4Addresses[0].Address != "192.0.2.86" || item.IPv4Addresses[0].PrefixLength != 24 ||
 		len(item.IPv6Addresses) != 1 || item.IPv6Addresses[0].PrefixLength != 48 ||
 		network.DefaultGateway.Address != "192.0.2.254" || network.DefaultGateway6.Address != "2001:db8:41::1" || network.DefaultGateway6.Interface != "eth0" ||
-		len(network.Nameservers) != 3 || len(network.Search) != 1 || network.Search[0] != "localhost" {
+		len(network.Nameservers) != 3 || len(network.Search) != 0 {
 		t.Fatalf("unexpected network: %+v", network)
 	}
 	// The parsed network must pass the same admission as reviewed input.

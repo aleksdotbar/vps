@@ -54,11 +54,22 @@ func installRun(arguments []string, output io.Writer) error {
 	key := flags.String("operator-key", "", "administrator Ed25519 public key")
 	keyFile := flags.String("operator-key-file", "", "administrator Ed25519 public key file")
 	yes := flags.Bool("yes", false, "accept the discovered host configuration without prompting")
+	reset := flags.Bool("reset", false, "discard a recorded build that has not started enrollment")
 	if flags.Parse(arguments) != nil || flags.NArg() != 0 || (*key != "" && *keyFile != "") {
-		return errors.New("usage: panel install [--source PATH --source-sha SHA --operator NAME --operator-key KEY|--operator-key-file FILE] [--yes]")
+		return errors.New("usage: panel install [--source PATH --source-sha SHA --operator NAME --operator-key KEY|--operator-key-file FILE] [--yes] | panel install --reset")
 	}
 	if os.Geteuid() != 0 {
 		return errors.New("run as root: sudo panel install")
+	}
+	if *reset {
+		if err := hostsetup.ResetUnactivated(); err != nil {
+			return err
+		}
+		if err := os.RemoveAll(installState); err != nil {
+			return errors.New("recorded build reset, but the management key directory could not be removed")
+		}
+		_, _ = fmt.Fprintln(os.Stderr, "Recorded build discarded; rerun the install command.")
+		return nil
 	}
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()

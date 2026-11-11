@@ -15,7 +15,7 @@
 5. Open another new session the same way before the printed deadline to confirm the final configuration.
 6. Reboot, then run `sudo panel install` again to verify the booted configuration. Open the printed private HTTPS origin and keep the master-key recovery copy separately protected.
 
-Every run of `sudo panel install` resumes from recorded state and never repeats an uncertain step.
+Every run of `sudo panel install` resumes from recorded state and never repeats an uncertain step. Before enrollment starts, `sudo panel install --reset` discards the recorded build.
 
 ## Project setup
 
