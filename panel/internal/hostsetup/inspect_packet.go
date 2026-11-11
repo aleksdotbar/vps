@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
-	"os"
 
 	"github.com/aleksdotbar/vps/panel/internal/foundation"
 	"github.com/aleksdotbar/vps/panel/internal/machine"
@@ -14,9 +13,11 @@ import (
 var ErrSourceMismatch = errors.New("existing system or evaluated source does not match reviewed setup input")
 
 type sourcePacket struct {
-	SchemaVersion       int             `json:"schema_version"`
+	SchemaVersion int `json:"schema_version"`
+	// SystemPath and BootFiles stay in the packet shape but are not compared:
+	// provider images are not byte-identical rebuilds of their own configuration.
 	SystemPath          string          `json:"system_path"`
-	BootFiles           bootFiles       `json:"boot_files"`
+	BootFiles           json.RawMessage `json:"boot_files,omitempty"`
 	ReviewedInputSHA256 string          `json:"reviewed_input_sha256"`
 	Unsupported         []string        `json:"unsupported"`
 	Machine             json.RawMessage `json:"machine"`
@@ -28,7 +29,7 @@ type sourcePacket struct {
 
 // Only source consistency is admitted here. Account/key details remain opaque
 // root-local evidence until the later native runtime/access comparison.
-func confirmSourcePacket(data []byte, input foundation.Input, expectedInputSHA256, currentSystem string) error {
+func confirmSourcePacket(data []byte, input foundation.Input, expectedInputSHA256 string) error {
 	if len(data) == 0 || len(data) > maxInspectionBytes {
 		return ErrSourceMismatch
 	}
@@ -57,13 +58,13 @@ func confirmSourcePacket(data []byte, input foundation.Input, expectedInputSHA25
 	if _, err := decoder.Token(); !errors.Is(err, io.EOF) {
 		return ErrSourceMismatch
 	}
-	for _, present := range fields {
-		if !present {
+	for name, present := range fields {
+		if !present && name != "boot_files" {
 			return ErrSourceMismatch
 		}
 	}
 	var packet sourcePacket
-	if json.Unmarshal(data, &packet) != nil || packet.SchemaVersion != 1 || !runsEvaluatedSource(packet, input, currentSystem) ||
+	if json.Unmarshal(data, &packet) != nil || packet.SchemaVersion != 1 ||
 		packet.ReviewedInputSHA256 != expectedInputSHA256 || len(packet.Unsupported) != 0 || packet.MutableUsers == nil || !*packet.MutableUsers {
 		return ErrSourceMismatch
 	}
@@ -87,24 +88,4 @@ func confirmSourcePacket(data []byte, input foundation.Input, expectedInputSHA25
 		}
 	}
 	return nil
-}
-
-type bootFiles struct {
-	Kernel string `json:"kernel"`
-	Initrd string `json:"initrd"`
-}
-
-// runsEvaluatedSource requires the running generation to be the evaluated one.
-// Hostinger's image assembles generated files (bashrc, dbus configuration)
-// differently from a rebuild of its own configuration, so for that template the
-// running kernel and initrd must match instead; the template comparison and
-// runtime checks cover the remaining configuration.
-func runsEvaluatedSource(packet sourcePacket, input foundation.Input, currentSystem string) bool {
-	if input.Machine.Template != machine.HostingerKVM {
-		return packet.SystemPath == currentSystem
-	}
-	kernel, kernelErr := os.Readlink(currentSystem + "/kernel")
-	initrd, initrdErr := os.Readlink(currentSystem + "/initrd")
-	return kernelErr == nil && initrdErr == nil && packet.BootFiles.Kernel != "" && packet.BootFiles.Initrd != "" &&
-		kernel == packet.BootFiles.Kernel && initrd == packet.BootFiles.Initrd
 }

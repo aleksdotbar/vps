@@ -6,37 +6,20 @@
 # reason and omit machine input. No build, VM, target inspection or activation.
 { nixpkgs, case ? "supported" }:
 let
+  # Only shape reasons remain: the projection must yield a bootable machine and
+  # no longer compares the host's other settings.
   expectedReasons = {
     supported = null;
     plain-declarative-key = null;
     restricted-declarative-key = null;
-    reviewed-sparse = null;
-    reviewed-public-ssh = null;
-    reviewed-public-ssh-mismatch = "bootstrap-firewall-policy";
-    reviewed-network = "machine-policy";
-    reviewed-storage = "boot-policy";
-    custom-unit = "native-unit-policy";
-    unit-source = "native-unit-policy";
-    unit-mask = "native-unit-policy";
-    slaac-policy = "sysctl-policy";
-    qemu-agent = "native-unit-policy";
+    custom-unit = null;
+    qemu-agent = null;
     cloud-init = "network-declaration";
-    custom-activation = "activation-policy";
-    custom-pam = "pam-sudo-policy";
-    pam-source = "pam-sudo-policy";
-    custom-sudo = "pam-sudo-policy";
-    custom-sysctl = "sysctl-policy";
-    custom-post-boot = "boot-policy";
-    custom-pre-switch = "switch-policy";
-    sshd-unit = "native-unit-policy";
+    auto-resize = "destructive-storage";
     hostinger = null;
-    hostinger-changed = "native-unit-policy";
   };
-  hostingerCase = builtins.elem case [ "hostinger" "hostinger-changed" ];
-  hostingerHost = { lib, ... }: {
-    imports = [ ../modules/hostinger-template.nix ];
-    services.cloud-init.network.enable = lib.mkIf (case == "hostinger-changed") (lib.mkForce false);
-  };
+  hostingerCase = case == "hostinger";
+  hostingerHost = ./hostinger-image.nix;
   # The image's addresses come from cloud-init; the operator reviews them.
   hostingerMachine = {
     schema_version = 1;
@@ -129,65 +112,18 @@ let
         wantedBy = [ "multi-user.target" ];
         serviceConfig.ExecStart = "${pkgs.coreutils}/bin/sleep infinity";
       };
-    } else if case == "unit-source" then {
-      systemd.units."nix-daemon.service".unit = lib.mkForce (pkgs.writeText "custom-daemon-unit" "[Service]\nExecStart=/bin/false\n");
-    } else if case == "unit-mask" then {
-      systemd.units."nix-daemon.service".enable = lib.mkForce false;
-    } else if case == "slaac-policy" then {
-      boot.kernel.sysctl."net.ipv6.conf.ens3.disable_ipv6" = lib.mkForce 0;
-      boot.kernel.sysctl."net.ipv6.conf.ens3.accept_ra" = lib.mkForce 1;
     } else if case == "qemu-agent" then {
       services.qemuGuest.enable = true;
     } else if case == "cloud-init" then {
       services.cloud-init.enable = true;
       networking.interfaces = lib.mkForce { };
-    } else if case == "custom-activation" then {
-      system.activationScripts.operator-hook.text = "echo fixture";
-    } else if case == "custom-pam" then {
-      security.pam.services.login.text = lib.mkForce "auth required pam_deny.so";
-    } else if case == "pam-source" then {
-      environment.etc."pam.d/login".source = lib.mkForce (pkgs.writeText "custom-pam-login" "auth required pam_deny.so\n");
-    } else if case == "custom-sudo" then {
-      security.sudo.wheelNeedsPassword = false;
-    } else if case == "custom-post-boot" then {
-      boot.postBootCommands = "echo fixture";
-    } else if case == "custom-pre-switch" then {
-      system.preSwitchChecks.operator-check = "false";
-    } else if case == "sshd-unit" then {
-      systemd.services.sshd.serviceConfig.PAMName = "fixture-ssh";
-    } else if case == "custom-sysctl" then {
-      boot.kernel.sysctl."net.ipv4.ip_forward" = 1;
+    } else if case == "auto-resize" then {
+      fileSystems."/".autoResize = true;
     } else { }) ];
   };
-  inverse = import ../installer/legacy-projection.nix {
+  projection = import ../installer/legacy-projection.nix ({
     inherit evaluated nixpkgs;
-    operatorName = "operator";
-  };
-  sparseMachine = inverse.machine // {
-    boot = inverse.machine.boot // {
-      initrd_available_kernel_modules = [ "virtio_pci" "virtio_blk" ];
-      initrd_kernel_modules = [ ];
-      kernel_modules = [ ];
-    };
-  };
-  reviewedMachine = if case == "reviewed-network" then sparseMachine // {
-    network = sparseMachine.network // { nameservers = [ "192.0.2.53" ]; };
-  } else if case == "reviewed-storage" then sparseMachine // {
-    file_systems = map (fs: fs // {
-      device = "/dev/disk/by-uuid/aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee";
-    }) sparseMachine.file_systems;
-  } else sparseMachine;
-  projection = if hostingerCase then import ../installer/legacy-projection.nix {
-      inherit evaluated nixpkgs;
-      operatorName = "operator";
-      reviewedMachine = hostingerMachine;
-    } else if builtins.elem case [ "reviewed-sparse" "reviewed-network" "reviewed-storage" "reviewed-public-ssh" "reviewed-public-ssh-mismatch" ]
-    then import ../installer/legacy-projection.nix {
-      inherit evaluated nixpkgs reviewedMachine;
-      operatorName = "operator";
-      reviewedPublicSSH22 = if case == "reviewed-public-ssh-mismatch" then false
-        else if case == "reviewed-public-ssh" then true else null;
-    } else inverse;
+  } // (if hostingerCase then { reviewedMachine = hostingerMachine; } else { }));
 in
 assert builtins.hasAttr case expectedReasons;
 # Restricted source authority stays verbatim local evidence. This assertion does

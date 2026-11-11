@@ -95,8 +95,7 @@ func RunEnrollment(ctx context.Context, operationID string, recovery bool) error
 
 func prepareEnrollmentEffect(ctx context.Context, root *os.Root, imported importIntent, intent enrollmentIntent) error {
 	// Saved inspection is a caller binding, never authority to skip fresh checks.
-	before, err := readEnrollmentInspection(ctx, root, "enrollment-inspection.json", intent.InspectionSHA256, imported)
-	if err != nil {
+	if _, err := readEnrollmentInspection(ctx, root, "enrollment-inspection.json", intent.InspectionSHA256, imported); err != nil {
 		return err
 	}
 	fresh, err := inspectRetained(ctx, root, imported)
@@ -135,12 +134,6 @@ func prepareEnrollmentEffect(ctx context.Context, root *os.Root, imported import
 	if stageEnrollmentAccess(ctx, root, intent) != nil {
 		return ErrEnrollment
 	}
-	// Staging has no active path. Recheck the mutable source bytes/permissions
-	// immediately before publication; home files remain untouched throughout.
-	after, err := inspectRuntimeSSH(ctx, intent.EnrollmentSystem, intent.SourceSystem, input, before.Packet)
-	if err != nil || !sameEnrollmentSSH(before.SSH, after) {
-		return ErrSourceMismatch
-	}
 	links, err := readEnrollmentLinks()
 	if err != nil || links.current != intent.SourceSystem || links.profile != intent.SourceSystem || links.booted != intent.SourceSystem {
 		return ErrSourceMismatch
@@ -152,19 +145,6 @@ func prepareEnrollmentEffect(ctx context.Context, root *os.Root, imported import
 		return err
 	}
 	return writeEnrollmentPhase(ctx, root, intent, "published")
-}
-
-func sameEnrollmentSSH(first, second sshObservation) bool {
-	if first.ConfigSHA256 != second.ConfigSHA256 || first.EffectiveSHA256 != second.EffectiveSHA256 || len(first.Files) != len(second.Files) {
-		return false
-	}
-	for index, file := range first.Files {
-		other := second.Files[index]
-		if file.User != other.User || file.Source != other.Source || file.Path != other.Path || file.Active != other.Active || file.Present != other.Present || file.UID != other.UID || file.Mode != other.Mode || file.SHA256 != other.SHA256 || file.Keys != other.Keys {
-			return false
-		}
-	}
-	return true
 }
 
 func recoverEnrollment(ctx context.Context, root *os.Root, imported importIntent, intent enrollmentIntent) error {
@@ -229,17 +209,6 @@ func recoverEnrollment(ctx context.Context, root *os.Root, imported importIntent
 	}
 	if err := removeEnrollmentAccess(ctx, parent, intent); err != nil {
 		return err
-	}
-	input, err := retainedInspectionInput(ctx, root, imported)
-	if err != nil {
-		return err
-	}
-	record, err := readEnrollmentInspection(ctx, root, "enrollment-inspection.json", intent.InspectionSHA256, imported)
-	if err != nil {
-		return err
-	}
-	if _, err := inspectRuntimeSSH(ctx, intent.EnrollmentSystem, intent.SourceSystem, input, record.Packet); err != nil {
-		return ErrUnresolved
 	}
 	return writeEnrollmentPhase(ctx, root, intent, "restored")
 }

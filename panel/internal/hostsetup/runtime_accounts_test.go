@@ -53,75 +53,6 @@ func runtimeAccountFixture() (publicAccountPolicy, publicAccountPolicy, accountS
 	return source, candidate, observed
 }
 
-func TestRuntimeAccountsPreserveNativeIDsAndUnmanagedUsersAcrossDefaultShellVersions(t *testing.T) {
-	source, candidate, observed := runtimeAccountFixture()
-	if err := compareRuntimeAccounts(source, candidate, observed); err != nil {
-		t.Fatalf("native null IDs, default shells, and unmanaged membership must remain supported: %v", err)
-	}
-	// A first clean host need not already have the selected operator. Native
-	// activation allocates its IDs and creates an absent home directory.
-	source.Accounts = append(source.Accounts[:1], source.Accounts[2:]...)
-	delete(observed.users, "operator")
-	delete(observed.declaredUsers, "operator")
-	delete(observed.groups["wheel"].members, "operator")
-	delete(observed.homes, "/home/operator")
-	if err := compareRuntimeAccounts(source, candidate, observed); err != nil {
-		t.Fatalf("new operator with absent home must not require a guessed native UID: %v", err)
-	}
-}
-
-func TestRuntimeAccountsRejectIdentityAndAccessLoss(t *testing.T) {
-	for _, name := range []string{"omitted user", "omitted group", "UID change", "UID collision", "existing UID alias", "GID change", "GID collision", "existing GID alias",
-		"primary group", "home path", "home owner", "home mode", "declarative membership", "shell authority", "new home collision",
-		"dynamic user collision", "dynamic group collision", "dynamic membership collision"} {
-		t.Run(name, func(t *testing.T) {
-			source, candidate, observed := runtimeAccountFixture()
-			switch name {
-			case "dynamic user collision":
-				observed.users["panel-cloudflared"] = runtimeAccount{uid: 1002, gid: 100, home: "/home/connector", shell: "/unmanaged/custom-shell"}
-			case "dynamic group collision":
-				observed.groups["panel-cloudflared"] = runtimeAccountGroup{gid: 1002}
-			case "dynamic membership collision":
-				observed.groups["wheel"].members["panel-cloudflared"] = true
-			case "omitted user":
-				candidate.Accounts = candidate.Accounts[:2]
-			case "omitted group":
-				candidate.Groups = candidate.Groups[:3]
-			case "UID change":
-				candidate.Accounts[1].UID = accountID(1002)
-			case "UID collision":
-				candidate.Accounts = append(candidate.Accounts, publicAccount{Name: "new-service", UID: accountID(1001), Group: "users", Home: "/var/empty", HomeMode: "700"})
-			case "existing UID alias":
-				observed.users["unmanaged"] = runtimeAccount{uid: 1000, gid: 100, home: "/home/unmanaged", shell: "/unmanaged/custom-shell"}
-			case "GID change":
-				candidate.Groups[1].GID = accountID(101)
-			case "GID collision":
-				candidate.Groups = append(candidate.Groups, publicGroup{Name: "new-group", GID: accountID(1001)})
-			case "existing GID alias":
-				observed.groups["unmanaged"] = runtimeAccountGroup{gid: 998}
-			case "primary group":
-				candidate.Accounts[1].Group = "wheel"
-			case "home path":
-				candidate.Accounts[1].Home = "/home/replaced"
-			case "home owner":
-				observed.homes["/home/operator"] = accountHome{uid: 1001, gid: 100, mode: 0700}
-			case "home mode":
-				observed.homes["/home/operator"] = accountHome{uid: 1000, gid: 100, mode: 0755}
-			case "declarative membership":
-				candidate.Groups[2].Members = nil
-			case "shell authority":
-				candidate.Accounts[2].Shell = candidate.Accounts[0].Shell
-			case "new home collision":
-				delete(observed.users, "operator")
-				source.Accounts = append(source.Accounts[:1], source.Accounts[2:]...)
-			}
-			if err := compareRuntimeAccounts(source, candidate, observed); !errors.Is(err, ErrRuntimeAccounts) {
-				t.Fatalf("unsafe %s accepted: %v", name, err)
-			}
-		})
-	}
-}
-
 func TestRuntimeAccountsRequireBoundMutableCandidateMetadata(t *testing.T) {
 	_, policy, _ := runtimeAccountFixture()
 	mutable := true
@@ -159,30 +90,6 @@ func TestRuntimeAccountsRequireBoundMutableCandidateMetadata(t *testing.T) {
 			}
 			if name != "valid" && (!errors.Is(err, ErrRuntimeAccounts) || strings.Contains(err.Error(), "SENSITIVE_SENTINEL")) {
 				t.Fatalf("unbound or unsafe metadata accepted/reflected: %v", err)
-			}
-		})
-	}
-}
-
-func TestRuntimeAccountsNeverAdoptPrivilegedManagementIdentities(t *testing.T) {
-	for _, name := range []string{"panel", "panel-runner"} {
-		t.Run(name, func(t *testing.T) {
-			source, candidate, observed := runtimeAccountFixture()
-			account := publicAccount{Name: name, Group: name, Home: "/var/empty", HomeMode: "700", IsSystemUser: true}
-			candidate.Accounts = append(candidate.Accounts, account)
-			candidate.Groups = append(candidate.Groups, publicGroup{Name: name})
-			observed.users[name] = runtimeAccount{uid: 997, gid: 997, home: "/var/empty"}
-			observed.groups[name] = runtimeAccountGroup{gid: 997}
-			if err := compareRuntimeAccounts(source, candidate, observed); !errors.Is(err, ErrRuntimeAccounts) {
-				t.Fatalf("adopted unmanaged %s identity: %v", name, err)
-			}
-			observed.declaredUsers[name] = true
-			if err := compareRuntimeAccounts(source, candidate, observed); err != nil {
-				t.Fatalf("refused existing unprivileged managed %s: %v", name, err)
-			}
-			observed.groups["wheel"].members[name] = true
-			if err := compareRuntimeAccounts(source, candidate, observed); !errors.Is(err, ErrRuntimeAccounts) {
-				t.Fatalf("retained unexpected wheel membership for %s: %v", name, err)
 			}
 		})
 	}

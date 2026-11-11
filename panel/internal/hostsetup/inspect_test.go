@@ -13,7 +13,6 @@ import (
 	"testing"
 
 	"github.com/aleksdotbar/vps/panel/internal/foundation"
-	"github.com/aleksdotbar/vps/panel/internal/machine"
 )
 
 func sourcePacketFixture(t *testing.T) (sourcePacket, foundation.Input, string) {
@@ -44,19 +43,16 @@ func TestInspectionRequiresReviewedInputAndNativePolicyBeforeSourceCheckpoint(t 
 		return data
 	}
 	original := encode(packet)
-	if err := confirmSourcePacket(original, input, expected, packet.SystemPath); err != nil {
+	if err := confirmSourcePacket(original, input, expected); err != nil {
 		t.Fatalf("native defaults must not become a raw reviewed-machine hash mismatch: %v", err)
 	}
-	for _, name := range []string{"input binding", "generation mismatch", "unsupported policy", "invalid observed shape", "duplicate field", "field alias", "missing field", "oversized", "trailing packet"} {
+	for _, name := range []string{"input binding", "unsupported policy", "invalid observed shape", "duplicate field", "field alias", "missing field", "oversized", "trailing packet"} {
 		t.Run(name, func(t *testing.T) {
 			value := packet
 			data := original
 			switch name {
 			case "input binding":
 				value.ReviewedInputSHA256 = strings.Repeat("f", 64)
-				data = encode(value)
-			case "generation mismatch":
-				value.SystemPath = "/untrusted/sensitive-source"
 				data = encode(value)
 			case "unsupported policy":
 				value.Unsupported = []string{"access-policy"}
@@ -75,7 +71,7 @@ func TestInspectionRequiresReviewedInputAndNativePolicyBeforeSourceCheckpoint(t 
 			case "trailing packet":
 				data = append(append([]byte(nil), data...), []byte(` {}`)...)
 			}
-			err := confirmSourcePacket(data, input, expected, packet.SystemPath)
+			err := confirmSourcePacket(data, input, expected)
 			if !errors.Is(err, ErrSourceMismatch) || strings.Contains(err.Error(), "sensitive-source") {
 				t.Fatalf("unsafe source packet accepted or reflected: %v", err)
 			}
@@ -153,7 +149,7 @@ func TestInspectionRecordKeepsPacketAndAuthorityAtomicWithoutReadiness(t *testin
 	if json.Unmarshal(stored, &record) != nil || record.Pins != pins || record.InputSHA256 != expected || record.ActivationReady || hex.EncodeToString(digest[:]) != hash {
 		t.Fatal("inspection authority or readiness changed in stored record")
 	}
-	if err := confirmSourcePacket(record.Packet, input, expected, packet.SystemPath); err != nil {
+	if err := confirmSourcePacket(record.Packet, input, expected); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := writeSourceInspection(t.Context(), root, result, pins, make([]byte, maxInspectionBytes+1), storageObservation{}, sshObservation{}); !errors.Is(err, ErrInspection) {
@@ -180,26 +176,5 @@ func TestInspectionMemoryAdmissionKeepsHeadroomAndHardCeiling(t *testing.T) {
 		if limit != test.expected || admitted != test.admitted {
 			t.Fatalf("memory admission for%dKiB: got%d/%t", test.available, limit, admitted)
 		}
-	}
-}
-
-func TestHostingerSourceMatchesRunningBootFiles(t *testing.T) {
-	current := t.TempDir()
-	for name, target := range map[string]string{"kernel": "/nix/store/k-linux/bzImage", "initrd": "/nix/store/i-initrd/initrd"} {
-		if err := os.Symlink(target, filepath.Join(current, name)); err != nil {
-			t.Fatal(err)
-		}
-	}
-	hostinger := foundation.Input{Machine: machine.Config{Template: machine.HostingerKVM}}
-	packet := sourcePacket{SystemPath: "/nix/store/rebuilt-system", BootFiles: bootFiles{Kernel: "/nix/store/k-linux/bzImage", Initrd: "/nix/store/i-initrd/initrd"}}
-	if !runsEvaluatedSource(packet, hostinger, current) {
-		t.Fatal("Hostinger image with matching boot files was rejected")
-	}
-	packet.BootFiles.Initrd = "/nix/store/other-initrd/initrd"
-	if runsEvaluatedSource(packet, hostinger, current) {
-		t.Fatal("Hostinger image with a different initrd was accepted")
-	}
-	if runsEvaluatedSource(packet, foundation.Input{}, current) {
-		t.Fatal("generic host accepted without an identical generation")
 	}
 }

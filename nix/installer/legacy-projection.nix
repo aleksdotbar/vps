@@ -1,9 +1,8 @@
 # Internal native projection. The target entry fixes source/config paths; fixtures
 # may supply an evaluated native configuration without exposing a path/RPC API.
-# Evidence stays target-local: authorized-key lines/references are unvalidated and
-# may contain options/comments. A native SSH reader must reject unsupported options
-# before retaining authority; never return this packet wholesale over RPC.
-{ evaluated, nixpkgs, operatorName, reviewedMachine ? null, reviewedPublicSSH22 ? null }:
+# It derives a bootable machine description and the declared SSH key paths; it does
+# not compare the host's other settings. Never return this packet over RPC.
+{ evaluated, nixpkgs, reviewedMachine ? null }:
 let
   lib = import (nixpkgs + "/lib");
   c = evaluated.config;
@@ -84,41 +83,6 @@ let
     } // lib.optionalAttrs (network.domain != null) { domain = network.domain; };
   };
   ssh = c.services.openssh;
-  operatorExists = builtins.hasAttr operatorName c.users.users;
-  # Evaluate reviewed intent under the same existing native defaults. Raw inverse
-  # module lists cannot be compared to sparse caller input by JSON hash.
-  baselineMachine = if reviewedMachine == null then machine else reviewedMachine;
-  baseline = import (nixpkgs + "/nixos") {
-    system = "x86_64-linux";
-    configuration = {
-      imports = if hostinger then [ ../modules/hostinger-template.nix ]
-        else [ (import ../modules/machine.nix baselineMachine) ];
-      users.mutableUsers = true;
-      users.users = {
-        root.openssh.authorizedKeys = {
-          inherit (c.users.users.root.openssh.authorizedKeys) keys keyFiles;
-        };
-      } // lib.optionalAttrs operatorExists {
-        ${operatorName} = {
-          isNormalUser = true;
-          extraGroups = [ "wheel" ];
-          uid = c.users.users.${operatorName}.uid;
-          openssh.authorizedKeys = {
-            inherit (c.users.users.${operatorName}.openssh.authorizedKeys) keys keyFiles;
-          };
-        };
-      };
-      services.openssh = {
-        enable = true;
-        openFirewall = ssh.openFirewall;
-        settings = lib.filterAttrs (name: _: builtins.elem name [
-          "PermitRootLogin" "PasswordAuthentication" "KbdInteractiveAuthentication"
-          "AuthenticationMethods" "AllowUsers" "AllowAgentForwarding" "X11Forwarding"
-        ]) ssh.settings;
-      };
-    };
-  };
-  b = baseline.config;
   fsNames = builtins.attrNames c.fileSystems;
   shapeReasons = lib.optionals (machine.system != "x86_64-linux") [ "architecture" ]
     ++ lib.optionals (loader == "unsupported" || (loader == "grub-bios" && builtins.length c.boot.loader.grub.devices != 1)) [ "boot-loader" ]
@@ -128,66 +92,15 @@ let
       || lib.any (s: s.size != null || s.randomEncryption.enable) c.swapDevices) [ "destructive-storage" ]
     ++ lib.optionals (!hostinger && (!network.enableIPv6 || interfaces == [ ]
       || (!network.useNetworkd && !network.dhcpcd.enable))) [ "network-declaration" ];
-  identityOf = value: toString value;
-  unitPolicy = config: builtins.mapAttrs (_: unit: {
-    inherit (unit) enable overrideStrategy wantedBy requiredBy upheldBy aliases text;
-    unit = toString unit.unit;
-  })
-    config.systemd.units;
-  pamFiles = config: builtins.mapAttrs (_: file: {
-    inherit (file) enable target text mode uid gid user group;
-    source = toString file.source;
-  })
-    (lib.filterAttrs (name: _: lib.hasPrefix "pam.d/" name) config.environment.etc);
   publicAccounts = config: import ./public-accounts.nix { inherit lib config; };
   accounts = config: (publicAccounts config).accounts;
   groups = config: (publicAccounts config).groups;
-  networkIdentity = config: {
-    inherit (config.networking) hostName domain nameservers search;
-  };
-  policyReasons = lib.optionals (
-      reviewedPublicSSH22 != null && ssh.openFirewall != reviewedPublicSSH22
-    ) [ "bootstrap-firewall-policy" ]
-    ++ lib.optionals (
-      c.system.stateVersion != b.system.stateVersion
-      || (hostinger && reviewedMachine.state_version != c.system.stateVersion)
-      || networkIdentity c != networkIdentity b) [ "machine-policy" ]
-    ++ lib.optionals (
-      identityOf c.system.build.kernel != identityOf b.system.build.kernel
-      || identityOf c.system.build.initialRamdisk != identityOf b.system.build.initialRamdisk
-      || identityOf c.system.build.installBootLoader != identityOf b.system.build.installBootLoader
-      || identityOf c.system.build.bootStage2 != identityOf b.system.build.bootStage2
-      || c.boot.kernelParams != b.boot.kernelParams) [ "boot-policy" ]
-    ++ lib.optionals (unitPolicy c != unitPolicy b) [ "native-unit-policy" ]
-    ++ lib.optionals (ssh.settings != b.services.openssh.settings
-      || ssh.extraConfig != b.services.openssh.extraConfig
-      || ssh.authorizedKeysFiles != b.services.openssh.authorizedKeysFiles
-      || (ssh.settings ? AuthenticationMethods && (
-        !(builtins.elem ssh.settings.AuthenticationMethods [ "any" "publickey" ])
-        || (ssh.settings.AuthenticationMethods == "publickey" && !(
-          ssh.settings ? PasswordAuthentication && ssh.settings ? KbdInteractiveAuthentication
-          && !ssh.settings.PasswordAuthentication && !ssh.settings.KbdInteractiveAuthentication))))) [ "ssh-policy" ]
-    ++ lib.optionals (pamFiles c != pamFiles b
-      || c.security.sudo.configFile != b.security.sudo.configFile
-      || c.security.sudo.enable != b.security.sudo.enable) [ "pam-sudo-policy" ]
-    ++ lib.optionals (!c.users.mutableUsers || accounts c != accounts b || groups c != groups b) [ "account-policy" ]
-    ++ lib.optionals (c.boot.kernel.sysctl != b.boot.kernel.sysctl) [ "sysctl-policy" ]
-    ++ lib.optionals (c.system.activationScripts != b.system.activationScripts) [ "activation-policy" ]
-    ++ lib.optionals (
-      c.system.preSwitchChecksScript != b.system.preSwitchChecksScript
-      || c.system.switch.enable != b.system.switch.enable
-      || c.system.switch.inhibitors != b.system.switch.inhibitors
-      || c.system.systemBuilderCommands != b.system.systemBuilderCommands
-      || c.system.activatableSystemBuilderCommands != b.system.activatableSystemBuilderCommands) [ "switch-policy" ]
-    ++ lib.optionals (c.specialisation != { }) [ "specialisation" ]
-    ++ lib.optionals (network.hosts != b.networking.hosts || network.extraHosts != b.networking.extraHosts) [ "name-resolution-policy" ];
-  reasons = shapeReasons ++ lib.optionals (shapeReasons == [ ]) policyReasons;
+  reasons = shapeReasons;
 in
 {
   schema_version = 1;
   system_path = toString evaluated.system;
-  # Provider images may assemble generated files differently from a rebuild of
-  # their own configuration; boot artifacts still identify the running source.
+  # system_path and boot_files stay in the packet shape; installers no longer compare them.
   boot_files = {
     kernel = "${c.boot.kernelPackages.kernel}/${c.system.boot.loader.kernelFile}";
     initrd = "${c.system.build.initialRamdisk}/${c.system.boot.loader.initrdFile}";

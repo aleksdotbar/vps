@@ -1,8 +1,8 @@
-# Effective configuration of Hostinger's KVM NixOS image. Inspection compares
-# the existing host against exactly this; any local change is rejected.
+# Fixture: the effective configuration of Hostinger's KVM NixOS image, used by
+# the legacy projection checks.
 { lib, ... }:
 {
-  imports = [ ./hostinger-services.nix ];
+  imports = [ ../modules/hostinger-services.nix ];
 
   boot.loader.grub = {
     enable = true;

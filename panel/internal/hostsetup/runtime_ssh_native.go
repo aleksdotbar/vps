@@ -47,7 +47,6 @@ func inspectRuntimeSSH(ctx context.Context, enrollment, systemPath string, input
 	if err != nil || !admittedSSHConfig(config) {
 		return sshObservation{}, ErrRuntimeSSH
 	}
-	var settings sshEffective
 	dumps := []string{}
 	for _, user := range []string{"root", input.Operator.Name} {
 		// -G exits before host-key loading. -T is required by upstream for -C,
@@ -60,17 +59,11 @@ func inspectRuntimeSSH(ctx context.Context, enrollment, systemPath string, input
 		if err != nil || confirmSSHPolicy(parsed, input, declared.Files) != nil {
 			return sshObservation{}, ErrRuntimeSSH
 		}
-		if settings == nil {
-			settings = parsed
-		}
 		dumps = append(dumps, string(data))
 	}
 	accounts, err := readRuntimeAccounts(ctx, accountRuntimeFiles{passwd: "/etc/passwd", group: "/etc/group", declaredUsers: "/var/lib/nixos/declarative-users", declaredGroups: "/var/lib/nixos/declarative-groups"})
 	if err != nil {
 		return sshObservation{}, ErrRuntimeSSH
-	}
-	if err := confirmSSHLoginUsers(settings, input.Operator.Name, accounts); err != nil {
-		return sshObservation{}, err
 	}
 	files := []sshAuthorityFile{}
 	for _, user := range []string{"root", input.Operator.Name} {
@@ -112,7 +105,7 @@ func inspectRuntimeSSH(ctx context.Context, enrollment, systemPath string, input
 			files = append(files, file)
 		}
 	}
-	files, err = admitSSHAuthority(input, settings, files)
+	files, err = admitSSHAuthority(input, files)
 	if err != nil {
 		return sshObservation{}, err
 	}

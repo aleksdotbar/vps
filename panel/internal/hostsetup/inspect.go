@@ -26,7 +26,7 @@ type Inspected struct {
 	ActivationReady  bool   `json:"activation_ready"`
 }
 
-// Inspect confirms source consistency and selected runtime preservation facts.
+// Inspect binds the host configuration to the recorded input and checks live storage and network.
 // Private access and the remaining activation/recovery proofs are separate.
 func Inspect(ctx context.Context, operationID, buildSHA256 string) (Inspected, error) {
 	if os.Geteuid() != 0 {
@@ -95,7 +95,7 @@ func inspectRetained(ctx context.Context, root *os.Root, intent importIntent) (I
 	if err != nil {
 		return Inspected{}, err
 	}
-	if err := confirmSourcePacket(packet, input, intent.Build.InputSHA256, before); err != nil {
+	if err := confirmSourcePacket(packet, input, intent.Build.InputSHA256); err != nil {
 		return Inspected{}, err
 	}
 	storage, err := inspectRuntimeStorage(ctx, enrollment, input.Machine)
@@ -105,20 +105,15 @@ func inspectRetained(ctx context.Context, root *os.Root, intent importIntent) (I
 	if err := inspectRuntimeNetwork(ctx, enrollment, before, input.Machine, true); err != nil {
 		return Inspected{}, err
 	}
-	if err := inspectRuntimeAccounts(ctx, intent.Build, packet); err != nil {
-		return Inspected{}, err
-	}
-	sshEvidence, err := inspectRuntimeSSH(ctx, enrollment, before, input, packet)
-	if err != nil {
-		return Inspected{}, err
-	}
 	after, err := consistentSystemLinks(links, "/nix/store")
 	if err != nil || after != before {
 		return Inspected{}, ErrSourceMismatch
 	}
 	result := Inspected{Status: "source_inspected", OperationID: operationID, InstallationID: intent.Build.InstallationID, ServerID: intent.Build.ServerID,
 		InputSHA256: intent.Build.InputSHA256, SystemPath: before, MachineSHA256: intent.Build.MachineSHA256, ActivationReady: false}
-	result.InspectionSHA256, err = writeSourceInspection(ctx, root, result, pins, packet, storage, sshEvidence)
+	// Fresh provider images carry no hand-made accounts or SSH authority to preserve;
+	// the record keeps its SSH field empty for compatibility.
+	result.InspectionSHA256, err = writeSourceInspection(ctx, root, result, pins, packet, storage, sshObservation{Files: []sshAuthorityFile{}})
 	if err != nil {
 		return Inspected{}, err
 	}

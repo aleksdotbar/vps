@@ -86,9 +86,6 @@ func verifyFinalHost(ctx context.Context, setup *finalSetup, intent finalIntent)
 	if err != nil {
 		return err
 	}
-	if err := inspectRuntimeAccounts(ctx, setup.imported.Build, record.Packet); err != nil {
-		return err
-	}
 	packet, err := enrollmentSSHPacket(record.Packet)
 	if err != nil {
 		return err

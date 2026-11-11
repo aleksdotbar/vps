@@ -4,7 +4,7 @@
 
 - One self-hosted installation, one administrator, one server and multiple projects.
 - One repository for the panel, installer, reusable host foundation and generic examples.
-- Existing x86_64 NixOS hosts; preserve working disk, boot, network and human recovery access.
+- Fresh x86_64 NixOS provider images taken over entirely; keep their disk, boot and network working and recovery access independent. Hand-made host settings are not preserved.
 - Support Hostinger's KVM NixOS image as installed: keep its guest agent and cloud-init provisioning; Nix owns the network after setup.
 - No OS installation, provider API or automated host maintenance.
 - Panel and applications may share a host; register that host automatically and prevent its removal.

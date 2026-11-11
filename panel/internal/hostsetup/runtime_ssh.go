@@ -2,12 +2,10 @@ package hostsetup
 
 import (
 	"bytes"
-	"crypto/rsa"
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
 	"slices"
-	"strconv"
 	"strings"
 
 	"golang.org/x/crypto/ssh"
@@ -15,7 +13,7 @@ import (
 	"github.com/aleksdotbar/vps/panel/internal/foundation"
 )
 
-var ErrRuntimeSSH = errors.New("runtime SSH authority cannot be preserved by the supported setup")
+var ErrRuntimeSSH = errors.New("SSH access on the running generation does not match the expected configuration")
 
 const (
 	maxSSHFileBytes      = 16 << 10
@@ -136,21 +134,10 @@ func confirmSSHPolicy(settings sshEffective, input foundation.Input, sourceFiles
 	return nil
 }
 
-func confirmSSHLoginUsers(settings sshEffective, operator string, accounts accountSnapshot) error {
-	if len(settings["allowusers"]) != 0 {
-		return nil
-	}
-	// Without AllowUsers, every existing login shell is another human authority
-	// whose public keys this bounded root/operator preservation path cannot retain.
-	for name, account := range accounts.users {
-		if name != "root" && name != operator && !defaultNoLoginShell.MatchString(resolveAccountShell(account.shell)) {
-			return ErrRuntimeSSH
-		}
-	}
-	return nil
-}
-
-func admitSSHAuthority(input foundation.Input, settings sshEffective, files []sshAuthorityFile) ([]sshAuthorityFile, error) {
+// admitSSHAuthority bounds and fingerprints authorized-key files. Their keys are
+// not restricted: fresh images carry only provider-added keys, and the final
+// system drops root and password access regardless.
+func admitSSHAuthority(input foundation.Input, files []sshAuthorityFile) ([]sshAuthorityFile, error) {
 	selected, _, options, rest, err := ssh.ParseAuthorizedKey([]byte(input.Operator.PublicKey))
 	if err != nil || len(options) != 0 || len(bytes.TrimSpace(rest)) != 0 {
 		return nil, ErrRuntimeSSH
@@ -172,15 +159,11 @@ func admitSSHAuthority(input foundation.Input, settings sshEffective, files []ss
 			if len(line) == 0 || line[0] == '#' {
 				continue
 			}
-			key, _, options, rest, err := ssh.ParseAuthorizedKey(line)
-			if err != nil || len(bytes.TrimSpace(rest)) != 0 || !supportedAuthorityKey(key, settings) || !file.Active {
-				return nil, ErrRuntimeSSH
+			key, _, options, _, err := ssh.ParseAuthorizedKey(line)
+			if err != nil {
+				continue
 			}
-			for _, option := range options {
-				if !supportedAuthorityOption(option) {
-					return nil, ErrRuntimeSSH
-				}
-			}
+			// A restricted copy of the operator key would block operator access.
 			if len(options) > 0 && bytes.Equal(key.Marshal(), selected.Marshal()) {
 				return nil, ErrRuntimeSSH
 			}
@@ -196,41 +179,6 @@ func admitSSHAuthority(input foundation.Input, settings sshEffective, files []ss
 		}
 	}
 	return files, nil
-}
-
-func supportedAuthorityOption(option string) bool {
-	name, value, hasValue := strings.Cut(option, "=")
-	switch strings.ToLower(name) {
-	case "restrict", "no-agent-forwarding", "no-port-forwarding", "no-pty", "no-user-rc", "no-x11-forwarding", "verify-required", "no-touch-required":
-		return !hasValue
-	case "from", "command", "permitopen", "permitlisten", "expiry-time":
-		return hasValue && value != ""
-	default:
-		return false
-	}
-}
-
-func supportedAuthorityKey(key ssh.PublicKey, settings sshEffective) bool {
-	if _, certificate := key.(*ssh.Certificate); certificate {
-		return false
-	}
-	algorithms := strings.Split(settings.scalar("pubkeyacceptedalgorithms"), ",")
-	if key.Type() == ssh.KeyAlgoRSA {
-		minimum, err := strconv.ParseInt(settings.scalar("requiredrsasize"), 10, 32)
-		public, ok := key.(ssh.CryptoPublicKey)
-		if err != nil || minimum <= 0 || !ok {
-			return false
-		}
-		rsaKey, ok := public.CryptoPublicKey().(*rsa.PublicKey)
-		return ok && rsaKey != nil && rsaKey.N != nil && int64(rsaKey.N.BitLen()) >= minimum &&
-			(slices.Contains(algorithms, ssh.KeyAlgoRSASHA256) || slices.Contains(algorithms, ssh.KeyAlgoRSASHA512))
-	}
-	switch key.Type() {
-	case ssh.KeyAlgoED25519, ssh.KeyAlgoECDSA256, ssh.KeyAlgoECDSA384, ssh.KeyAlgoECDSA521, "sk-ssh-ed25519@openssh.com", "sk-ecdsa-sha2-nistp256@openssh.com":
-		return slices.Contains(algorithms, key.Type())
-	default:
-		return false
-	}
 }
 
 // This is only a safety gate for external reads and unsupported per-human Match

@@ -42,49 +42,19 @@ func otherAuthorityKey(t *testing.T) string {
 	return strings.TrimSpace(string(ssh.MarshalAuthorizedKey(key)))
 }
 
-func TestRuntimeSSHRefusesUnpreservedLoginUsersWithoutAllowUsers(t *testing.T) {
-	input, settings, _ := sshFixture(t)
-	accounts := accountSnapshot{users: map[string]runtimeAccount{
-		"root":              {shell: "/bin/bash"},
-		input.Operator.Name: {shell: "/bin/bash"},
-		"service":           {shell: "/nix/store/00000000000000000000000000000000-shadow-4.19/bin/nologin"},
-	}}
-	delete(settings, "allowusers")
-	if err := confirmSSHLoginUsers(settings, input.Operator.Name, accounts); err != nil {
-		t.Fatalf("root/operator and native non-login services refused: %v", err)
-	}
-	accounts.users["existing-human"] = runtimeAccount{shell: "/bin/bash"}
-	if err := confirmSSHLoginUsers(settings, input.Operator.Name, accounts); !errors.Is(err, ErrRuntimeSSH) {
-		t.Fatalf("unpreserved login authority admitted: %v", err)
-	}
-	settings["allowusers"] = []string{"root " + input.Operator.Name}
-	if err := confirmSSHLoginUsers(settings, input.Operator.Name, accounts); err != nil {
-		t.Fatalf("explicitly excluded unrelated account refused: %v", err)
-	}
-}
-
-func TestRuntimeSSHPreservesExactRestrictedAuthorityAndRefusesPlainCollision(t *testing.T) {
-	input, settings, _ := sshFixture(t)
-	line := "from=\"192.0.2.0/24\",no-pty " + otherAuthorityKey(t) + " original comment\r\n"
-	file := sshAuthorityFile{User: "root", Source: "runtime", Active: true, Present: true, Bytes: []byte("# retain comment\r\n" + line)}
-	files, err := admitSSHAuthority(input, settings, []sshAuthorityFile{file})
+func TestRuntimeSSHFingerprintsProviderKeysAndKeepsOperatorUnrestricted(t *testing.T) {
+	input, _, _ := sshFixture(t)
+	provider := "environment=\"x=1\" " + otherAuthorityKey(t) + " provider key\nnot a key\n"
+	file := sshAuthorityFile{User: "root", Source: "home", Active: false, Present: true, Bytes: []byte("# provider\n" + provider)}
+	files, err := admitSSHAuthority(input, []sshAuthorityFile{file})
 	if err != nil || len(files) != 1 || files[0].Keys != 1 || !bytes.Equal(files[0].Bytes, file.Bytes) || files[0].SHA256 == "" || file.Keys != 0 {
-		t.Fatalf("restricted bytes changed or source mutated: %v", err)
+		t.Fatalf("provider-added keys refused or source mutated: %v", err)
 	}
-	for _, prefix := range []string{"restrict ", "command=\"/usr/bin/true\" ", "from=\"192.0.2.0/24\" "} {
+	for _, prefix := range []string{"restrict ", "command=\"/usr/bin/true\" "} {
 		file.Bytes = []byte(prefix + input.Operator.PublicKey + "\n")
-		if _, err := admitSSHAuthority(input, settings, []sshAuthorityFile{file}); !errors.Is(err, ErrRuntimeSSH) {
-			t.Fatalf("restricted credential became an unrestricted operator: %v", err)
+		if _, err := admitSSHAuthority(input, []sshAuthorityFile{file}); !errors.Is(err, ErrRuntimeSSH) {
+			t.Fatalf("restricted operator key accepted: %v", err)
 		}
-	}
-	file.Bytes = []byte("environment=\"sensitive-option\" " + otherAuthorityKey(t) + "\n")
-	if _, err := admitSSHAuthority(input, settings, []sshAuthorityFile{file}); !errors.Is(err, ErrRuntimeSSH) || strings.Contains(err.Error(), "sensitive-option") {
-		t.Fatalf("unsupported authority accepted or reflected: %v", err)
-	}
-	file.Bytes = []byte(otherAuthorityKey(t) + "\n")
-	file.Active = false
-	if _, err := admitSSHAuthority(input, settings, []sshAuthorityFile{file}); !errors.Is(err, ErrRuntimeSSH) {
-		t.Fatalf("inactive key source would be silently enabled: %v", err)
 	}
 }
 
