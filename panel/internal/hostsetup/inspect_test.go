@@ -13,6 +13,7 @@ import (
 	"testing"
 
 	"github.com/aleksdotbar/vps/panel/internal/foundation"
+	"github.com/aleksdotbar/vps/panel/internal/machine"
 )
 
 func sourcePacketFixture(t *testing.T) (sourcePacket, foundation.Input, string) {
@@ -179,5 +180,26 @@ func TestInspectionMemoryAdmissionKeepsHeadroomAndHardCeiling(t *testing.T) {
 		if limit != test.expected || admitted != test.admitted {
 			t.Fatalf("memory admission for%dKiB: got%d/%t", test.available, limit, admitted)
 		}
+	}
+}
+
+func TestHostingerSourceMatchesRunningBootFiles(t *testing.T) {
+	current := t.TempDir()
+	for name, target := range map[string]string{"kernel": "/nix/store/k-linux/bzImage", "initrd": "/nix/store/i-initrd/initrd"} {
+		if err := os.Symlink(target, filepath.Join(current, name)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	hostinger := foundation.Input{Machine: machine.Config{Template: machine.HostingerKVM}}
+	packet := sourcePacket{SystemPath: "/nix/store/rebuilt-system", BootFiles: bootFiles{Kernel: "/nix/store/k-linux/bzImage", Initrd: "/nix/store/i-initrd/initrd"}}
+	if !runsEvaluatedSource(packet, hostinger, current) {
+		t.Fatal("Hostinger image with matching boot files was rejected")
+	}
+	packet.BootFiles.Initrd = "/nix/store/other-initrd/initrd"
+	if runsEvaluatedSource(packet, hostinger, current) {
+		t.Fatal("Hostinger image with a different initrd was accepted")
+	}
+	if runsEvaluatedSource(packet, foundation.Input{}, current) {
+		t.Fatal("generic host accepted without an identical generation")
 	}
 }

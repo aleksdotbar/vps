@@ -186,6 +186,12 @@ in
 {
   schema_version = 1;
   system_path = toString evaluated.system;
+  # Provider images may assemble generated files differently from a rebuild of
+  # their own configuration; boot artifacts still identify the running source.
+  boot_files = {
+    kernel = "${c.boot.kernelPackages.kernel}/${c.system.boot.loader.kernelFile}";
+    initrd = "${c.system.build.initialRamdisk}/${c.system.boot.loader.initrdFile}";
+  };
   unsupported = reasons;
   machine = if reasons != [ ] then null
     else if hostinger then machine // { inherit (reviewedMachine) network template; }
