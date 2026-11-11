@@ -1,0 +1,55 @@
+services:
+  app:
+    image: ${APP_IMAGE:?supplied by the verified release}
+    user: "10001:10001"
+    init: true
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    cpus: 0.5
+    mem_limit: 128m
+    pids_limit: 64
+    stop_grace_period: 20s
+    environment:
+      API_TOKEN: ${API_TOKEN:?set in the panel}
+      LOG_LEVEL: info
+    tmpfs:
+      - /tmp:size=16777216,noexec,nosuid
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
+    healthcheck:
+      test: [CMD, /app, healthcheck]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+  worker:
+    image: ${WORKER_IMAGE:?supplied by the verified release}
+    user: "10001:10001"
+    init: true
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    cpus: 0.5
+    mem_limit: 128m
+    pids_limit: 64
+    stop_grace_period: 20s
+    environment:
+      WORKER_TOKEN: ${WORKER_TOKEN:?set in the panel}
+      LOG_LEVEL: info
+    tmpfs:
+      - /tmp:size=16777216,noexec,nosuid
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
+    healthcheck:
+      test: [CMD, /worker, healthcheck]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 10s

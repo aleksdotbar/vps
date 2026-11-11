@@ -1,0 +1,3 @@
+panel/gen/** linguist-generated=true
+# Protobuf-ES emits a trailing blank line; preserve reproducible generator output.
+panel/gen/ts/** whitespace=-blank-at-eof

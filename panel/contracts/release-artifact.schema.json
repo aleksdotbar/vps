@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/aleksdotbar/vps/panel/contracts/release-artifact.schema.json",
+  "title": "Panel release artifact v1",
+  "description": "Untrusted Actions transport metadata. Admission additionally binds trusted run metadata and the selected native Compose model.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "source_sha", "services"],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "source_sha": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+    "services": {
+      "type": "object",
+      "minProperties": 1,
+      "maxProperties": 64,
+      "propertyNames": { "maxLength": 128, "pattern": "^[a-zA-Z0-9._-]+$" },
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["image_variable", "image"],
+        "properties": {
+          "image_variable": { "type": "string", "maxLength": 64, "pattern": "^[A-Z][A-Z0-9_]*$" },
+          "image": {
+            "type": "string",
+            "maxLength": 512,
+            "pattern": "^ghcr\\.io/[a-z0-9]+([._-][a-z0-9]+)*(/[a-z0-9]+([._-][a-z0-9]+)*)+@sha256:[0-9a-f]{64}$"
+          }
+        }
+      }
+    }
+  }
+}

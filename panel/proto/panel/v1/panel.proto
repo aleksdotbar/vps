@@ -1,0 +1,623 @@
+syntax = "proto3";
+
+package panel.v1;
+
+import "buf/validate/validate.proto";
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/aleksdotbar/vps/panel/gen/go/panel/v1;panelv1";
+
+// All mutations require an authenticated administrator and origin protection.
+// Reuse request_id for retries of the same intent, never for different inputs.
+// Durable admission/replay is implemented with persistence, not by this schema.
+service PanelService {
+  rpc ListServers(ListServersRequest) returns (ListServersResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  rpc GetServer(GetServerRequest) returns (GetServerResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  rpc EnrollServer(EnrollServerRequest) returns (EnrollServerResponse);
+  rpc RemoveServer(RemoveServerRequest) returns (RemoveServerResponse);
+  rpc ListProjects(ListProjectsRequest) returns (ListProjectsResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  rpc GetProject(GetProjectRequest) returns (GetProjectResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  rpc CreateProject(CreateProjectRequest) returns (CreateProjectResponse);
+  rpc ListEnvironments(ListEnvironmentsRequest) returns (ListEnvironmentsResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  rpc GetEnvironment(GetEnvironmentRequest) returns (GetEnvironmentResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  rpc CreateEnvironment(CreateEnvironmentRequest) returns (CreateEnvironmentResponse);
+  rpc UpdateEnvironment(UpdateEnvironmentRequest) returns (UpdateEnvironmentResponse);
+  rpc SaveEnvironmentSecrets(SaveEnvironmentSecretsRequest) returns (SaveEnvironmentSecretsResponse);
+  rpc ListServices(ListServicesRequest) returns (ListServicesResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  rpc ListReleases(ListReleasesRequest) returns (ListReleasesResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  rpc GetRelease(GetReleaseRequest) returns (GetReleaseResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  rpc GetDeploymentSource(GetDeploymentSourceRequest) returns (GetDeploymentSourceResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  rpc DeployEnvironment(DeployEnvironmentRequest) returns (DeployEnvironmentResponse);
+  rpc RollbackEnvironment(RollbackEnvironmentRequest) returns (RollbackEnvironmentResponse);
+  rpc ListOperations(ListOperationsRequest) returns (ListOperationsResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  rpc GetOperation(GetOperationRequest) returns (GetOperationResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+}
+
+// Installation-owned GitHub integration. Responses contain metadata only.
+service GitHubService {
+  rpc BeginSetup(BeginSetupRequest) returns (BeginSetupResponse);
+  rpc BeginInstallation(BeginInstallationRequest) returns (BeginInstallationResponse);
+  rpc GetIntegration(GetIntegrationRequest) returns (GetIntegrationResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  rpc ListRepositories(ListRepositoriesRequest) returns (ListRepositoriesResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  rpc ListWorkflows(ListWorkflowsRequest) returns (ListWorkflowsResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  rpc SelectRepositories(SelectRepositoriesRequest) returns (SelectRepositoriesResponse);
+  rpc SaveRegistryCredential(SaveRegistryCredentialRequest) returns (SaveRegistryCredentialResponse);
+}
+message BeginSetupRequest {
+  Mutation mutation = 1 [(buf.validate.field).required = true];
+  string owner = 2 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 100
+    pattern: "^[A-Za-z0-9][A-Za-z0-9-]*$"
+  }];
+  bool organization = 3;
+  string name = 4 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 100
+  }];
+}
+message BeginSetupResponse {
+  string action_url = 1;
+  string manifest_json = 2;
+}
+message GetIntegrationRequest {}
+message GetIntegrationResponse {
+  bool registered = 1;
+  bool installed = 2;
+  int64 app_id = 3;
+  int64 owner_id = 4;
+  string owner = 5;
+  bool registry_credential_configured = 6;
+  string registry_username = 7;
+  uint64 registry_version = 8;
+}
+message ListRepositoriesRequest {
+  PageRequest page = 1 [(buf.validate.field).required = true];
+}
+message ListRepositoriesResponse {
+  repeated Repository repositories = 1;
+  PageResponse page = 2;
+  repeated int64 selected_repository_ids = 3;
+}
+message GitHubWorkflow {
+  int64 id = 1;
+  string name = 2;
+  string path = 3;
+  string state = 4;
+}
+message ListWorkflowsRequest {
+  int64 repository_id = 1 [(buf.validate.field).int64.gt = 0];
+  PageRequest page = 2 [(buf.validate.field).required = true];
+}
+message ListWorkflowsResponse {
+  repeated GitHubWorkflow workflows = 1;
+  PageResponse page = 2;
+}
+message SelectRepositoriesRequest {
+  Mutation mutation = 1 [(buf.validate.field).required = true];
+  repeated int64 repository_ids = 2 [(buf.validate.field).repeated = {
+    min_items: 1
+    max_items: 100
+    unique: true
+    items: {
+      int64: {gt: 0}
+    }
+  }];
+}
+message SelectRepositoriesResponse {
+  repeated Repository repositories = 1;
+}
+message SaveRegistryCredentialRequest {
+  Mutation mutation = 1 [(buf.validate.field).required = true];
+  uint64 expected_version = 2;
+  string username = 3 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 100
+    pattern: "^[A-Za-z0-9][A-Za-z0-9-]*$"
+  }];
+  string token = 4 [(buf.validate.field).string = {
+    min_bytes: 1
+    max_bytes: 4096
+  }];
+}
+message SaveRegistryCredentialResponse {
+  uint64 version = 1;
+}
+
+// Session RPCs are served only behind the configured private HTTPS origin.
+service AuthService {
+  rpc Login(LoginRequest) returns (LoginResponse);
+  rpc Logout(LogoutRequest) returns (LogoutResponse);
+  rpc GetSession(GetSessionRequest) returns (GetSessionResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+}
+
+message LoginRequest {
+  string password = 1 [(buf.validate.field).string = {
+    min_bytes: 1
+    max_bytes: 1024
+  }];
+}
+message LoginResponse {
+  bool authenticated = 1;
+}
+message LogoutRequest {}
+message LogoutResponse {}
+message GetSessionRequest {}
+message GetSessionResponse {
+  bool authenticated = 1;
+}
+
+// Errors use Connect codes and one safe ErrorDetail. Never include supplied
+// secrets, command output, credential paths, or internal stack traces.
+message ErrorDetail {
+  ErrorReason reason = 1;
+  string field = 2 [(buf.validate.field).string.max_len = 128];
+  string operation_id = 3 [(buf.validate.field).string.max_len = 36];
+  bool retryable = 4;
+}
+
+enum ErrorReason {
+  ERROR_REASON_UNSPECIFIED = 0;
+  ERROR_REASON_INVALID_INPUT = 1;
+  ERROR_REASON_AUTHENTICATION_REQUIRED = 2;
+  ERROR_REASON_ORIGIN_REJECTED = 3;
+  ERROR_REASON_NOT_FOUND = 4;
+  ERROR_REASON_STALE_VERSION = 5;
+  ERROR_REASON_REQUEST_ID_REUSED = 6;
+  ERROR_REASON_OPERATION_CONFLICT = 7;
+  ERROR_REASON_SERVER_NOT_READY = 8;
+  ERROR_REASON_PANEL_HOST_PROTECTED = 9;
+  ERROR_REASON_RESOURCE_IN_USE = 10;
+  ERROR_REASON_RATE_LIMITED = 11;
+  ERROR_REASON_DEPENDENCY_UNAVAILABLE = 12;
+  ERROR_REASON_INCOMPATIBLE_CONFIGURATION = 13;
+}
+
+message Mutation {
+  string request_id = 1 [(buf.validate.field).string.uuid = true];
+}
+
+// Stable cursor order is (created_at, id), descending. Empty token starts a list.
+// page_size=0 means 50. Tokens are opaque, filter-bound and at most 512 bytes.
+message PageRequest {
+  uint32 page_size = 1 [(buf.validate.field).uint32.lte = 100];
+  string page_token = 2 [(buf.validate.field).string.max_bytes = 512];
+}
+
+message PageResponse {
+  string next_page_token = 1 [(buf.validate.field).string.max_bytes = 512];
+}
+
+message Server {
+  string id = 1;
+  string name = 2;
+  string tailscale_address = 3;
+  string ssh_host_key_fingerprint = 4;
+  bool panel_host = 5;
+  ServerReadiness readiness = 6;
+  google.protobuf.Timestamp observed_at = 7;
+}
+
+enum ServerReadiness {
+  SERVER_READINESS_UNSPECIFIED = 0;
+  SERVER_READINESS_SETUP_PENDING = 1;
+  SERVER_READINESS_READY = 2;
+  SERVER_READINESS_UNREACHABLE = 3;
+  SERVER_READINESS_NEEDS_ATTENTION = 4;
+}
+
+message Repository {
+  int64 github_repository_id = 1 [(buf.validate.field).int64.gt = 0];
+  string owner = 2 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 100
+  }];
+  string name = 3 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 100
+  }];
+}
+
+message Project {
+  string id = 1;
+  string name = 2;
+  Repository repository = 3;
+  int64 github_workflow_id = 4;
+  google.protobuf.Timestamp created_at = 5;
+}
+
+// Version changes when settings or secrets change. binding_version changes only
+// for server/branch/override changes, invalidating releases queued for old bindings.
+// A release snapshots these settings; edits do not modify queued/running releases.
+message Environment {
+  string id = 1;
+  string project_id = 2;
+  EnvironmentSettings settings = 3;
+  uint64 version = 4;
+  string latest_secret_version_id = 5;
+  repeated string secret_names = 6;
+  string current_release_id = 7;
+  string previous_release_id = 8;
+  bool pending_changes = 9;
+  uint64 binding_version = 10;
+}
+
+message EnvironmentSettings {
+  string name = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 63
+    pattern: "^[a-z][a-z0-9-]*$"
+  }];
+  string server_id = 2 [(buf.validate.field).string.uuid = true];
+  string branch = 3 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 255
+  }];
+  // Relative to the immutable repository root. P04 also enforces safe resolution.
+  string compose_override_path = 4 [(buf.validate.field).string = {
+    min_len: 1
+    max_bytes: 512
+  }];
+  repeated Domain domains = 5 [(buf.validate.field).repeated.max_items = 32];
+  bool auto_deploy = 6;
+}
+
+message Domain {
+  // Lower-case ASCII DNS hostname; no wildcard, scheme, path or trailing dot.
+  string hostname = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 253
+    pattern: "^([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\\.)+[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$"
+  }];
+  string service = 2 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 128
+    pattern: "^[a-zA-Z0-9._-]+$"
+  }];
+  uint32 port = 3 [(buf.validate.field).uint32 = {
+    gte: 1
+    lte: 65535
+  }];
+}
+
+message Service {
+  string name = 1;
+  string environment_id = 2;
+  ServiceState state = 3;
+  ServiceHealth health = 4;
+  string observed_image_digest = 5;
+  string observed_release_id = 6;
+  google.protobuf.Timestamp observed_at = 7;
+}
+
+enum ServiceState {
+  SERVICE_STATE_UNSPECIFIED = 0;
+  SERVICE_STATE_UNKNOWN = 1;
+  SERVICE_STATE_STOPPED = 2;
+  SERVICE_STATE_STARTING = 3;
+  SERVICE_STATE_RUNNING = 4;
+  SERVICE_STATE_EXITED = 5;
+}
+
+enum ServiceHealth {
+  SERVICE_HEALTH_UNSPECIFIED = 0;
+  SERVICE_HEALTH_UNKNOWN = 1;
+  SERVICE_HEALTH_STARTING = 2;
+  SERVICE_HEALTH_HEALTHY = 3;
+  SERVICE_HEALTH_UNHEALTHY = 4;
+  SERVICE_HEALTH_NOT_CONFIGURED = 5;
+}
+
+message BuildIdentity {
+  int64 github_repository_id = 1;
+  int64 github_workflow_id = 2;
+  int64 github_run_id = 3;
+  uint32 github_run_attempt = 4;
+  string branch = 5;
+  string source_sha = 6;
+}
+
+message ServiceImage {
+  string service = 1;
+  string image_variable = 2;
+  string image_digest = 3;
+}
+
+// Metadata only: Compose bytes and encrypted secret material are never RPC output.
+message Release {
+  string id = 1;
+  string environment_id = 2;
+  BuildIdentity build = 3;
+  uint64 environment_version = 4;
+  repeated ServiceImage images = 5;
+  repeated Domain domains = 6;
+  string secret_version_id = 7;
+  string configuration_sha256 = 8;
+  google.protobuf.Timestamp created_at = 9;
+  uint64 binding_version = 10;
+}
+
+message Operation {
+  string id = 1;
+  OperationKind kind = 2;
+  OperationState state = 3;
+  // Enrollment has server_id; deployments/rollback also have environment_id.
+  string server_id = 4;
+  string environment_id = 5;
+  string release_id = 6;
+  string previous_release_id = 7;
+  google.protobuf.Timestamp created_at = 8;
+  google.protobuf.Timestamp updated_at = 9;
+  // Safe, bounded status summary, never raw provider/subprocess output.
+  string message = 10 [(buf.validate.field).string.max_bytes = 1024];
+  // Unknown remote outcome blocks conflicting work until reconciliation.
+  OperationOutcome outcome = 11;
+}
+
+enum OperationKind {
+  OPERATION_KIND_UNSPECIFIED = 0;
+  OPERATION_KIND_ENROLL_SERVER = 1;
+  OPERATION_KIND_DEPLOY = 2;
+  OPERATION_KIND_ROLLBACK = 3;
+}
+
+enum OperationState {
+  OPERATION_STATE_UNSPECIFIED = 0;
+  OPERATION_STATE_QUEUED = 1;
+  OPERATION_STATE_RUNNING = 2;
+  OPERATION_STATE_SUCCEEDED = 3;
+  OPERATION_STATE_FAILED = 4;
+  OPERATION_STATE_RECOVERING = 5;
+  OPERATION_STATE_RECOVERED = 6;
+  OPERATION_STATE_SUPERSEDED = 7;
+  OPERATION_STATE_NEEDS_ATTENTION = 8;
+  OPERATION_STATE_WAITING_FOR_BUILD = 9;
+}
+
+enum OperationOutcome {
+  OPERATION_OUTCOME_UNSPECIFIED = 0;
+  OPERATION_OUTCOME_PENDING = 1;
+  OPERATION_OUTCOME_CONFIRMED_SUCCESS = 2;
+  OPERATION_OUTCOME_CONFIRMED_FAILURE = 3;
+  OPERATION_OUTCOME_PARTIAL = 4;
+  OPERATION_OUTCOME_UNKNOWN = 5;
+}
+
+message ListServersRequest {
+  PageRequest page = 1 [(buf.validate.field).required = true];
+}
+message ListServersResponse {
+  repeated Server servers = 1;
+  PageResponse page = 2;
+}
+message GetServerRequest {
+  string id = 1 [(buf.validate.field).string.uuid = true];
+}
+message GetServerResponse {
+  Server server = 1;
+}
+message EnrollServerRequest {
+  Mutation mutation = 1 [(buf.validate.field).required = true];
+  string name = 2 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 100
+  }];
+  string tailscale_address = 3 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 253
+  }];
+  string ssh_host_key_fingerprint = 4 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 128
+    pattern: "^SHA256:[A-Za-z0-9+/]{43}$"
+  }];
+  // Refers to protected locally supplied bootstrap material, never key contents.
+  string bootstrap_credential_id = 5 [(buf.validate.field).string.uuid = true];
+  string ssh_user = 6 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 32
+    pattern: "^[a-z_][a-z0-9_-]*$"
+  }];
+}
+message EnrollServerResponse {
+  Server server = 1;
+  Operation operation = 2;
+}
+message RemoveServerRequest {
+  Mutation mutation = 1 [(buf.validate.field).required = true];
+  string id = 2 [(buf.validate.field).string.uuid = true];
+}
+message RemoveServerResponse {}
+message ListProjectsRequest {
+  PageRequest page = 1 [(buf.validate.field).required = true];
+}
+message ListProjectsResponse {
+  repeated Project projects = 1;
+  PageResponse page = 2;
+}
+message GetProjectRequest {
+  string id = 1 [(buf.validate.field).string.uuid = true];
+}
+message GetProjectResponse {
+  Project project = 1;
+}
+message CreateProjectRequest {
+  Mutation mutation = 1 [(buf.validate.field).required = true];
+  string name = 2 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 100
+  }];
+  Repository repository = 3 [(buf.validate.field).required = true];
+  int64 github_workflow_id = 4 [(buf.validate.field).int64.gt = 0];
+}
+message CreateProjectResponse {
+  Project project = 1;
+}
+message ListEnvironmentsRequest {
+  string project_id = 1 [(buf.validate.field).string.uuid = true];
+  PageRequest page = 2 [(buf.validate.field).required = true];
+}
+message ListEnvironmentsResponse {
+  repeated Environment environments = 1;
+  PageResponse page = 2;
+}
+message GetEnvironmentRequest {
+  string id = 1 [(buf.validate.field).string.uuid = true];
+}
+message GetEnvironmentResponse {
+  Environment environment = 1;
+}
+message CreateEnvironmentRequest {
+  Mutation mutation = 1 [(buf.validate.field).required = true];
+  string project_id = 2 [(buf.validate.field).string.uuid = true];
+  EnvironmentSettings settings = 3 [(buf.validate.field).required = true];
+}
+message CreateEnvironmentResponse {
+  Environment environment = 1;
+}
+message UpdateEnvironmentRequest {
+  Mutation mutation = 1 [(buf.validate.field).required = true];
+  string id = 2 [(buf.validate.field).string.uuid = true];
+  uint64 expected_version = 3 [(buf.validate.field).uint64.gt = 0];
+  EnvironmentSettings settings = 4 [(buf.validate.field).required = true];
+}
+message UpdateEnvironmentResponse {
+  Environment environment = 1;
+}
+message SecretValue {
+  string name = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 128
+    pattern: "^[A-Za-z_][A-Za-z0-9_]*$"
+  }];
+  string value = 2 [(buf.validate.field).string.max_bytes = 16384];
+}
+// Omitted keys retain their values. Apply upserts/removals atomically to create
+// a complete encrypted version. Reject duplicate names and upsert/remove overlap.
+// Values must never be logged, echoed, used in errors, or serialized into River.
+message SaveEnvironmentSecretsRequest {
+  Mutation mutation = 1 [(buf.validate.field).required = true];
+  string environment_id = 2 [(buf.validate.field).string.uuid = true];
+  uint64 expected_version = 3 [(buf.validate.field).uint64.gt = 0];
+  repeated SecretValue upserts = 4 [(buf.validate.field).repeated.max_items = 64];
+  repeated string remove_names = 5 [(buf.validate.field).repeated = {
+    max_items: 64
+    unique: true
+    items: {
+      string: {
+        min_len: 1
+        max_len: 128
+        pattern: "^[A-Za-z_][A-Za-z0-9_]*$"
+      }
+    }
+  }];
+}
+message SaveEnvironmentSecretsResponse {
+  Environment environment = 1;
+}
+message ListServicesRequest {
+  string environment_id = 1 [(buf.validate.field).string.uuid = true];
+  PageRequest page = 2 [(buf.validate.field).required = true];
+}
+message ListServicesResponse {
+  repeated Service services = 1;
+  PageResponse page = 2;
+}
+message ListReleasesRequest {
+  string environment_id = 1 [(buf.validate.field).string.uuid = true];
+  PageRequest page = 2 [(buf.validate.field).required = true];
+}
+message ListReleasesResponse {
+  repeated Release releases = 1;
+  PageResponse page = 2;
+}
+message GetReleaseRequest {
+  string id = 1 [(buf.validate.field).string.uuid = true];
+}
+message GetReleaseResponse {
+  Release release = 1;
+}
+message DeployEnvironmentRequest {
+  Mutation mutation = 1 [(buf.validate.field).required = true];
+  string environment_id = 2 [(buf.validate.field).string.uuid = true];
+  uint64 expected_version = 3 [(buf.validate.field).uint64.gt = 0];
+  string source_sha = 4 [(buf.validate.field).string.pattern = "^[0-9a-f]{40}$"];
+}
+message DeployEnvironmentResponse {
+  Operation operation = 1;
+}
+message RollbackEnvironmentRequest {
+  Mutation mutation = 1 [(buf.validate.field).required = true];
+  string environment_id = 2 [(buf.validate.field).string.uuid = true];
+  uint64 expected_version = 3 [(buf.validate.field).uint64.gt = 0];
+  // Must identify a retained release from this environment.
+  string release_id = 4 [(buf.validate.field).string.uuid = true];
+}
+message RollbackEnvironmentResponse {
+  Operation operation = 1;
+}
+message ListOperationsRequest {
+  // Empty filters list all operations. Provided IDs must be UUIDs.
+  optional string environment_id = 1 [(buf.validate.field).string.uuid = true];
+  optional string server_id = 2 [(buf.validate.field).string.uuid = true];
+  PageRequest page = 3 [(buf.validate.field).required = true];
+}
+message ListOperationsResponse {
+  repeated Operation operations = 1;
+  PageResponse page = 2;
+}
+message GetOperationRequest {
+  string id = 1 [(buf.validate.field).string.uuid = true];
+}
+message GetOperationResponse {
+  Operation operation = 1;
+}
+
+message BeginInstallationRequest {
+  Mutation mutation = 1 [(buf.validate.field).required = true];
+}
+message BeginInstallationResponse {
+  string installation_url = 1;
+}
+
+message GetDeploymentSourceRequest {
+  string environment_id = 1 [(buf.validate.field).string.uuid = true];
+  uint64 expected_version = 2 [(buf.validate.field).uint64.gt = 0];
+}
+message GetDeploymentSourceResponse {
+  string source_sha = 1;
+  string branch = 2;
+  uint64 environment_version = 3;
+}

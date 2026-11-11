@@ -1,0 +1,23 @@
+version: "2"
+run:
+  concurrency: 2
+  timeout: 5m
+  modules-download-mode: readonly
+linters:
+  default: none
+  enable:
+    - govet
+    - staticcheck
+    - errcheck
+    - errorlint
+    - nilerr
+    - nilnesserr
+    - nilnil
+    - bodyclose
+    - sqlclosecheck
+    - noctx
+    - contextcheck
+    - gosec
+  exclusions:
+    generated: strict
+    presets: []

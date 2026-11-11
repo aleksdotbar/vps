@@ -1,0 +1,7 @@
+services:
+  app:
+    environment:
+      LOG_LEVEL: debug
+  worker:
+    environment:
+      LOG_LEVEL: debug

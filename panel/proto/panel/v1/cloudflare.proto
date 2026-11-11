@@ -1,0 +1,99 @@
+syntax = "proto3";
+
+package panel.v1;
+
+import "buf/validate/validate.proto";
+import "google/protobuf/timestamp.proto";
+import "panel/v1/panel.proto";
+
+option go_package = "github.com/aleksdotbar/vps/panel/gen/go/panel/v1;panelv1";
+
+// Installation-owned management token. Responses never contain credentials.
+service CloudflareService {
+  rpc ProvisionServerTunnel(ProvisionServerTunnelRequest) returns (ProvisionServerTunnelResponse);
+  rpc GetServerTunnel(GetServerTunnelRequest) returns (GetServerTunnelResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  rpc ConnectAccount(ConnectAccountRequest) returns (ConnectAccountResponse);
+  rpc GetCloudflareIntegration(GetCloudflareIntegrationRequest) returns (GetCloudflareIntegrationResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+}
+
+message ConnectAccountRequest {
+  Mutation mutation = 1 [(buf.validate.field).required = true];
+  uint64 expected_version = 2;
+  string account_id = 3 [(buf.validate.field).string.pattern = "^[0-9a-f]{32}$"];
+  string token = 4 [(buf.validate.field).string = {
+    min_bytes: 1
+    max_bytes: 4096
+    pattern: "^[A-Za-z0-9._~+/-]+=*$"
+  }];
+  repeated string zone_ids = 5 [(buf.validate.field).repeated = {
+    min_items: 1
+    max_items: 32
+    unique: true
+    items: {
+      string: {pattern: "^[0-9a-f]{32}$"}
+    }
+  }];
+}
+message ConnectAccountResponse {
+  CloudflareIntegration integration = 1;
+}
+message GetCloudflareIntegrationRequest {}
+message GetCloudflareIntegrationResponse {
+  CloudflareIntegration integration = 1;
+}
+message CloudflareIntegration {
+  bool configured = 1;
+  uint64 version = 2;
+  string account_id = 3;
+  string token_id = 4;
+  google.protobuf.Timestamp expires_at = 5;
+  google.protobuf.Timestamp verified_at = 6;
+  repeated CloudflareZone zones = 7;
+}
+message CloudflareZone {
+  string id = 1;
+  string name = 2;
+}
+
+message ProvisionServerTunnelRequest {
+  Mutation mutation = 1 [(buf.validate.field).required = true];
+  string server_id = 2 [(buf.validate.field).string.uuid = true];
+  uint64 expected_connection_version = 3 [(buf.validate.field).uint64.gt = 0];
+}
+message ProvisionServerTunnelResponse {
+  ServerTunnel tunnel = 1;
+}
+message GetServerTunnelRequest {
+  string server_id = 1 [(buf.validate.field).string.uuid = true];
+}
+message GetServerTunnelResponse {
+  ServerTunnel tunnel = 1;
+}
+enum ServerTunnelPhase {
+  SERVER_TUNNEL_PHASE_UNSPECIFIED = 0;
+  SERVER_TUNNEL_PHASE_QUEUED = 1;
+  SERVER_TUNNEL_PHASE_PREPARED = 2;
+  SERVER_TUNNEL_PHASE_CREATING = 3;
+  SERVER_TUNNEL_PHASE_FINALIZING = 4;
+  SERVER_TUNNEL_PHASE_READY = 5;
+  SERVER_TUNNEL_PHASE_NEEDS_ATTENTION = 6;
+}
+// Phase and observed_at describe the last verified provisioning observation,
+// never application health or a promise of continuous connector availability.
+message ServerTunnel {
+  string server_id = 1;
+  string request_id = 2;
+  string account_id = 3;
+  string tunnel_id = 4;
+  ServerTunnelPhase phase = 5;
+  google.protobuf.Timestamp observed_at = 6;
+  string config_sha256 = 7;
+  string message = 8;
+  // Retained admission version, including after token rotation. Together with
+  // request_id this permits exact reconciliation after a browser reload.
+  uint64 expected_connection_version = 9;
+}

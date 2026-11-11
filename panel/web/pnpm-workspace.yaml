@@ -1,0 +1,13 @@
+minimumReleaseAge: 10080
+minimumReleaseAgeStrict: true
+minimumReleaseAgeIgnoreMissingTime: false
+strictDepBuilds: true
+strictPeerDependencies: true
+autoInstallPeers: false
+allowBuilds: {}
+saveExact: true
+# One dependency set, and one Nix hash, for x86_64 hosts and aarch64 development.
+supportedArchitectures:
+  os: [current, linux]
+  cpu: [current, x64, arm64]
+  libc: [current, glibc]

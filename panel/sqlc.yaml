@@ -1,0 +1,22 @@
+version: "2"
+sql:
+  - engine: sqlite
+    schema: internal/store/migrations
+    queries:
+      - internal/store/history.sql
+      - internal/store/queries.sql
+      - internal/store/projects.sql
+      - internal/store/github.sql
+      - internal/store/builds.sql
+      - internal/store/tunnels.sql
+      - internal/store/dns.sql
+      - internal/store/dns_execution.sql
+      - internal/store/cloudflare.sql
+      - internal/store/installation.sql
+      - internal/store/readiness.sql
+      - internal/store/execution.sql
+    gen:
+      go:
+        package: store
+        out: internal/store
+        emit_empty_slices: true

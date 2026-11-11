@@ -1,0 +1,29 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "jsx": "react-jsx",
+    "strict": true,
+    "noEmit": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUncheckedIndexedAccess": true,
+    "verbatimModuleSyntax": true,
+    "types": ["vite/client", "node"],
+    "paths": {
+      "@bufbuild/protobuf": [
+        "./node_modules/@bufbuild/protobuf/dist/esm/index.d.ts"
+      ],
+      "@bufbuild/protobuf/codegenv2": [
+        "./node_modules/@bufbuild/protobuf/dist/esm/codegenv2/index.d.ts"
+      ],
+      "@bufbuild/protobuf/wkt": [
+        "./node_modules/@bufbuild/protobuf/dist/esm/wkt/index.d.ts"
+      ]
+    }
+  },
+  "include": ["src", "vite.config.ts", "../gen/ts"]
+}

@@ -1,0 +1,165 @@
+name: Panel build
+run-name: panel-build ${{ inputs.request_id || github.sha }}
+
+on:
+  push:
+    branches: ['**']
+  workflow_dispatch:
+    inputs:
+      request_id:
+        description: Optional nonsecret panel request identifier
+        required: false
+        default: ''
+        type: string
+
+permissions: {}
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      packages: write
+    env:
+      DOCKER_BUILD_RECORD_UPLOAD: 'false'
+      DOCKER_BUILD_SUMMARY: 'false'
+    steps:
+      - name: Check dispatch input
+        env:
+          REQUEST_ID: ${{ inputs.request_id }}
+        shell: bash
+        run: |
+          if [[ "$GITHUB_REF" != refs/heads/* ]]; then
+            echo 'Select a branch for this workflow.' >&2
+            exit 1
+          fi
+          if [[ -n "$REQUEST_ID" && ! "$REQUEST_ID" =~ ^[A-Za-z0-9_-]{1,64}$ ]]; then
+            echo 'request_id must contain at most 64 ASCII letters, digits, underscores or hyphens.' >&2
+            exit 1
+          fi
+
+      - name: Check out exact source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - name: Set up native Docker builder
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+        with:
+          version: v0.38.2
+          driver: docker
+          cache-binary: false
+
+      - name: Log in to GHCR
+        uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: App image metadata
+        id: app_metadata
+        uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
+        with:
+          images: ghcr.io/${{ github.repository }}-app
+          flavor: latest=false
+          tags: type=raw,value=build-${{ github.run_id }}-${{ github.run_attempt }}
+
+      - name: Build and push app
+        id: app
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          file: ./Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: ${{ steps.app_metadata.outputs.tags }}
+          labels: ${{ steps.app_metadata.outputs.labels }}
+          github-token: ''
+          provenance: false
+          sbom: false
+
+      - name: Worker image metadata
+        id: worker_metadata
+        uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
+        with:
+          images: ghcr.io/${{ github.repository }}-worker
+          flavor: latest=false
+          tags: type=raw,value=build-${{ github.run_id }}-${{ github.run_attempt }}
+
+      - name: Build and push worker
+        id: worker
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          file: ./Dockerfile.worker
+          platforms: linux/amd64
+          push: true
+          tags: ${{ steps.worker_metadata.outputs.tags }}
+          labels: ${{ steps.worker_metadata.outputs.labels }}
+          github-token: ''
+          provenance: false
+          sbom: false
+
+      - name: Write bounded release metadata
+        env:
+          APP_TAGS: ${{ steps.app_metadata.outputs.tags }}
+          APP_DIGEST: ${{ steps.app.outputs.digest }}
+          WORKER_TAGS: ${{ steps.worker_metadata.outputs.tags }}
+          WORKER_DIGEST: ${{ steps.worker.outputs.digest }}
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+          import re
+
+          source_sha = os.environ["GITHUB_SHA"]
+          if re.fullmatch(r"[0-9a-f]{40}", source_sha) is None:
+              raise SystemExit("Invalid source SHA")
+
+          def image_reference(tags, digest):
+              tags = tags.splitlines()
+              if len(tags) != 1 or re.fullmatch(r"sha256:[0-9a-f]{64}", digest) is None:
+                  raise SystemExit("Invalid build output")
+              reference = tags[0].rsplit(":", 1)[0] + "@" + digest
+              pattern = r"ghcr\.io/[a-z0-9]+([._-][a-z0-9]+)*(/[a-z0-9]+([._-][a-z0-9]+)*)+@sha256:[0-9a-f]{64}"
+              if len(reference) > 512 or re.fullmatch(pattern, reference) is None:
+                  raise SystemExit("Image name does not satisfy the release contract")
+              return reference
+
+          release = {
+              "schema_version": 1,
+              "source_sha": source_sha,
+              "services": {
+                  "app": {
+                      "image_variable": "APP_IMAGE",
+                      "image": image_reference(os.environ["APP_TAGS"], os.environ["APP_DIGEST"]),
+                  },
+                  "worker": {
+                      "image_variable": "WORKER_IMAGE",
+                      "image": image_reference(os.environ["WORKER_TAGS"], os.environ["WORKER_DIGEST"]),
+                  },
+              },
+          }
+          data = (json.dumps(release, indent=2) + "\n").encode("utf-8")
+          if len(data) > 64 * 1024:
+              raise SystemExit("Release metadata exceeds 64 KiB")
+          directory = Path(os.environ["RUNNER_TEMP"]) / "panel-release"
+          directory.mkdir(mode=0o700)
+          (directory / "release.json").write_bytes(data)
+          PY
+
+      - name: Upload sole release artifact
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: panel-release-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/panel-release/release.json
+          if-no-files-found: error
+          retention-days: 30
+          overwrite: false
+          include-hidden-files: false
+          archive: true

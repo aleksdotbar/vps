@@ -1,0 +1,7 @@
+services:
+  app:
+    environment:
+      LOG_LEVEL: warn
+  worker:
+    environment:
+      LOG_LEVEL: warn

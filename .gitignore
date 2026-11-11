@@ -1,0 +1,31 @@
+# Local credentials, state and recovery material.
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.age
+*.gpg
+*.asc
+secrets/
+backups/
+recovery/
+*.sqlite*
+*.db
+*.db-*
+.local-integration/
+
+# Generated outputs and local editor state.
+node_modules/
+dist/
+bin/
+result
+result-*
+coverage.out
+*.test
+*.log
+__pycache__/
+.DS_Store
+.idea/
+.vscode/
