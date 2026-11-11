@@ -28,7 +28,9 @@ let
     };
   } else { }));
 in
+# `nix eval --file` applies --argstr only when an attribute is selected.
 {
+  host = {
   inherit hostinger;
   inherit (projection) unsupported machine;
   bootstrap = {
@@ -36,5 +38,6 @@ in
     root_login = ssh.settings.PermitRootLogin;
     password_authentication = ssh.settings.PasswordAuthentication;
     keyboard_interactive_authentication = ssh.settings.KbdInteractiveAuthentication;
+  };
   };
 }

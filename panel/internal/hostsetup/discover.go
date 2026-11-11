@@ -37,7 +37,7 @@ func discoverInput(ctx context.Context, source string, operator foundation.Opera
 		"XDG_CONFIG_HOME=/var/empty", "XDG_CACHE_HOME=/var/empty",
 		"/run/current-system/sw/bin/nix", "--extra-experimental-features", "nix-command", "eval", "--store", "dummy://", "--read-only", "--offline", "--impure", "--json", "--max-jobs", "0", "--cores", "1",
 		"--option", "allow-import-from-derivation", "false", "--option", "allow-unsafe-native-code-during-evaluation", "false", "--option", "substituters", "", "--option", "builders", "",
-		"--file", source + "/nix/installer/discover-host.nix", "--argstr", "operator", operator.Name}
+		"--file", source + "/nix/installer/discover-host.nix", "--argstr", "operator", operator.Name, "host"}
 	data, err := runSourceInspection(ctx, tools, "discover-"+uuid.NewString(), command)
 	if err != nil {
 		return foundation.Input{}, err

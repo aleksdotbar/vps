@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"os"
 	"strconv"
@@ -67,10 +68,16 @@ func runSourceInspection(ctx context.Context, tools inspectionTools, operationID
 	output := inspectionOutput{cancel: cancel}
 	process.Stdout = &output
 	process.Stdin = nil
+	// Evaluation errors name only Nix source paths; keep a bounded prefix for the operator.
+	diagnostic := &headWriter{limit: 4 << 10}
+	process.Stderr = diagnostic
 	if process.Run() != nil || ctx.Err() != nil {
 		stopOwnedInspection(ctx, tools, unit, description)
 		if err := ctx.Err(); err != nil {
 			return nil, errors.Join(ErrInspection, err)
+		}
+		if detail := strings.TrimSpace(diagnostic.String()); detail != "" {
+			return nil, fmt.Errorf("%w: %s", ErrInspection, detail)
 		}
 		return nil, ErrInspection
 	}
@@ -118,3 +125,16 @@ func stopOwnedInspection(ctx context.Context, tools inspectionTools, unit, descr
 }
 
 func userManagerRuntimeDirectory() string { return "/run/user/" + strconv.Itoa(os.Geteuid()) }
+
+// headWriter keeps the first limit bytes and accepts the rest without storing it.
+type headWriter struct {
+	strings.Builder
+	limit int
+}
+
+func (w *headWriter) Write(data []byte) (int, error) {
+	if room := w.limit - w.Len(); room > 0 {
+		w.Builder.Write(data[:min(room, len(data))])
+	}
+	return len(data), nil
+}
