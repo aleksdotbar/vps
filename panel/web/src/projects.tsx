@@ -211,7 +211,7 @@ function ChecklistView({
       detail: "Lets public domains reach this server.",
       link: panelHost ? (
         <Link to="/servers/$serverId" params={{ serverId: panelHost.id }}>
-          Open {panelHost.name}
+          Open server
         </Link>
       ) : (
         <Link to="/servers" search={{ cursor: "" }}>
