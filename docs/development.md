@@ -50,6 +50,17 @@ Use current native audit output for dependency decisions; do not preserve passin
 - Run `pnpm dev` from `panel/web/`. Keep both listeners private; forward the frontend loopback port when using a remote devbox.
 - Use [CLI flags](../panel/cmd/panel/main.go) and [Vite configuration](../panel/web/vite.config.ts) as the command contract.
 
+## UI with mock data
+
+Run `pnpm dev:mock` from `panel/web/` and open <http://127.0.0.1:5173>. No backend, certificate or Docker is needed: an in-browser fake API in [`src/mock.ts`](../panel/web/src/mock.ts) answers every call, and production builds leave it out.
+
+- `?scenario=deployed` (default): everything connected, one live project, a failed and a waiting deployment.
+- `?scenario=fresh`: nothing connected yet, with the setup checklist and empty lists.
+- `?scenario=errors`: like `deployed`, but every change is rejected.
+- `?delay=2000`: slower responses for checking loading states.
+
+Settings stick for the browser tab. Changes such as deploys, settings and secrets update the fake data, and reloading resets it. Deploys finish after a few seconds. GitHub app setup is not simulated because it leaves the panel.
+
 ## Resource limits
 
 - One heavy job at a time; inspect available memory first.

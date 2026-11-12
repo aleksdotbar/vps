@@ -14,12 +14,20 @@ import {
 } from "../../gen/ts/panel/v1/panel_pb";
 import { CloudflareService } from "../../gen/ts/panel/v1/cloudflare_pb";
 
-export const transport = createConnectTransport({
-  baseUrl: window.location.origin,
-  defaultTimeoutMs: 12_000,
-  fetch: (input, init) =>
-    fetch(input, { ...init, credentials: "same-origin", cache: "no-store" }),
-});
+// `pnpm dev:mock` swaps in an in-browser fake backend; production builds drop this branch.
+export const transport =
+  import.meta.env.MODE === "mock"
+    ? (await import("./mock")).mockTransport
+    : createConnectTransport({
+        baseUrl: window.location.origin,
+        defaultTimeoutMs: 12_000,
+        fetch: (input, init) =>
+          fetch(input, {
+            ...init,
+            credentials: "same-origin",
+            cache: "no-store",
+          }),
+      });
 
 export const queryClient = new QueryClient({
   defaultOptions: {

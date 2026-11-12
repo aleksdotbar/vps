@@ -10,6 +10,7 @@
   },
   "scripts": {
     "dev": "vite --host 127.0.0.1",
+    "dev:mock": "vite --host 127.0.0.1 --mode mock",
     "typecheck": "tsc --noEmit",
     "test:boundaries": "node --test tests/*.test.mjs",
     "lint": "eslint src tests vite.config.ts eslint.config.js --max-warnings 0",

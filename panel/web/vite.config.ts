@@ -16,7 +16,7 @@ function developmentTLS() {
   return { cert: readFileSync(certificate), key: readFileSync(key) };
 }
 
-export default defineConfig(({ command }) => ({
+export default defineConfig(({ command, mode }) => ({
   publicDir: false,
   plugins: [
     react({ babel: { plugins: ["babel-plugin-react-compiler"] } }),
@@ -26,7 +26,8 @@ export default defineConfig(({ command }) => ({
   server: {
     host: "127.0.0.1",
     port: 5173,
-    https: command === "serve" ? developmentTLS() : undefined,
+    https:
+      command === "serve" && mode !== "mock" ? developmentTLS() : undefined,
     strictPort: true,
     fs: {
       allow: [
