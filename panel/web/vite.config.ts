@@ -22,7 +22,10 @@ export default defineConfig(({ command, mode }) => ({
     react({ babel: { plugins: ["babel-plugin-react-compiler"] } }),
     tailwindcss(),
   ],
-  resolve: { dedupe: ["react", "react-dom", "@bufbuild/protobuf"] },
+  resolve: {
+    alias: { "@": fileURLToPath(new URL("./src", import.meta.url)) },
+    dedupe: ["react", "react-dom", "@bufbuild/protobuf"],
+  },
   server: {
     host: "127.0.0.1",
     port: 5173,

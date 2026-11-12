@@ -1,18 +1,35 @@
-import {
-  Button,
-  Input,
-  LayerCard,
-  Text,
-  useKumoToastManager,
-} from "@cloudflare/kumo";
 import { Code, ConnectError } from "@connectrpc/connect";
-import { CubeIcon, SignOutIcon } from "@phosphor-icons/react";
 import { useMutation } from "@tanstack/react-query";
 import { useRouter } from "@tanstack/react-router";
+import { BoxIcon, LogOutIcon } from "lucide-react";
 import { useState } from "react";
 import type { FormEvent } from "react";
+import { toast } from "sonner";
+
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Field,
+  FieldDescription,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
+} from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
+import {
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+} from "@/components/ui/sidebar";
+import { Spinner } from "@/components/ui/spinner";
 
 import { auth, errorMessage, queryClient, unauthenticated } from "./api";
+import { PendingButton } from "./components";
 
 export function Login() {
   const router = useRouter();
@@ -58,59 +75,70 @@ export function Login() {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center p-4">
-      <LayerCard className="w-full max-w-sm">
-        <LayerCard.Primary className="flex flex-col gap-6 p-6">
-          <div className="flex flex-col gap-2">
-            <CubeIcon size={24} weight="bold" aria-hidden="true" />
-            <Text variant="heading" size="lg" as="h1">
-              <span id="login-title" tabIndex={-1}>
+    <main className="flex min-h-svh flex-col items-center justify-center gap-6 bg-muted p-6 md:p-10">
+      <div className="flex w-full max-w-sm flex-col gap-6">
+        <div className="flex items-center gap-2 self-center font-medium">
+          <BoxIcon className="size-5" aria-hidden="true" />
+          Panel
+        </div>
+        <Card>
+          <CardHeader className="text-center">
+            <CardTitle className="text-xl">
+              <h1 id="login-title" tabIndex={-1}>
                 Sign in to Panel
-              </span>
-            </Text>
-            <Text variant="secondary">
+              </h1>
+            </CardTitle>
+            <CardDescription>
               Use the administrator password you set during setup.
-            </Text>
-          </div>
-          <form
-            className="flex flex-col gap-4"
-            onSubmit={submit}
-            aria-busy={login.isPending}
-            aria-labelledby="login-title"
-          >
-            {/* Uncontrolled so the password never enters React state. */}
-            <Input
-              label="Password"
-              name="password"
-              type="password"
-              autoComplete="current-password"
-              autoFocus
-              required
-              maxLength={1024}
-              readOnly={login.isPending}
-              error={failure || undefined}
-            />
-            <Button
-              type="submit"
-              variant="primary"
-              loading={login.isPending}
-              className="w-full"
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form
+              onSubmit={submit}
+              aria-busy={login.isPending}
+              aria-labelledby="login-title"
             >
-              Sign in
-            </Button>
-          </form>
-          <Text variant="secondary" size="sm">
-            Forgot it? Run <code>panel reset-password</code> on the server.
-          </Text>
-        </LayerCard.Primary>
-      </LayerCard>
+              <FieldGroup>
+                <Field data-invalid={!!failure || undefined}>
+                  <FieldLabel htmlFor="password">Password</FieldLabel>
+                  {/* Uncontrolled so the password never enters React state. */}
+                  <Input
+                    id="password"
+                    name="password"
+                    type="password"
+                    autoComplete="current-password"
+                    autoFocus
+                    required
+                    maxLength={1024}
+                    readOnly={login.isPending}
+                    aria-invalid={!!failure || undefined}
+                  />
+                  <FieldError>{failure}</FieldError>
+                </Field>
+                <Field>
+                  <PendingButton
+                    type="submit"
+                    pending={login.isPending}
+                    className="w-full"
+                  >
+                    Sign in
+                  </PendingButton>
+                  <FieldDescription className="text-center">
+                    Forgot it? Run <code>panel reset-password</code> on the
+                    server.
+                  </FieldDescription>
+                </Field>
+              </FieldGroup>
+            </form>
+          </CardContent>
+        </Card>
+      </div>
     </main>
   );
 }
 
 export function Logout() {
   const router = useRouter();
-  const toast = useKumoToastManager();
   const logout = useMutation({
     mutationFn: async () => {
       await queryClient.cancelQueries();
@@ -122,19 +150,20 @@ export function Logout() {
       queryClient.clear();
       await router.navigate({ to: "/login", replace: true });
     },
-    onError: (error) =>
-      toast.add({ title: errorMessage(error), variant: "error" }),
+    onError: (error) => toast.error(errorMessage(error)),
   });
 
   return (
-    <Button
-      size="sm"
-      variant="ghost"
-      loading={logout.isPending}
-      onClick={() => logout.mutate()}
-      icon={<SignOutIcon size={16} />}
-    >
-      Sign out
-    </Button>
+    <SidebarMenu>
+      <SidebarMenuItem>
+        <SidebarMenuButton
+          disabled={logout.isPending}
+          onClick={() => logout.mutate()}
+        >
+          {logout.isPending ? <Spinner /> : <LogOutIcon />}
+          <span>Sign out</span>
+        </SidebarMenuButton>
+      </SidebarMenuItem>
+    </SidebarMenu>
   );
 }

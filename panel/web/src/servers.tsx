@@ -1,32 +1,40 @@
-import {
-  Badge,
-  Banner,
-  Empty,
-  Grid,
-  LayerCard,
-  Pagination,
-  Text,
-} from "@cloudflare/kumo";
-import { HardDrivesIcon, PulseIcon, WarningIcon } from "@phosphor-icons/react";
 import { useSuspenseQuery } from "@tanstack/react-query";
-import { Link, useNavigate } from "@tanstack/react-router";
+import { Link } from "@tanstack/react-router";
+import { ActivityIcon, ServerIcon, TriangleAlertIcon } from "lucide-react";
+
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import {
+  Card,
+  CardAction,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@/components/ui/empty";
 
 import { serverQuery, serversQuery } from "./api";
 import {
   ButtonLink,
-  cardLink,
-  cardTitleLink,
+  type Crumb,
   Detail,
   Details,
   Id,
   ObservedTime,
   Page,
   Readiness,
+  CursorPagination,
 } from "./components";
 import { ServerTunnel } from "./server-tunnel";
 
 export function Servers({ cursor }: { cursor: string }) {
-  const navigate = useNavigate();
   const { data, error } = useSuspenseQuery({
     ...serversQuery(cursor),
     refetchInterval: 30_000,
@@ -35,66 +43,72 @@ export function Servers({ cursor }: { cursor: string }) {
   return (
     <Page title="Servers" description="Hosts managed privately over Tailscale.">
       {error && (
-        <Banner
-          variant="alert"
-          icon={<WarningIcon weight="fill" />}
-          description="Couldn’t refresh servers. Status may be out of date."
-        />
+        <Alert>
+          <TriangleAlertIcon />
+          <AlertDescription>
+            Couldn’t refresh servers. Status may be out of date.
+          </AlertDescription>
+        </Alert>
       )}
       {data.servers.length ? (
-        <Grid variant="3up" gap="base">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {data.servers.map((server) => (
-            <LayerCard key={server.id} className={cardLink}>
-              <LayerCard.Secondary className="flex items-center justify-between gap-2">
-                <span className="flex min-w-0 items-center gap-2">
-                  <HardDrivesIcon size={18} aria-hidden="true" />
-                  <Text variant="heading" truncate>
-                    <Link
-                      className={cardTitleLink}
-                      to="/servers/$serverId"
-                      params={{ serverId: server.id }}
-                    >
-                      {server.name}
-                    </Link>
-                  </Text>
+            <Card
+              key={server.id}
+              className="relative transition-colors hover:bg-muted/50 has-[a:focus-visible]:ring-2 has-[a:focus-visible]:ring-ring"
+            >
+              <CardHeader>
+                <CardTitle className="flex min-w-0 items-center gap-2">
+                  <ServerIcon
+                    className="size-4 shrink-0 text-muted-foreground"
+                    aria-hidden="true"
+                  />
+                  {/* The title link covers the card; badges stay outside it. */}
+                  <Link
+                    className="truncate outline-none after:absolute after:inset-0"
+                    to="/servers/$serverId"
+                    params={{ serverId: server.id }}
+                  >
+                    {server.name}
+                  </Link>
+                </CardTitle>
+                <CardAction>
+                  <Readiness value={server.readiness} />
+                </CardAction>
+              </CardHeader>
+              <CardContent className="flex flex-col gap-2 text-muted-foreground">
+                <span className="font-mono text-xs">
+                  {server.tailscaleAddress}
                 </span>
-                <Readiness value={server.readiness} />
-              </LayerCard.Secondary>
-              <LayerCard.Primary className="flex-1 flex flex-col gap-2">
-                <Text variant="mono-secondary">{server.tailscaleAddress}</Text>
-                <Text variant="secondary" size="sm">
-                  <ObservedTime value={server.observedAt} prefix="Checked" />
-                </Text>
+                <ObservedTime value={server.observedAt} prefix="Checked" />
                 {server.panelHost && (
                   <span>
-                    <Badge variant="info">Panel host</Badge>
+                    <Badge variant="secondary">Panel host</Badge>
                   </span>
                 )}
-              </LayerCard.Primary>
-            </LayerCard>
+              </CardContent>
+            </Card>
           ))}
-        </Grid>
+        </div>
       ) : (
-        <Empty
-          icon={<HardDrivesIcon size={48} />}
-          title="No servers yet"
-          description="The panel’s own host appears here after panel setup."
-        />
+        <Empty className="border">
+          <EmptyHeader>
+            <EmptyMedia variant="icon">
+              <ServerIcon />
+            </EmptyMedia>
+            <EmptyTitle>No servers yet</EmptyTitle>
+            <EmptyDescription>
+              The panel’s own host appears here after panel setup.
+            </EmptyDescription>
+          </EmptyHeader>
+        </Empty>
       )}
-      {(cursor || next) && (
-        <Pagination
-          controls="simple"
-          page={cursor ? 2 : 1}
-          hasNextPage={!!next}
-          // The cursor API can't step back, so Previous returns to the first page.
-          setPage={(page) =>
-            void navigate({
-              to: "/servers",
-              search: { cursor: page > (cursor ? 2 : 1) ? next : "" },
-            })
-          }
-        />
-      )}
+      <CursorPagination
+        previous={
+          cursor ? { to: "/servers", search: { cursor: "" } } : undefined
+        }
+        next={next ? { to: "/servers", search: { cursor: next } } : undefined}
+      />
     </Page>
   );
 }
@@ -105,27 +119,27 @@ export function Server({ id }: { id: string }) {
     refetchInterval: 30_000,
   });
   const server = data.server;
+  const crumbs: Crumb[] = [{ label: "Servers", link: { to: "/servers" } }];
   if (!server)
     return (
-      <Page
-        title="Server not found"
-        crumbs={[{ label: "Servers", href: "/servers" }]}
-      >
-        <Empty
-          title="Server not found"
-          contents={
-            <ButtonLink to="/servers" search={{ cursor: "" }}>
+      <Page title="Server not found" crumbs={crumbs}>
+        <Empty className="border">
+          <EmptyHeader>
+            <EmptyTitle>Server not found</EmptyTitle>
+          </EmptyHeader>
+          <EmptyContent>
+            <ButtonLink variant="outline" to="/servers" search={{ cursor: "" }}>
               Back to servers
             </ButtonLink>
-          }
-        />
+          </EmptyContent>
+        </Empty>
       </Page>
     );
 
   return (
     <Page
       title={server.name}
-      crumbs={[{ label: "Servers", href: "/servers" }]}
+      crumbs={crumbs}
       description={
         server.panelHost
           ? "Runs the panel itself, so it can’t be removed."
@@ -133,30 +147,33 @@ export function Server({ id }: { id: string }) {
       }
       actions={
         <ButtonLink
-          variant="secondary"
-          icon={<PulseIcon size={16} />}
+          variant="outline"
           to="/operations"
           search={{ environment: "", server: id, cursor: "" }}
         >
+          <ActivityIcon data-icon="inline-start" />
           Activity
         </ButtonLink>
       }
     >
       {error && (
-        <Banner
-          variant="alert"
-          icon={<WarningIcon weight="fill" />}
-          description="Couldn’t refresh this server. Status may be out of date."
-        />
+        <Alert>
+          <TriangleAlertIcon />
+          <AlertDescription>
+            Couldn’t refresh this server. Status may be out of date.
+          </AlertDescription>
+        </Alert>
       )}
-      <Grid variant="2up" gap="base">
+      <div className="grid gap-4 md:grid-cols-2">
         <ServerTunnel key={server.id} server={server} />
-        <LayerCard>
-          <LayerCard.Secondary className="flex items-center justify-between gap-2">
-            Details
-            <Readiness value={server.readiness} />
-          </LayerCard.Secondary>
-          <LayerCard.Primary>
+        <Card>
+          <CardHeader>
+            <CardTitle>Details</CardTitle>
+            <CardAction>
+              <Readiness value={server.readiness} />
+            </CardAction>
+          </CardHeader>
+          <CardContent>
             <Details>
               <Detail label="Tailscale address">
                 <Id value={server.tailscaleAddress} />
@@ -171,9 +188,9 @@ export function Server({ id }: { id: string }) {
                 <Id value={server.id} />
               </Detail>
             </Details>
-          </LayerCard.Primary>
-        </LayerCard>
-      </Grid>
+          </CardContent>
+        </Card>
+      </div>
     </Page>
   );
 }

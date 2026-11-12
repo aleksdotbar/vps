@@ -1,17 +1,25 @@
-import {
-  Badge,
-  Banner,
-  Button,
-  LayerCard,
-  RefreshButton,
-  Text,
-  useKumoToastManager,
-} from "@cloudflare/kumo";
 import { Code, ConnectError } from "@connectrpc/connect";
-import { InfoIcon, WarningIcon } from "@phosphor-icons/react";
 import { useMutation, useSuspenseQuery } from "@tanstack/react-query";
 import { useRouter } from "@tanstack/react-router";
+import { InfoIcon, RefreshCwIcon, TriangleAlertIcon } from "lucide-react";
 import { useState } from "react";
+import { toast } from "sonner";
+
+import {
+  Alert,
+  AlertAction,
+  AlertDescription,
+  AlertTitle,
+} from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 
 import { ServerTunnelPhase } from "../../gen/ts/panel/v1/cloudflare_pb";
 import type { Server } from "../../gen/ts/panel/v1/panel_pb";
@@ -22,7 +30,16 @@ import {
   queryClient,
   serverTunnelQuery,
 } from "./api";
-import { ButtonLink, Detail, Details, Id, ObservedTime } from "./components";
+import {
+  ButtonLink,
+  Detail,
+  Details,
+  Id,
+  ObservedTime,
+  PendingButton,
+  StatusBadge,
+  type Tone,
+} from "./components";
 import { usePageContinuation } from "./use-page-continuation";
 import { useSessionExpiry } from "./use-session-expiry";
 
@@ -32,14 +49,12 @@ type TunnelIntent = {
   expectedConnectionVersion: bigint;
 };
 
-type Tone = "neutral" | "info" | "success" | "warning";
-
 const phaseLabels: Record<ServerTunnelPhase, [string, Tone]> = {
   [ServerTunnelPhase.UNSPECIFIED]: ["Not set up", "neutral"],
-  [ServerTunnelPhase.QUEUED]: ["Queued", "info"],
-  [ServerTunnelPhase.PREPARED]: ["Preparing host", "info"],
-  [ServerTunnelPhase.CREATING]: ["Creating tunnel", "info"],
-  [ServerTunnelPhase.FINALIZING]: ["Checking connector", "info"],
+  [ServerTunnelPhase.QUEUED]: ["Queued", "pending"],
+  [ServerTunnelPhase.PREPARED]: ["Preparing host", "pending"],
+  [ServerTunnelPhase.CREATING]: ["Creating tunnel", "pending"],
+  [ServerTunnelPhase.FINALIZING]: ["Checking connector", "pending"],
   [ServerTunnelPhase.READY]: ["Connected", "success"],
   [ServerTunnelPhase.NEEDS_ATTENTION]: ["Needs attention", "warning"],
 };
@@ -61,8 +76,7 @@ export function ServerTunnel({ server }: { server: Server }) {
     request: TunnelIntent;
     admitted: boolean;
   }>();
-  const toast = useKumoToastManager();
-  const fail = (title: string) => toast.add({ title, variant: "error" });
+  const fail = (title: string) => toast.error(title);
   const tunnelQuery = useSuspenseQuery({
     ...serverTunnelQuery(server.id),
     refetchInterval: (query) =>
@@ -174,27 +188,24 @@ export function ServerTunnel({ server }: { server: Server }) {
 
   const action =
     intent && !recordedIntent ? (
-      <Button
-        variant="primary"
-        loading={provision.isPending}
+      <PendingButton
+        pending={provision.isPending}
         disabled={busy || metadataError}
         onClick={() => start(intent.request)}
       >
         Check request
-      </Button>
+      </PendingButton>
     ) : canReconcile ? (
-      <Button
-        variant="primary"
-        loading={provision.isPending}
+      <PendingButton
+        pending={provision.isPending}
         disabled={busy || metadataError}
         onClick={() => start(canReconcile)}
       >
         Resume setup
-      </Button>
+      </PendingButton>
     ) : canProvision ? (
-      <Button
-        variant="primary"
-        loading={provision.isPending}
+      <PendingButton
+        pending={provision.isPending}
         disabled={busy || metadataError}
         onClick={() =>
           start({
@@ -205,65 +216,79 @@ export function ServerTunnel({ server }: { server: Server }) {
         }
       >
         Create tunnel
-      </Button>
+      </PendingButton>
     ) : null;
 
   return (
-    <LayerCard>
-      <LayerCard.Secondary className="flex items-center justify-between gap-2">
-        Cloudflare Tunnel
-        <RefreshButton
-          aria-label="Refresh tunnel status"
-          loading={refresh.isPending}
-          disabled={busy}
-          onClick={() => {
-            if (router.state.status !== "pending") refresh.mutate();
-          }}
-        />
-      </LayerCard.Secondary>
-      <LayerCard.Primary className="flex flex-col gap-4">
-        <Text variant="secondary">
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          Cloudflare Tunnel
+          <StatusBadge tone={phaseTone}>{phaseLabel}</StatusBadge>
+        </CardTitle>
+        <CardDescription>
           Carries public traffic for your domains to this server.
-        </Text>
-        <div className="flex flex-wrap items-center gap-2">
-          <Badge variant={phaseTone}>{phaseLabel}</Badge>
-          {tunnel?.observedAt && (
-            <Text as="span" variant="secondary" size="sm">
-              <ObservedTime value={tunnel.observedAt} prefix="Checked" />
-            </Text>
-          )}
-        </div>
+        </CardDescription>
+        <CardAction>
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            aria-label="Refresh tunnel status"
+            disabled={busy}
+            onClick={() => {
+              if (router.state.status !== "pending") refresh.mutate();
+            }}
+          >
+            <RefreshCwIcon
+              className={refresh.isPending ? "animate-spin" : undefined}
+            />
+          </Button>
+        </CardAction>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-4">
+        {tunnel?.observedAt && (
+          <p className="text-sm text-muted-foreground">
+            <ObservedTime value={tunnel.observedAt} prefix="Checked" />
+          </p>
+        )}
         {metadataError && (
-          <Banner
-            variant="alert"
-            icon={<WarningIcon weight="fill" />}
-            description="Couldn’t refresh the tunnel status. Refresh before continuing."
-          />
+          <Alert>
+            <TriangleAlertIcon />
+            <AlertDescription>
+              Couldn’t refresh the tunnel status. Refresh before continuing.
+            </AlertDescription>
+          </Alert>
         )}
         {tunnel?.message && (
-          <Banner
-            variant="alert"
-            icon={<WarningIcon weight="fill" />}
-            description={tunnel.message}
-          />
+          <Alert>
+            <TriangleAlertIcon />
+            <AlertDescription>{tunnel.message}</AlertDescription>
+          </Alert>
         )}
         {absent && !integration?.configured && (
-          <Banner
-            icon={<InfoIcon weight="fill" />}
-            title="Connect Cloudflare first"
-            description="The tunnel is created in your Cloudflare account."
-            action={
-              <ButtonLink size="sm" to="/settings" hash="cloudflare">
+          <Alert>
+            <InfoIcon />
+            <AlertTitle>Connect Cloudflare first</AlertTitle>
+            <AlertDescription>
+              The tunnel is created in your Cloudflare account.
+            </AlertDescription>
+            <AlertAction>
+              <ButtonLink
+                size="sm"
+                variant="outline"
+                to="/settings"
+                hash="cloudflare"
+              >
                 Open settings
               </ButtonLink>
-            }
-          />
+            </AlertAction>
+          </Alert>
         )}
         {canReconcile && (
-          <Text variant="secondary" size="sm">
+          <p className="text-sm text-muted-foreground">
             Resuming reuses the original request, so a tunnel is never created
             twice.
-          </Text>
+          </p>
         )}
         {(tunnel?.tunnelId || tunnel?.accountId) && (
           <Details>
@@ -276,7 +301,7 @@ export function ServerTunnel({ server }: { server: Server }) {
           </Details>
         )}
         {action && <div className="flex gap-2">{action}</div>}
-      </LayerCard.Primary>
-    </LayerCard>
+      </CardContent>
+    </Card>
   );
 }

@@ -1,16 +1,14 @@
 import { create } from "@bufbuild/protobuf";
 import { Code, ConnectError } from "@connectrpc/connect";
-import {
-  Banner,
-  Button,
-  Pagination,
-  useKumoToastManager,
-} from "@cloudflare/kumo";
 import { useMutation, useSuspenseQuery } from "@tanstack/react-query";
-import { Link, useNavigate, useRouter } from "@tanstack/react-router";
+import { Link, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
 import type { FormEvent } from "react";
+import { toast } from "sonner";
 import { z } from "zod";
+
+import { Alert, AlertAction, AlertTitle } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
 
 import { EnvironmentSettingsSchema } from "../../gen/ts/panel/v1/panel_pb";
 import type { Environment, Server } from "../../gen/ts/panel/v1/panel_pb";
@@ -23,6 +21,7 @@ import {
   serverQuery,
   serversQuery,
 } from "./api";
+import { CursorPagination, PendingButton } from "./components";
 import { EnvironmentFields } from "./environment-fields";
 import { usePageContinuation } from "./use-page-continuation";
 import { useSessionExpiry } from "./use-session-expiry";
@@ -65,8 +64,7 @@ export function EnvironmentForm({
   const [selectedServer, setSelectedServer] = useState(initialServer);
   const [intent, setIntent] = useState<Intent>();
   const [needsRefresh, setNeedsRefresh] = useState(false);
-  const toast = useKumoToastManager();
-  const fail = (title: string) => toast.add({ title, variant: "error" });
+  const fail = (title: string) => toast.error(title);
   const [createdId, setCreatedId] = useState("");
   const stale = !!environment && environment.version !== baseVersion;
   const refreshing = useMutation({ mutationFn: refresh });
@@ -126,10 +124,7 @@ export function EnvironmentForm({
         if (next.kind === "create") setCreatedId(savedId);
         else {
           setNeedsRefresh(true);
-          toast.add({
-            title: "Saved. Deploy to apply the changes.",
-            variant: "success",
-          });
+          toast.success("Saved. Deploy to apply the changes.");
         }
       }
       try {
@@ -222,36 +217,43 @@ export function EnvironmentForm({
   return (
     <>
       {stale && !intent && (
-        <Banner
-          variant="alert"
-          title="These settings changed since you opened this page."
-          action={
-            <Button
+        <Alert>
+          <AlertTitle>
+            These settings changed since you opened this page.
+          </AlertTitle>
+          <AlertAction>
+            <PendingButton
               size="sm"
-              loading={refreshing.isPending}
+              pending={refreshing.isPending}
               disabled={pending}
               onClick={() => refreshing.mutate()}
             >
               Load latest
-            </Button>
-          }
-        />
+            </PendingButton>
+          </AlertAction>
+        </Alert>
       )}
       {serverPage.error && (
-        <Banner
-          variant="alert"
-          title="Couldn’t load servers. Reload the page before saving."
-        />
+        <Alert>
+          <AlertTitle>
+            Couldn’t load servers. Reload the page before saving.
+          </AlertTitle>
+        </Alert>
       )}
       {!serverPage.data.servers.length && !selectedServer && (
-        <Banner
-          title="No servers are registered yet."
-          action={
-            <Link to="/servers" search={{ cursor: "" }}>
+        <Alert>
+          <AlertTitle>No servers are registered yet.</AlertTitle>
+          <AlertAction>
+            <Button
+              size="sm"
+              variant="outline"
+              nativeButton={false}
+              render={<Link to="/servers" search={{ cursor: "" }} />}
+            >
               Open servers
-            </Link>
-          }
-        />
+            </Button>
+          </AlertAction>
+        </Alert>
       )}
       <form
         className="flex flex-col gap-6"
@@ -292,43 +294,47 @@ export function EnvironmentForm({
         </fieldset>
         <div className="flex flex-wrap items-center gap-2">
           {intent ? (
-            <Button
+            <PendingButton
               type="button"
-              variant="primary"
-              loading={saving.isPending}
+              pending={saving.isPending}
               onClick={() => saving.mutate(intent)}
             >
               Check save
-            </Button>
+            </PendingButton>
           ) : (
-            <Button
+            <PendingButton
               type="submit"
-              variant="primary"
-              loading={saving.isPending}
+              pending={saving.isPending}
               disabled={blocked}
             >
               {environment ? "Save changes" : "Create environment"}
-            </Button>
+            </PendingButton>
           )}
           {environment && (
-            <Button
+            <PendingButton
               type="button"
               variant="ghost"
-              loading={refreshing.isPending}
+              pending={refreshing.isPending}
               disabled={pending || !!intent}
               onClick={() => refreshing.mutate()}
             >
               Discard changes
-            </Button>
+            </PendingButton>
           )}
           {createdId && (
-            <Link
-              to="/environments/$environmentId"
-              params={{ environmentId: createdId }}
-              search={{ services: "", releases: "" }}
+            <Button
+              variant="link"
+              nativeButton={false}
+              render={
+                <Link
+                  to="/environments/$environmentId"
+                  params={{ environmentId: createdId }}
+                  search={{ services: "", releases: "" }}
+                />
+              }
             >
               Open environment
-            </Link>
+            </Button>
           )}
         </div>
       </form>
@@ -349,27 +355,23 @@ function ServerPages({
   cursor: string;
   next: string;
 }) {
-  const navigate = useNavigate();
+  // Cursor paging can't step back, so Previous returns to the first page.
+  const page = (servers: string) =>
+    environmentId
+      ? {
+          to: "/environments/$environmentId/settings" as const,
+          params: { environmentId },
+          search: { servers },
+        }
+      : {
+          to: "/projects/$projectId/environments/new" as const,
+          params: { projectId },
+          search: { preset, servers },
+        };
   return (
-    <Pagination
-      controls="simple"
-      page={cursor ? 2 : 1}
-      hasNextPage={!!next}
-      setPage={(page) => {
-        // Cursor paging can't step back, so Previous returns to the first page.
-        const servers = page > (cursor ? 2 : 1) ? next : "";
-        void (environmentId
-          ? navigate({
-              to: "/environments/$environmentId/settings",
-              params: { environmentId },
-              search: { servers },
-            })
-          : navigate({
-              to: "/projects/$projectId/environments/new",
-              params: { projectId },
-              search: { preset, servers },
-            }));
-      }}
+    <CursorPagination
+      previous={cursor ? page("") : undefined}
+      next={next ? page(next) : undefined}
     />
   );
 }

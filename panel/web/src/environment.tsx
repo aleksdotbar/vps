@@ -1,23 +1,44 @@
 import {
-  Badge,
-  Banner,
-  Empty,
-  Grid,
-  LayerCard,
-  Pagination,
-  Text,
-} from "@cloudflare/kumo";
-import {
-  CubeIcon,
-  GearIcon,
+  ActivityIcon,
+  BoxIcon,
   GitBranchIcon,
-  GitCommitIcon,
-  KeyIcon,
+  GitCommitHorizontalIcon,
+  KeyRoundIcon,
   PackageIcon,
-  PulseIcon,
-} from "@phosphor-icons/react";
+  SettingsIcon,
+} from "lucide-react";
 import { useSuspenseQuery } from "@tanstack/react-query";
-import { Link, useNavigate } from "@tanstack/react-router";
+import { Link } from "@tanstack/react-router";
+import { Fragment } from "react";
+
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardAction,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@/components/ui/empty";
+import {
+  Item,
+  ItemActions,
+  ItemContent,
+  ItemDescription,
+  ItemGroup,
+  ItemMedia,
+  ItemSeparator,
+  ItemTitle,
+} from "@/components/ui/item";
 
 import {
   type Environment as EnvironmentRecord,
@@ -42,53 +63,33 @@ import {
   Id,
   ObservedTime,
   Page,
-  cardTitleLink,
+  StatusBadge,
+  type Tone,
+  CursorPagination,
 } from "./components";
 import { DeploymentAction } from "./deployment-action";
 
-type Status = [string, "success" | "info" | "error" | "neutral"];
+type Status = [string, Tone];
 
 function serviceStatus(service: Service): Status {
   switch (service.state) {
     case ServiceState.RUNNING:
       if (service.health === ServiceHealth.UNHEALTHY)
-        return ["Unhealthy", "error"];
+        return ["Unhealthy", "danger"];
       if (service.health === ServiceHealth.STARTING)
-        return ["Starting", "info"];
+        return ["Starting", "pending"];
       if (service.health === ServiceHealth.HEALTHY)
         return ["Healthy", "success"];
       return ["Running", "success"];
     case ServiceState.STARTING:
-      return ["Starting", "info"];
+      return ["Starting", "pending"];
     case ServiceState.EXITED:
-      return ["Exited", "error"];
+      return ["Exited", "danger"];
     case ServiceState.STOPPED:
       return ["Stopped", "neutral"];
     default:
       return ["Unknown", "neutral"];
   }
-}
-
-/** Cursor paging: Previous returns to the first page because the API can't step back. */
-function CursorPages({
-  cursor,
-  next,
-  go,
-}: {
-  cursor: string;
-  next: string;
-  go: (cursor: string) => void;
-}) {
-  if (!cursor && !next) return null;
-  const page = cursor ? 2 : 1;
-  return (
-    <Pagination
-      controls="simple"
-      page={page}
-      hasNextPage={!!next}
-      setPage={(target) => go(target > page ? next : "")}
-    />
-  );
 }
 
 export function Environment({
@@ -116,14 +117,16 @@ export function Environment({
   if (!environment?.settings)
     return (
       <Page title="Environment not found">
-        <Empty
-          title="Environment not found"
-          contents={
+        <Empty>
+          <EmptyHeader>
+            <EmptyTitle>Environment not found</EmptyTitle>
+          </EmptyHeader>
+          <EmptyContent>
             <ButtonLink to="/projects" search={{ cursor: "" }}>
               Back to projects
             </ButtonLink>
-          }
-        />
+          </EmptyContent>
+        </Empty>
       </Page>
     );
   return (
@@ -163,13 +166,11 @@ function EnvironmentView({
   const project = useSuspenseQuery(projectQuery(environment.projectId)).data
     .project;
   const server = useSuspenseQuery(serverQuery(settings.serverId)).data.server;
-  const navigate = useNavigate();
-  const page = (search: { services: string; releases: string }) =>
-    void navigate({
-      to: "/environments/$environmentId",
-      params: { environmentId: id },
-      search,
-    });
+  const page = (search: { services: string; releases: string }) => ({
+    to: "/environments/$environmentId" as const,
+    params: { environmentId: id },
+    search,
+  });
 
   return (
     <DeploymentAction
@@ -181,201 +182,249 @@ function EnvironmentView({
       {({ trigger, panel }) => (
         <Page
           title={settings.name}
+          description={
+            <span className="inline-flex flex-wrap items-center gap-1">
+              <GitBranchIcon className="size-3.5" aria-hidden="true" />
+              {settings.branch} on
+              <Link
+                to="/servers/$serverId"
+                params={{ serverId: settings.serverId }}
+                className="text-foreground underline-offset-4 hover:underline"
+              >
+                {server?.name ?? "server"}
+              </Link>
+            </span>
+          }
           crumbs={[
-            { label: "Projects", href: "/projects" },
+            {
+              label: "Projects",
+              link: { to: "/projects", search: { cursor: "" } },
+            },
             {
               label: project?.name ?? "Project",
-              href: `/projects/${environment.projectId}`,
+              link: {
+                to: "/projects/$projectId",
+                params: { projectId: environment.projectId },
+                search: { cursor: "" },
+              },
             },
           ]}
           actions={
             <>
               <EnvironmentStatus environment={environment} />
               <ButtonLink
-                variant="secondary"
-                icon={<GearIcon size={16} />}
+                variant="outline"
                 to="/environments/$environmentId/settings"
                 params={{ environmentId: id }}
                 search={{ servers: "" }}
               >
+                <SettingsIcon data-icon="inline-start" />
                 Settings
               </ButtonLink>
               <ButtonLink
-                variant="secondary"
-                icon={<KeyIcon size={16} />}
+                variant="outline"
                 to="/environments/$environmentId/secrets"
                 params={{ environmentId: id }}
               >
+                <KeyRoundIcon data-icon="inline-start" />
                 Secrets
               </ButtonLink>
               {trigger}
             </>
           }
         >
-          <Text variant="secondary" as="p">
-            <span className="inline-flex items-center gap-1">
-              <GitBranchIcon size={14} aria-hidden="true" />
-              {settings.branch}
-            </span>{" "}
-            on{" "}
-            <Link
-              to="/servers/$serverId"
-              params={{ serverId: settings.serverId }}
-            >
-              {server?.name ?? "server"}
-            </Link>
-          </Text>
           {panel}
           {refreshFailed && (
-            <Banner
-              variant="alert"
-              title="Couldn’t refresh this environment. Some details may be out of date."
-            />
+            <Alert>
+              <AlertTitle>
+                Couldn’t refresh this environment. Some details may be out of
+                date.
+              </AlertTitle>
+            </Alert>
           )}
           {environment.pendingChanges && (
-            <Banner
-              title="Changes not deployed yet"
-              description="Saved settings or secrets apply on the next deployment."
-            />
+            <Alert>
+              <AlertTitle>Changes not deployed yet</AlertTitle>
+              <AlertDescription>
+                Saved settings or secrets apply on the next deployment.
+              </AlertDescription>
+            </Alert>
           )}
-          <Grid variant="2-1" gap="base">
-            <div className="flex flex-col gap-6">
-              <LayerCard>
-                <LayerCard.Secondary className="flex items-center justify-between">
-                  Services
-                  <Link
-                    to="/operations"
-                    search={{ environment: id, server: "", cursor: "" }}
-                    className="inline-flex items-center gap-1 text-sm"
-                  >
-                    <PulseIcon size={14} aria-hidden="true" />
-                    Activity
-                  </Link>
-                </LayerCard.Secondary>
-                <LayerCard.Primary className="flex flex-col gap-3 p-0">
+          <div className="grid gap-6 lg:grid-cols-3">
+            <div className="flex flex-col gap-6 lg:col-span-2">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Services</CardTitle>
+                  <CardAction>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      nativeButton={false}
+                      render={
+                        <Link
+                          to="/operations"
+                          search={{ environment: id, server: "", cursor: "" }}
+                        />
+                      }
+                    >
+                      <ActivityIcon data-icon="inline-start" />
+                      Activity
+                    </Button>
+                  </CardAction>
+                </CardHeader>
+                <CardContent className="flex flex-col gap-3">
                   {serviceList.services.length ? (
-                    <ul className="divide-y divide-kumo-line">
-                      {serviceList.services.map((service) => {
-                        const [label, variant] = serviceStatus(service);
+                    <ItemGroup>
+                      {serviceList.services.map((service, index) => {
+                        const [label, tone] = serviceStatus(service);
                         return (
-                          <li
-                            key={service.name}
-                            className="flex flex-wrap items-center gap-x-4 gap-y-1 px-4 py-3"
-                          >
-                            <CubeIcon
-                              size={18}
-                              className="text-kumo-subtle"
-                              aria-hidden="true"
-                            />
-                            <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-                              <Text as="span" bold>
-                                {service.name}
-                              </Text>
-                              <Text as="span" variant="secondary" size="sm">
-                                {service.observedImageDigest ? (
-                                  <Id
-                                    value={service.observedImageDigest}
-                                    short
-                                  />
-                                ) : (
-                                  "No image yet"
-                                )}
-                              </Text>
-                            </span>
-                            <Badge variant={variant}>{label}</Badge>
-                            <span className="w-24 text-right text-sm text-kumo-subtle">
-                              <ObservedTime value={service.observedAt} />
-                            </span>
-                          </li>
+                          <Fragment key={service.name}>
+                            {index > 0 && <ItemSeparator />}
+                            <Item size="sm">
+                              <ItemMedia variant="icon">
+                                <BoxIcon />
+                              </ItemMedia>
+                              <ItemContent>
+                                <ItemTitle>{service.name}</ItemTitle>
+                                <ItemDescription>
+                                  {service.observedImageDigest ? (
+                                    <Id
+                                      value={service.observedImageDigest}
+                                      short
+                                    />
+                                  ) : (
+                                    "No image yet"
+                                  )}
+                                </ItemDescription>
+                              </ItemContent>
+                              <ItemActions>
+                                <StatusBadge tone={tone}>{label}</StatusBadge>
+                                <span className="text-xs text-muted-foreground">
+                                  <ObservedTime value={service.observedAt} />
+                                </span>
+                              </ItemActions>
+                            </Item>
+                          </Fragment>
                         );
                       })}
-                    </ul>
+                    </ItemGroup>
                   ) : (
-                    <Empty
-                      size="sm"
-                      icon={<PackageIcon size={32} />}
-                      title="No services running"
-                      description={
-                        environment.currentReleaseId
-                          ? "Service status appears shortly after a deployment."
-                          : "Deploy this environment to start its services."
-                      }
-                    />
+                    <Empty>
+                      <EmptyHeader>
+                        <EmptyMedia variant="icon">
+                          <PackageIcon />
+                        </EmptyMedia>
+                        <EmptyTitle>No services running</EmptyTitle>
+                        <EmptyDescription>
+                          {environment.currentReleaseId
+                            ? "Service status appears shortly after a deployment."
+                            : "Deploy this environment to start its services."}
+                        </EmptyDescription>
+                      </EmptyHeader>
+                    </Empty>
                   )}
-                  <CursorPages
-                    cursor={services}
-                    next={serviceList.page?.nextPageToken ?? ""}
-                    go={(cursor) => page({ services: cursor, releases })}
+                  <CursorPagination
+                    previous={
+                      services ? page({ services: "", releases }) : undefined
+                    }
+                    next={
+                      serviceList.page?.nextPageToken
+                        ? page({
+                            services: serviceList.page.nextPageToken,
+                            releases,
+                          })
+                        : undefined
+                    }
                   />
-                </LayerCard.Primary>
-              </LayerCard>
-              <LayerCard>
-                <LayerCard.Secondary>Releases</LayerCard.Secondary>
-                <LayerCard.Primary className="flex flex-col gap-3 p-0">
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader>
+                  <CardTitle>Releases</CardTitle>
+                </CardHeader>
+                <CardContent className="flex flex-col gap-3">
                   {releaseList.releases.length ? (
-                    <ul className="divide-y divide-kumo-line">
-                      {releaseList.releases.map((release) => (
-                        <li
-                          key={release.id}
-                          className="relative flex flex-wrap items-center gap-x-4 gap-y-1 px-4 py-3 transition-colors hover:bg-kumo-tint has-[a:focus-visible]:bg-kumo-tint"
-                        >
-                          <GitCommitIcon
-                            size={18}
-                            className="text-kumo-subtle"
-                            aria-hidden="true"
-                          />
-                          <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-                            <span className="flex items-center gap-2">
-                              <Text as="span" variant="mono">
+                    <ItemGroup>
+                      {releaseList.releases.map((release, index) => (
+                        <Fragment key={release.id}>
+                          {index > 0 && <ItemSeparator />}
+                          <Item
+                            size="sm"
+                            className="relative hover:bg-muted/50 has-[a:focus-visible]:bg-muted/50"
+                          >
+                            <ItemMedia variant="icon">
+                              <GitCommitHorizontalIcon />
+                            </ItemMedia>
+                            <ItemContent>
+                              <ItemTitle>
                                 <Link
-                                  className={cardTitleLink}
                                   to="/releases/$releaseId"
                                   params={{ releaseId: release.id }}
+                                  className="font-mono outline-none after:absolute after:inset-0"
                                 >
                                   {release.build?.sourceSha.slice(0, 7) ||
                                     "Release"}
                                 </Link>
-                              </Text>
-                              {release.id === environment.currentReleaseId && (
-                                <Badge variant="success">Current</Badge>
-                              )}
-                              {release.id === environment.previousReleaseId && (
-                                <Badge variant="neutral">Previous</Badge>
-                              )}
-                            </span>
-                            <Text as="span" variant="secondary" size="sm">
-                              {[
-                                release.build?.branch,
-                                `${release.images.length} ${release.images.length === 1 ? "image" : "images"}`,
-                              ]
-                                .filter(Boolean)
-                                .join(" · ")}
-                            </Text>
-                          </span>
-                          <span className="w-24 text-right text-sm text-kumo-subtle">
-                            <ObservedTime value={release.createdAt} />
-                          </span>
-                        </li>
+                                {release.id ===
+                                  environment.currentReleaseId && (
+                                  <Badge variant="secondary">Current</Badge>
+                                )}
+                                {release.id ===
+                                  environment.previousReleaseId && (
+                                  <Badge variant="outline">Previous</Badge>
+                                )}
+                              </ItemTitle>
+                              <ItemDescription>
+                                {[
+                                  release.build?.branch,
+                                  `${release.images.length} ${release.images.length === 1 ? "image" : "images"}`,
+                                ]
+                                  .filter(Boolean)
+                                  .join(" · ")}
+                              </ItemDescription>
+                            </ItemContent>
+                            <ItemActions className="text-xs text-muted-foreground">
+                              <ObservedTime value={release.createdAt} />
+                            </ItemActions>
+                          </Item>
+                        </Fragment>
                       ))}
-                    </ul>
+                    </ItemGroup>
                   ) : (
-                    <Empty
-                      size="sm"
-                      title="No releases yet"
-                      description="Each deployment records a release you can roll back to."
-                    />
+                    <Empty>
+                      <EmptyHeader>
+                        <EmptyMedia variant="icon">
+                          <GitCommitHorizontalIcon />
+                        </EmptyMedia>
+                        <EmptyTitle>No releases yet</EmptyTitle>
+                        <EmptyDescription>
+                          Each deployment records a release you can roll back
+                          to.
+                        </EmptyDescription>
+                      </EmptyHeader>
+                    </Empty>
                   )}
-                  <CursorPages
-                    cursor={releases}
-                    next={releaseList.page?.nextPageToken ?? ""}
-                    go={(cursor) => page({ services, releases: cursor })}
+                  <CursorPagination
+                    previous={
+                      releases ? page({ services, releases: "" }) : undefined
+                    }
+                    next={
+                      releaseList.page?.nextPageToken
+                        ? page({
+                            services,
+                            releases: releaseList.page.nextPageToken,
+                          })
+                        : undefined
+                    }
                   />
-                </LayerCard.Primary>
-              </LayerCard>
+                </CardContent>
+              </Card>
             </div>
-            <LayerCard>
-              <LayerCard.Secondary>Overview</LayerCard.Secondary>
-              <LayerCard.Primary>
+            <Card className="h-fit">
+              <CardHeader>
+                <CardTitle>Overview</CardTitle>
+              </CardHeader>
+              <CardContent>
                 <Details>
                   <Detail label="Domains">
                     {settings.domains.length ? (
@@ -389,6 +438,7 @@ function EnvironmentView({
                               href={`https://${domain.hostname}`}
                               target="_blank"
                               rel="noreferrer"
+                              className="underline-offset-4 hover:underline"
                             >
                               {domain.hostname}
                             </a>
@@ -408,7 +458,9 @@ function EnvironmentView({
                       : "Off"}
                   </Detail>
                   <Detail label="Compose override">
-                    <Text variant="mono">{settings.composeOverridePath}</Text>
+                    <code className="font-mono text-xs">
+                      {settings.composeOverridePath}
+                    </code>
                   </Detail>
                   <Detail label="Secrets">
                     {environment.secretNames.length ? (
@@ -423,15 +475,16 @@ function EnvironmentView({
                       <Link
                         to="/environments/$environmentId/secrets"
                         params={{ environmentId: id }}
+                        className="underline-offset-4 hover:underline"
                       >
                         Add secrets
                       </Link>
                     )}
                   </Detail>
                 </Details>
-              </LayerCard.Primary>
-            </LayerCard>
-          </Grid>
+              </CardContent>
+            </Card>
+          </div>
         </Page>
       )}
     </DeploymentAction>

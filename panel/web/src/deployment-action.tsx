@@ -1,17 +1,26 @@
-import {
-  Banner,
-  Button,
-  LayerCard,
-  Text,
-  useKumoToastManager,
-} from "@cloudflare/kumo";
 import { Code, ConnectError } from "@connectrpc/connect";
-import { InfoIcon, WarningIcon } from "@phosphor-icons/react";
 import { useMutation } from "@tanstack/react-query";
 import { Link, useRouter } from "@tanstack/react-router";
+import { InfoIcon, TriangleAlertIcon } from "lucide-react";
 import { useState } from "react";
 import type { ReactNode } from "react";
+import { toast } from "sonner";
 import { z } from "zod";
+
+import {
+  Alert,
+  AlertAction,
+  AlertDescription,
+  AlertTitle,
+} from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 
 import {
   type Environment,
@@ -26,7 +35,7 @@ import {
   panel,
   refreshEnvironment,
 } from "./api";
-import { Detail, Details, Id, ObservedTime } from "./components";
+import { Detail, Details, Id, ObservedTime, PendingButton } from "./components";
 import { usePageContinuation } from "./use-page-continuation";
 import { useSessionExpiry } from "./use-session-expiry";
 
@@ -84,8 +93,7 @@ export function DeploymentAction({
   const [selection, setSelection] = useState<Selection>();
   const [unknown, setUnknown] = useState(false);
   const [acceptedId, setAcceptedId] = useState("");
-  const toast = useKumoToastManager();
-  const fail = (title: string) => toast.add({ title, variant: "error" });
+  const fail = (title: string) => toast.error(title);
   const stale =
     !!selection && environment.version !== selection.environment.version;
   const requestId = selection?.intent.request.mutation?.requestId;
@@ -248,25 +256,27 @@ export function DeploymentAction({
   const name =
     selection?.environment.settings?.name ?? environment.settings?.name;
   const trigger = acceptedId ? null : (
-    <Button
-      variant={release ? "secondary" : "primary"}
-      loading={prepare.isPending && !selection}
+    <PendingButton
+      variant={release ? "outline" : "default"}
+      pending={prepare.isPending && !selection}
       disabled={pending || !!selection}
       onClick={startReview}
     >
       {release ? "Roll back to this release" : "Deploy"}
-    </Button>
+    </PendingButton>
   );
 
   const review = (
     <>
       {selection && !acceptedId && (
-        <LayerCard>
-          <LayerCard.Secondary>
-            {release ? `Roll back ${name}?` : `Deploy to ${name}?`}
-          </LayerCard.Secondary>
-          <LayerCard.Primary className="flex flex-col gap-4">
-            <Text>
+        <Card>
+          <CardHeader>
+            <CardTitle>
+              {release ? `Roll back ${name}?` : `Deploy to ${name}?`}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-4">
+            <p>
               {release ? (
                 <>
                   Restores this release’s images, configuration, domains and
@@ -275,13 +285,15 @@ export function DeploymentAction({
               ) : (
                 <>
                   Deploys the latest commit on{" "}
-                  <code>{selection.environment.settings?.branch}</code> with the
-                  current settings and secrets. If its images aren’t built yet,
-                  the deployment waits for them.
+                  <code className="font-mono">
+                    {selection.environment.settings?.branch}
+                  </code>{" "}
+                  with the current settings and secrets. If its images aren’t
+                  built yet, the deployment waits for them.
                 </>
               )}{" "}
               Services restart, so expect a brief interruption.
-            </Text>
+            </p>
             <Details>
               <Detail label="Commit">
                 <Id value={selection.source} short />
@@ -299,93 +311,92 @@ export function DeploymentAction({
               )}
             </Details>
             {!unknown && (stale || refreshFailed) && (
-              <Banner
-                variant="alert"
-                icon={<WarningIcon weight="fill" />}
-                description="The environment changed while you were reviewing."
-                action={
-                  <Button
+              <Alert>
+                <TriangleAlertIcon />
+                <AlertDescription>
+                  The environment changed while you were reviewing.
+                </AlertDescription>
+                <AlertAction>
+                  <PendingButton
                     size="sm"
-                    loading={prepare.isPending}
+                    variant="outline"
+                    pending={prepare.isPending}
                     onClick={startReview}
                   >
                     Review again
-                  </Button>
-                }
-              />
+                  </PendingButton>
+                </AlertAction>
+              </Alert>
             )}
             {unknown && (
-              <Banner
-                variant="alert"
-                icon={<WarningIcon weight="fill" />}
-                title="Outcome not confirmed"
-                description={
-                  <>
+              <Alert>
+                <TriangleAlertIcon />
+                <AlertTitle>Outcome not confirmed</AlertTitle>
+                <AlertDescription>
+                  <span>
                     Keep this page open until it’s resolved. Request{" "}
                     <Id value={requestId ?? ""} short />
-                  </>
-                }
-              />
+                  </span>
+                </AlertDescription>
+              </Alert>
             )}
-            <div className="flex flex-wrap gap-2">
-              {unknown ? (
-                <>
-                  <Button
-                    variant="primary"
-                    loading={check.isPending}
-                    disabled={pending}
-                    onClick={checkStatus}
-                  >
-                    Check status
-                  </Button>
-                  <Button
-                    loading={submit.isPending}
-                    disabled={pending}
-                    onClick={confirm}
-                  >
-                    Retry same request
-                  </Button>
-                </>
-              ) : (
-                <>
-                  <Button
-                    variant="primary"
-                    loading={submit.isPending}
-                    disabled={pending || stale || refreshFailed}
-                    onClick={confirm}
-                  >
-                    {release ? "Roll back" : "Deploy now"}
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    disabled={pending}
-                    onClick={() => setSelection(undefined)}
-                  >
-                    Cancel
-                  </Button>
-                </>
-              )}
-            </div>
-          </LayerCard.Primary>
-        </LayerCard>
+          </CardContent>
+          <CardFooter className="flex-wrap gap-2">
+            {unknown ? (
+              <>
+                <PendingButton
+                  pending={check.isPending}
+                  disabled={pending}
+                  onClick={checkStatus}
+                >
+                  Check status
+                </PendingButton>
+                <PendingButton
+                  variant="outline"
+                  pending={submit.isPending}
+                  disabled={pending}
+                  onClick={confirm}
+                >
+                  Retry same request
+                </PendingButton>
+              </>
+            ) : (
+              <>
+                <PendingButton
+                  pending={submit.isPending}
+                  disabled={pending || stale || refreshFailed}
+                  onClick={confirm}
+                >
+                  {release ? "Roll back" : "Deploy now"}
+                </PendingButton>
+                <Button
+                  variant="ghost"
+                  disabled={pending}
+                  onClick={() => setSelection(undefined)}
+                >
+                  Cancel
+                </Button>
+              </>
+            )}
+          </CardFooter>
+        </Card>
       )}
       {acceptedId && (
-        <div role="status">
-          <Banner
-            icon={<InfoIcon weight="fill" />}
-            description={
-              <>
-                {release ? "Rollback" : "Deployment"} started.{" "}
-                <Link
-                  to="/operations/$operationId"
-                  params={{ operationId: acceptedId }}
-                >
-                  Follow its progress
-                </Link>
-              </>
-            }
-          />
-        </div>
+        <Alert role="status">
+          <InfoIcon />
+          <AlertDescription>
+            <span>
+              {release ? "Rollback" : "Deployment"} started.{" "}
+              <Link
+                className="text-foreground underline underline-offset-4"
+                to="/operations/$operationId"
+                params={{ operationId: acceptedId }}
+              >
+                Follow its progress
+              </Link>
+            </span>
+          </AlertDescription>
+        </Alert>
       )}
     </>
   );

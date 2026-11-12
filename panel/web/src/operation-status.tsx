@@ -1,11 +1,10 @@
-import { Badge, Loader } from "@cloudflare/kumo";
-
 import {
   type Operation,
   OperationKind,
   OperationOutcome,
   OperationState,
 } from "../../gen/ts/panel/v1/panel_pb";
+import { StatusBadge, type Tone } from "./components";
 
 const kinds: Record<OperationKind, string> = {
   [OperationKind.UNSPECIFIED]: "Operation",
@@ -13,19 +12,18 @@ const kinds: Record<OperationKind, string> = {
   [OperationKind.DEPLOY]: "Deployment",
   [OperationKind.ROLLBACK]: "Rollback",
 };
-type Variant = "neutral" | "info" | "success" | "error" | "warning";
 
-const states: Record<OperationState, [string, Variant]> = {
+const states: Record<OperationState, [string, Tone]> = {
   [OperationState.UNSPECIFIED]: ["Unknown", "neutral"],
-  [OperationState.QUEUED]: ["Queued", "info"],
-  [OperationState.RUNNING]: ["Deploying", "info"],
+  [OperationState.QUEUED]: ["Queued", "neutral"],
+  [OperationState.RUNNING]: ["Deploying", "neutral"],
   [OperationState.SUCCEEDED]: ["Succeeded", "success"],
-  [OperationState.FAILED]: ["Failed", "error"],
+  [OperationState.FAILED]: ["Failed", "danger"],
   [OperationState.RECOVERING]: ["Restoring", "warning"],
   [OperationState.RECOVERED]: ["Rolled back", "warning"],
   [OperationState.SUPERSEDED]: ["Superseded", "neutral"],
   [OperationState.NEEDS_ATTENTION]: ["Needs attention", "warning"],
-  [OperationState.WAITING_FOR_BUILD]: ["Waiting for build", "info"],
+  [OperationState.WAITING_FOR_BUILD]: ["Waiting for build", "neutral"],
 };
 export function operationKind(value: OperationKind) {
   return kinds[value] ?? "Operation";
@@ -38,12 +36,8 @@ export function OperationStatus({
   value: OperationState;
   active?: boolean;
 }) {
-  const [label, variant] = states[value] ?? ["Unknown", "neutral"];
-  return (
-    <Badge variant={variant} icon={active ? <Loader size={12} /> : undefined}>
-      {label}
-    </Badge>
-  );
+  const [label, tone] = states[value] ?? ["Unknown", "neutral"];
+  return <StatusBadge tone={active ? "pending" : tone}>{label}</StatusBadge>;
 }
 
 export function operationActive(value: Operation) {

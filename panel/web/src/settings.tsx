@@ -1,16 +1,21 @@
-import {
-  Badge,
-  Banner,
-  LayerCard,
-  RefreshButton,
-  Text,
-} from "@cloudflare/kumo";
-import { GithubLogoIcon, WarningIcon } from "@phosphor-icons/react";
 import { useMutation, useSuspenseQuery } from "@tanstack/react-query";
+import { FolderGit2Icon, RefreshCwIcon, TriangleAlertIcon } from "lucide-react";
+
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { cn } from "@/lib/utils";
 
 import { integrationQuery } from "./api";
 import { CloudflareConnection } from "./cloudflare-connection";
-import { ButtonLink, Detail, Details, Page } from "./components";
+import { ButtonLink, Detail, Details, Page, StatusBadge } from "./components";
 import { GitHubSetup } from "./github-setup";
 
 export function Settings() {
@@ -22,35 +27,44 @@ export function Settings() {
       description="Connections this panel uses to build and publish your apps."
     >
       <div className="flex max-w-3xl flex-col gap-6">
-        <LayerCard id="github">
-          <LayerCard.Secondary className="flex items-center justify-between gap-2">
-            <span className="flex items-center gap-2">
-              <GithubLogoIcon size={18} aria-hidden="true" />
+        <Card id="github">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <FolderGit2Icon />
               GitHub
               {data.installed ? (
-                <Badge variant="success">Connected</Badge>
+                <StatusBadge tone="success">Connected</StatusBadge>
               ) : data.registered ? (
-                <Badge variant="warning">Not installed</Badge>
+                <StatusBadge tone="warning">Not installed</StatusBadge>
               ) : (
-                <Badge variant="neutral">Not connected</Badge>
+                <StatusBadge tone="neutral">Not connected</StatusBadge>
               )}
-            </span>
-            <RefreshButton
-              aria-label="Refresh GitHub status"
-              loading={refresh.isPending}
-              onClick={() => refresh.mutate()}
-            />
-          </LayerCard.Secondary>
-          <LayerCard.Primary className="flex flex-col gap-4">
-            <Text variant="secondary">
+            </CardTitle>
+            <CardDescription>
               Reads Compose files from the repositories you choose.
-            </Text>
+            </CardDescription>
+            <CardAction>
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                aria-label="Refresh GitHub status"
+                disabled={refresh.isPending}
+                onClick={() => refresh.mutate()}
+              >
+                <RefreshCwIcon
+                  className={cn(refresh.isPending && "animate-spin")}
+                />
+              </Button>
+            </CardAction>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-4">
             {error && (
-              <Banner
-                variant="alert"
-                icon={<WarningIcon weight="fill" />}
-                description="Couldn’t refresh GitHub status. Details may be out of date."
-              />
+              <Alert>
+                <TriangleAlertIcon />
+                <AlertDescription>
+                  Couldn’t refresh GitHub status. Details may be out of date.
+                </AlertDescription>
+              </Alert>
             )}
             {data.registered && (
               <Details>
@@ -65,14 +79,14 @@ export function Settings() {
               installed={data.installed}
               actions={
                 data.installed && (
-                  <ButtonLink to="/settings/repositories">
+                  <ButtonLink variant="outline" to="/settings/repositories">
                     Choose repositories
                   </ButtonLink>
                 )
               }
             />
-          </LayerCard.Primary>
-        </LayerCard>
+          </CardContent>
+        </Card>
         <CloudflareConnection />
       </div>
     </Page>

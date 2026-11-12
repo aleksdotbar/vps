@@ -1,7 +1,15 @@
-import { Banner, Empty, Tabs } from "@cloudflare/kumo";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { getRouteApi, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
+
+import { Alert, AlertTitle } from "@/components/ui/alert";
+import {
+  Empty,
+  EmptyContent,
+  EmptyHeader,
+  EmptyTitle,
+} from "@/components/ui/empty";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 import type { Server } from "../../gen/ts/panel/v1/panel_pb";
 import { environmentQuery, projectQuery } from "./api";
@@ -39,14 +47,16 @@ export function EnvironmentSettingsRoute() {
 function NotFound({ title }: { title: string }) {
   return (
     <Page title={title}>
-      <Empty
-        title={title}
-        contents={
+      <Empty>
+        <EmptyHeader>
+          <EmptyTitle>{title}</EmptyTitle>
+        </EmptyHeader>
+        <EmptyContent>
           <ButtonLink to="/projects" search={{ cursor: "" }}>
             Back to projects
           </ButtonLink>
-        }
-      />
+        </EmptyContent>
+      </Empty>
     </Page>
   );
 }
@@ -69,18 +79,23 @@ export function CreateEnvironment({
       title="New environment"
       description="Deploy one branch to a server, with its own secrets and domains."
       crumbs={[
-        { label: "Projects", href: "/projects" },
-        { label: data.project.name, href: `/projects/${projectId}` },
+        {
+          label: "Projects",
+          link: { to: "/projects", search: { cursor: "" } },
+        },
+        {
+          label: data.project.name,
+          link: {
+            to: "/projects/$projectId",
+            params: { projectId },
+            search: { cursor: "" },
+          },
+        },
       ]}
       actions={
         !locked && (
           <Tabs
-            aria-label="Start from"
             value={preset}
-            tabs={[
-              { value: "staging", label: "Staging" },
-              { value: "production", label: "Production" },
-            ]}
             onValueChange={(value) =>
               void navigate({
                 to: "/projects/$projectId/environments/new",
@@ -91,16 +106,22 @@ export function CreateEnvironment({
                 },
               })
             }
-          />
+          >
+            <TabsList aria-label="Start from">
+              <TabsTrigger value="staging">Staging</TabsTrigger>
+              <TabsTrigger value="production">Production</TabsTrigger>
+            </TabsList>
+          </Tabs>
         )
       }
     >
       <div className="flex max-w-3xl flex-col gap-6">
         {error && (
-          <Banner
-            variant="alert"
-            title="Couldn’t refresh the project. Details may be out of date."
-          />
+          <Alert>
+            <AlertTitle>
+              Couldn’t refresh the project. Details may be out of date.
+            </AlertTitle>
+          </Alert>
         )}
         <EnvironmentForm
           key={`${projectId}:${preset}`}
@@ -133,17 +154,22 @@ export function EditEnvironment({
       crumbs={[
         {
           label: environment.settings.name,
-          href: `/environments/${id}`,
+          link: {
+            to: "/environments/$environmentId",
+            params: { environmentId: id },
+            search: { services: "", releases: "" },
+          },
         },
       ]}
       actions={<EnvironmentStatus environment={environment} />}
     >
       <div className="flex max-w-3xl flex-col gap-6">
         {error && (
-          <Banner
-            variant="alert"
-            title="Couldn’t refresh these settings. Reload before saving."
-          />
+          <Alert>
+            <AlertTitle>
+              Couldn’t refresh these settings. Reload before saving.
+            </AlertTitle>
+          </Alert>
         )}
         <EnvironmentForm
           key={id}

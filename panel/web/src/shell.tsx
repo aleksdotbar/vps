@@ -1,37 +1,46 @@
-import { Sidebar } from "@cloudflare/kumo";
 import {
-  CubeIcon,
-  FolderSimpleIcon,
-  GearIcon,
-  HardDrivesIcon,
-  PulseIcon,
-} from "@phosphor-icons/react";
-import { Outlet, useRouter, useRouterState } from "@tanstack/react-router";
+  Link,
+  Outlet,
+  useRouter,
+  useRouterState,
+} from "@tanstack/react-router";
+import {
+  ActivityIcon,
+  BoxIcon,
+  FolderIcon,
+  ServerIcon,
+  SettingsIcon,
+} from "lucide-react";
 import { useEffect } from "react";
+
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarHeader,
+  SidebarInset,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarProvider,
+} from "@/components/ui/sidebar";
 
 import { queryClient, unauthenticated } from "./api";
 import { Logout } from "./session";
 
 const sections = [
-  { href: "/projects", label: "Projects", icon: FolderSimpleIcon },
-  { href: "/servers", label: "Servers", icon: HardDrivesIcon },
-  { href: "/operations", label: "Activity", icon: PulseIcon },
-  { href: "/settings", label: "Settings", icon: GearIcon },
-];
+  { to: "/projects", label: "Projects", icon: FolderIcon },
+  { to: "/servers", label: "Servers", icon: ServerIcon },
+  { to: "/operations", label: "Activity", icon: ActivityIcon },
+  { to: "/settings", label: "Settings", icon: SettingsIcon },
+] as const;
 
 function section(pathname: string) {
   if (/^\/(projects|environments|releases)(\/|$)/.test(pathname))
     return "/projects";
-  return sections.find(({ href }) => pathname.startsWith(href))?.href;
-}
-
-function Brand() {
-  return (
-    <span className="flex items-center gap-2 px-3 text-sm font-semibold text-kumo-strong">
-      <CubeIcon size={20} weight="bold" aria-hidden="true" />
-      Panel
-    </span>
-  );
+  return sections.find(({ to }) => pathname.startsWith(to))?.to;
 }
 
 export function Shell() {
@@ -39,46 +48,54 @@ export function Shell() {
     useRouterState({ select: (state) => state.location.pathname }),
   );
   return (
-    <Sidebar.Provider defaultOpen collapsible="offcanvas">
+    <SidebarProvider>
       <a
         href="#main"
         className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50"
       >
         Skip to content
       </a>
-      {/* Full height and pinned while the page scrolls; below md kumo renders a sheet instead. */}
-      <Sidebar className="md:sticky md:top-0 md:h-svh">
-        <Sidebar.Header>
-          <Brand />
-        </Sidebar.Header>
-        <Sidebar.Content>
-          <Sidebar.Group>
-            <Sidebar.Menu>
-              {sections.map(({ href, label, icon }) => (
-                <Sidebar.MenuButton
-                  key={href}
-                  href={href}
-                  icon={icon}
-                  active={current === href}
-                >
-                  {label}
-                </Sidebar.MenuButton>
-              ))}
-            </Sidebar.Menu>
-          </Sidebar.Group>
-        </Sidebar.Content>
-        <Sidebar.Footer>
+      <Sidebar variant="inset">
+        <SidebarHeader>
+          <SidebarMenu>
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                size="lg"
+                render={<Link to="/projects" search={{ cursor: "" }} />}
+              >
+                <BoxIcon />
+                <span className="font-semibold">Panel</span>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          </SidebarMenu>
+        </SidebarHeader>
+        <SidebarContent>
+          <SidebarGroup>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {sections.map(({ to, label, icon: Icon }) => (
+                  <SidebarMenuItem key={to}>
+                    <SidebarMenuButton
+                      isActive={current === to}
+                      render={<Link to={to} />}
+                    >
+                      <Icon />
+                      <span>{label}</span>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        </SidebarContent>
+        <SidebarFooter>
           <Logout />
-        </Sidebar.Footer>
+        </SidebarFooter>
       </Sidebar>
-      <main id="main" tabIndex={-1} className="flex min-w-0 flex-1 flex-col">
-        <div className="flex items-center gap-2 border-b border-kumo-line p-2 md:hidden">
-          <Sidebar.Trigger />
-          <Brand />
-        </div>
+      <SidebarInset id="main" tabIndex={-1}>
         <Outlet />
-      </main>
-    </Sidebar.Provider>
+      </SidebarInset>
+    </SidebarProvider>
   );
 }
 
@@ -91,12 +108,12 @@ export function NavigationProgress() {
     <div
       role="progressbar"
       aria-label="Loading page"
-      className="fixed inset-x-0 top-0 z-50 h-0.5 origin-left scale-x-90 bg-kumo-brand transition-transform delay-150 duration-[8s] ease-out starting:scale-x-0"
+      className="fixed inset-x-0 top-0 z-50 h-0.5 origin-left scale-x-90 bg-primary transition-transform delay-150 duration-[8s] ease-out starting:scale-x-0"
     />
   ) : null;
 }
 
-/** Signs out once any query reports the session ended, and moves focus to each new page's heading. */
+/** Signs out once any query reports the session ended, and moves focus to each new page. */
 export function RouteEffects() {
   const router = useRouter();
   useEffect(() => {

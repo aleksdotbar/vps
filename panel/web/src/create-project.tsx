@@ -1,8 +1,31 @@
 import { useSuspenseQuery } from "@tanstack/react-query";
-import { Banner, Empty, LayerCard, Link, Select } from "@cloudflare/kumo";
-import { WarningIcon } from "@phosphor-icons/react";
-import { getRouteApi, useRouter } from "@tanstack/react-router";
+import { getRouteApi, Link, useRouter } from "@tanstack/react-router";
+import { TriangleAlertIcon } from "lucide-react";
 import { useState } from "react";
+
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyTitle,
+} from "@/components/ui/empty";
+import { Field, FieldDescription, FieldLabel } from "@/components/ui/field";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 import type { Repository } from "../../gen/ts/panel/v1/panel_pb";
 import { integrationQuery, repositoriesQuery } from "./api";
@@ -22,21 +45,26 @@ export function CreateProject({ repositoryId }: { repositoryId: string }) {
     <Page
       title="New project"
       description="Connect a GitHub repository to deploy from."
-      crumbs={[{ label: "Projects", href: "/projects" }]}
+      // Crumb links take untyped search; the route defaults cursor to "".
+      crumbs={[{ label: "Projects", link: { to: "/projects" } }]}
     >
       <div className="flex max-w-2xl flex-col gap-6">
         {integration.installed ? (
           <RepositoryPicker repositoryId={repositoryId} />
         ) : (
-          <Empty
-            title="Connect GitHub first"
-            description="The panel needs access to your repositories."
-            contents={
+          <Empty className="border">
+            <EmptyHeader>
+              <EmptyTitle>Connect GitHub first</EmptyTitle>
+              <EmptyDescription>
+                The panel needs access to your repositories.
+              </EmptyDescription>
+            </EmptyHeader>
+            <EmptyContent>
               <ButtonLink to="/settings" hash="github">
                 Open settings
               </ButtonLink>
-            }
-          />
+            </EmptyContent>
+          </Empty>
         )}
       </div>
     </Page>
@@ -54,6 +82,10 @@ function RepositoryPicker({ repositoryId }: { repositoryId: string }) {
   const repository =
     creationRepository ??
     selected.find((value) => String(value.githubRepositoryId) === repositoryId);
+  const items = selected.map((entry) => ({
+    value: String(entry.githubRepositoryId),
+    label: `${entry.owner}/${entry.name}`,
+  }));
 
   function choose(value: string | null) {
     if (
@@ -70,66 +102,88 @@ function RepositoryPicker({ repositoryId }: { repositoryId: string }) {
 
   if (data.page?.nextPageToken)
     return (
-      <Empty
-        title="Too many repositories"
-        description="Limit the GitHub App to at most 100 repositories in Settings."
-        contents={
+      <Empty className="border">
+        <EmptyHeader>
+          <EmptyTitle>Too many repositories</EmptyTitle>
+          <EmptyDescription>
+            Limit the GitHub App to at most 100 repositories in Settings.
+          </EmptyDescription>
+        </EmptyHeader>
+        <EmptyContent>
           <ButtonLink to="/settings" hash="github">
             Open settings
           </ButtonLink>
-        }
-      />
+        </EmptyContent>
+      </Empty>
     );
   if (!selected.length && !locked)
     return (
-      <Empty
-        title="No repositories available"
-        description="Choose which repositories the panel may use."
-        contents={
+      <Empty className="border">
+        <EmptyHeader>
+          <EmptyTitle>No repositories available</EmptyTitle>
+          <EmptyDescription>
+            Choose which repositories the panel may use.
+          </EmptyDescription>
+        </EmptyHeader>
+        <EmptyContent>
           <ButtonLink to="/settings/repositories">
             Choose repositories
           </ButtonLink>
-        }
-      />
+        </EmptyContent>
+      </Empty>
     );
 
   return (
     <>
       {error && (
-        <Banner
-          variant="alert"
-          icon={<WarningIcon weight="fill" />}
-          description="Couldn’t refresh repositories. The list may be out of date."
-        />
+        <Alert>
+          <TriangleAlertIcon />
+          <AlertDescription>
+            Couldn’t refresh repositories. The list may be out of date.
+          </AlertDescription>
+        </Alert>
       )}
-      <LayerCard>
-        <LayerCard.Secondary>1. Repository</LayerCard.Secondary>
-        <LayerCard.Primary>
-          <Select
-            label="Repository"
-            placeholder="Choose a repository…"
-            value={repositoryId || null}
-            onValueChange={choose}
-            disabled={locked || !!error}
-            items={selected.map((entry) => ({
-              value: String(entry.githubRepositoryId),
-              label: `${entry.owner}/${entry.name}`,
-            }))}
-            description={
-              <>
-                Missing one?{" "}
-                <Link href="/settings/repositories">Choose repositories</Link>.
-              </>
-            }
-          />
-        </LayerCard.Primary>
-      </LayerCard>
+      <Card>
+        <CardHeader>
+          <CardTitle>Repository</CardTitle>
+          <CardDescription>
+            The repository this project deploys.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Field>
+            <FieldLabel htmlFor="repository">Repository</FieldLabel>
+            <Select
+              items={items}
+              value={repositoryId || null}
+              onValueChange={choose}
+              disabled={locked || !!error}
+            >
+              <SelectTrigger id="repository" className="w-full">
+                <SelectValue placeholder="Choose a repository…" />
+              </SelectTrigger>
+              <SelectContent>
+                {items.map((item) => (
+                  <SelectItem key={item.value} value={item.value}>
+                    {item.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <FieldDescription>
+              Missing one?{" "}
+              <Link to="/settings/repositories">Choose repositories</Link>.
+            </FieldDescription>
+          </Field>
+        </CardContent>
+      </Card>
       {repositoryId && !repository && (
-        <Banner
-          variant="alert"
-          icon={<WarningIcon weight="fill" />}
-          description="That repository is no longer available. Choose another one."
-        />
+        <Alert>
+          <TriangleAlertIcon />
+          <AlertDescription>
+            That repository is no longer available. Choose another one.
+          </AlertDescription>
+        </Alert>
       )}
       {repository && (
         <ProjectForm

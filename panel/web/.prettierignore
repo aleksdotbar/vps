@@ -1,0 +1,4 @@
+# shadcn-generated components are vendored as the CLI writes them.
+src/components/ui
+src/hooks
+src/lib

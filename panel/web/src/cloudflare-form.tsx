@@ -1,19 +1,34 @@
-import {
-  Banner,
-  Button,
-  Combobox,
-  Grid,
-  Input,
-  SensitiveInput,
-  Text,
-  useKumoToastManager,
-} from "@cloudflare/kumo";
 import { Code, ConnectError } from "@connectrpc/connect";
-import { WarningIcon } from "@phosphor-icons/react";
 import { useMutation } from "@tanstack/react-query";
 import { useRouter } from "@tanstack/react-router";
-import { useState } from "react";
+import { TriangleAlertIcon } from "lucide-react";
+import { Fragment, useState } from "react";
 import type { FormEvent } from "react";
+import { toast } from "sonner";
+
+import { Alert, AlertAction, AlertDescription } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import {
+  Combobox,
+  ComboboxChip,
+  ComboboxChips,
+  ComboboxChipsInput,
+  ComboboxContent,
+  ComboboxEmpty,
+  ComboboxItem,
+  ComboboxList,
+  ComboboxValue,
+  useComboboxAnchor,
+} from "@/components/ui/combobox";
+import {
+  Field,
+  FieldDescription,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
+  FieldSet,
+} from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
 
 import type {
   CandidateZone,
@@ -25,13 +40,13 @@ import {
   mutationRejected,
   queryClient,
 } from "./api";
+import { PendingButton } from "./components";
 import { usePageContinuation } from "./use-page-continuation";
 import { useSessionExpiry } from "./use-session-expiry";
 
 const tokenPattern = /^[A-Za-z0-9._~+/-]+=*$/;
 
 type Zone = { id: string; name: string; eligible: boolean; reason?: string };
-type ZoneItem = { value: string; label: string; disabled: boolean };
 
 function zoneReason(zone: CandidateZone) {
   if (zone.paused) return "paused";
@@ -70,8 +85,8 @@ export function CloudflareForm({
     token?: string;
     zones?: string;
   }>({});
-  const toast = useKumoToastManager();
-  const fail = (title: string) => toast.add({ title, variant: "error" });
+  const fail = (title: string) => toast.error(title);
+  const anchor = useComboboxAnchor();
   const stale = integration.version !== baseVersion;
 
   function clearToken() {
@@ -255,144 +270,170 @@ export function CloudflareForm({
     save.mutate();
   }
 
-  const zoneItems: ZoneItem[] = zones.map((zone) => ({
-    value: zone.id,
-    label: zone.eligible
+  const zoneLabel = (id: string) => {
+    const zone = zones.find((candidate) => candidate.id === id);
+    if (!zone) return id;
+    return zone.eligible
       ? zone.name
-      : `${zone.name} — can’t be used (${zone.reason ?? "not eligible"})`,
-    disabled: !zone.eligible,
-  }));
+      : `${zone.name} — can’t be used (${zone.reason ?? "not eligible"})`;
+  };
 
   return (
-    <form
-      className="flex flex-col gap-4"
-      onSubmit={submit}
-      aria-busy={pending}
-      autoComplete="off"
-    >
-      {stale && (
-        <Banner
-          variant="alert"
-          icon={<WarningIcon weight="fill" />}
-          description="The connection changed since you opened this form."
-          action={
-            <Button
-              size="sm"
-              onClick={() => refresh.mutate()}
-              loading={refresh.isPending}
-            >
-              Reload
-            </Button>
-          }
-        />
-      )}
-      <fieldset disabled={blocked} className="flex flex-col gap-4">
-        <Grid variant="2up" gap="sm">
-          <Input
-            label="Account ID"
-            description="On your domain’s overview page, under API."
-            value={accountId}
-            error={errors.account}
-            onChange={(event) => setAccountId(event.target.value.trim())}
-            required
-            minLength={32}
-            maxLength={32}
-            pattern="[0-9a-f]{32}"
-            spellCheck={false}
-          />
-          <SensitiveInput
-            label="API token"
-            description="Stored encrypted. Never shown again."
-            value={token}
-            error={errors.token}
-            onValueChange={setToken}
-            required
-            maxLength={4096}
-            spellCheck={false}
-          />
-        </Grid>
-        {listed && zones.length ? (
-          <Combobox
-            label="Domains"
-            description={
-              truncated
-                ? "Only the first domains are shown. Restrict the token to the domains you need."
-                : undefined
-            }
-            multiple
-            error={errors.zones}
-            items={zoneItems}
-            value={zoneItems.filter((item) => selected.includes(item.value))}
-            onValueChange={(value) =>
-              setSelected((value as ZoneItem[]).map((item) => item.value))
-            }
-            isItemEqualToValue={(item: ZoneItem, value: ZoneItem) =>
-              item.value === value.value
-            }
-          >
-            <Combobox.TriggerMultipleWithInput
-              placeholder="Choose domains"
-              value={zoneItems.filter((item) => selected.includes(item.value))}
-              renderItem={(item: ZoneItem) => (
-                <Combobox.Chip key={item.value}>{item.label}</Combobox.Chip>
-              )}
-            />
-            <Combobox.Content>
-              <Combobox.Empty />
-              <Combobox.List>
-                {(item: ZoneItem) => (
-                  <Combobox.Item
-                    key={item.value}
-                    value={item}
-                    disabled={item.disabled}
+    <form onSubmit={submit} aria-busy={pending} autoComplete="off">
+      <FieldGroup>
+        {stale && (
+          <Alert>
+            <TriangleAlertIcon />
+            <AlertDescription>
+              The connection changed since you opened this form.
+            </AlertDescription>
+            <AlertAction>
+              <PendingButton
+                size="sm"
+                variant="outline"
+                pending={refresh.isPending}
+                onClick={() => refresh.mutate()}
+              >
+                Reload
+              </PendingButton>
+            </AlertAction>
+          </Alert>
+        )}
+        <FieldSet disabled={blocked}>
+          <FieldGroup>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Field data-invalid={!!errors.account || undefined}>
+                <FieldLabel htmlFor="cloudflare-account">Account ID</FieldLabel>
+                <Input
+                  id="cloudflare-account"
+                  value={accountId}
+                  aria-invalid={!!errors.account || undefined}
+                  onChange={(event) => setAccountId(event.target.value.trim())}
+                  required
+                  minLength={32}
+                  maxLength={32}
+                  pattern="[0-9a-f]{32}"
+                  spellCheck={false}
+                />
+                <FieldDescription>
+                  On your domain’s overview page, under API.
+                </FieldDescription>
+                <FieldError>{errors.account}</FieldError>
+              </Field>
+              <Field data-invalid={!!errors.token || undefined}>
+                <FieldLabel htmlFor="cloudflare-token">API token</FieldLabel>
+                <Input
+                  id="cloudflare-token"
+                  type="password"
+                  value={token}
+                  aria-invalid={!!errors.token || undefined}
+                  onChange={(event) => setToken(event.target.value)}
+                  required
+                  maxLength={4096}
+                  spellCheck={false}
+                />
+                <FieldDescription>
+                  Stored encrypted. Never shown again.
+                </FieldDescription>
+                <FieldError>{errors.token}</FieldError>
+              </Field>
+            </div>
+            {listed && zones.length ? (
+              <Field data-invalid={!!errors.zones || undefined}>
+                <FieldLabel>Domains</FieldLabel>
+                <Combobox
+                  multiple
+                  disabled={blocked}
+                  items={zones.map((zone) => zone.id)}
+                  value={selected}
+                  onValueChange={(value) => setSelected(value as string[])}
+                  itemToStringLabel={(id: string) => zoneLabel(id)}
+                >
+                  <ComboboxChips
+                    ref={anchor}
+                    aria-invalid={!!errors.zones || undefined}
                   >
-                    {item.label}
-                  </Combobox.Item>
+                    <ComboboxValue>
+                      {(values: string[]) => (
+                        <Fragment>
+                          {values.map((id) => (
+                            <ComboboxChip key={id}>
+                              {zoneLabel(id)}
+                            </ComboboxChip>
+                          ))}
+                          <ComboboxChipsInput placeholder="Choose domains" />
+                        </Fragment>
+                      )}
+                    </ComboboxValue>
+                  </ComboboxChips>
+                  <ComboboxContent anchor={anchor}>
+                    <ComboboxEmpty>No matching domains.</ComboboxEmpty>
+                    <ComboboxList>
+                      {(id: string) => (
+                        <ComboboxItem
+                          key={id}
+                          value={id}
+                          disabled={
+                            !zones.find((zone) => zone.id === id)?.eligible
+                          }
+                        >
+                          {zoneLabel(id)}
+                        </ComboboxItem>
+                      )}
+                    </ComboboxList>
+                  </ComboboxContent>
+                </Combobox>
+                {truncated && (
+                  <FieldDescription>
+                    Only the first domains are shown. Restrict the token to the
+                    domains you need.
+                  </FieldDescription>
                 )}
-              </Combobox.List>
-            </Combobox.Content>
-          </Combobox>
-        ) : (
-          <Text variant="secondary" size="sm">
-            {listed
-              ? "The token can’t see any domains. Give it Zone → Read and DNS → Edit on your domain."
-              : "Paste the token, then load the domains it can manage."}
-          </Text>
-        )}
-        <div className="flex">
-          <Button
-            type="button"
-            size="sm"
-            loading={listZones.isPending}
-            onClick={() => listZones.mutate()}
+                <FieldError>{errors.zones}</FieldError>
+              </Field>
+            ) : (
+              <FieldDescription>
+                {listed
+                  ? "The token can’t see any domains. Give it Zone → Read and DNS → Edit on your domain."
+                  : "Paste the token, then load the domains it can manage."}
+              </FieldDescription>
+            )}
+            <div className="flex">
+              <PendingButton
+                type="button"
+                size="sm"
+                variant="outline"
+                pending={listZones.isPending}
+                onClick={() => listZones.mutate()}
+              >
+                {listed ? "Reload domains" : "Load domains"}
+              </PendingButton>
+            </div>
+          </FieldGroup>
+        </FieldSet>
+        <div className="flex flex-wrap gap-2">
+          <PendingButton
+            type="submit"
+            pending={save.isPending}
+            disabled={blocked || !selected.length}
           >
-            {listed ? "Reload domains" : "Load domains"}
-          </Button>
+            {integration.configured ? "Save connection" : "Connect Cloudflare"}
+          </PendingButton>
+          {onDone && (
+            <Button
+              type="button"
+              variant="ghost"
+              disabled={pending}
+              onClick={() => {
+                clearToken();
+                onDone();
+              }}
+            >
+              Cancel
+            </Button>
+          )}
         </div>
-      </fieldset>
-      <div className="flex flex-wrap gap-2">
-        <Button
-          type="submit"
-          variant="primary"
-          loading={save.isPending}
-          disabled={blocked || !selected.length}
-        >
-          {integration.configured ? "Save connection" : "Connect Cloudflare"}
-        </Button>
-        {onDone && (
-          <Button
-            type="button"
-            variant="ghost"
-            disabled={pending}
-            onClick={() => {
-              clearToken();
-              onDone();
-            }}
-          >
-            Cancel
-          </Button>
-        )}
-      </div>
+      </FieldGroup>
     </form>
   );
 }

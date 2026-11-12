@@ -1,20 +1,33 @@
-import {
-  Badge,
-  Banner,
-  Button,
-  Empty,
-  LayerCard,
-  Link,
-  RefreshButton,
-  Text,
-} from "@cloudflare/kumo";
-import { CloudIcon, WarningIcon } from "@phosphor-icons/react";
 import { useMutation, useSuspenseQuery } from "@tanstack/react-query";
+import {
+  CloudIcon,
+  ExternalLinkIcon,
+  RefreshCwIcon,
+  TriangleAlertIcon,
+} from "lucide-react";
 import { useState } from "react";
+
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyTitle,
+} from "@/components/ui/empty";
 
 import { cloudflareIntegrationQuery } from "./api";
 import { CloudflareForm } from "./cloudflare-form";
-import { Detail, Details, Id, ObservedTime } from "./components";
+import { Detail, Details, Id, ObservedTime, StatusBadge } from "./components";
 
 export function CloudflareConnection() {
   const { data, error, refetch } = useSuspenseQuery(
@@ -26,40 +39,51 @@ export function CloudflareConnection() {
   const configured = !!integration?.configured;
 
   return (
-    <LayerCard id="cloudflare">
-      <LayerCard.Secondary className="flex items-center justify-between gap-2">
-        <span className="flex items-center gap-2">
-          <CloudIcon size={18} aria-hidden="true" />
+    <Card id="cloudflare">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <CloudIcon className="size-4" aria-hidden="true" />
           Cloudflare
           {configured ? (
-            <Badge variant="success">Connected</Badge>
+            <StatusBadge tone="success">Connected</StatusBadge>
           ) : (
-            <Badge variant="neutral">Not connected</Badge>
+            <StatusBadge tone="neutral">Not connected</StatusBadge>
           )}
-        </span>
-        <RefreshButton
-          aria-label="Refresh Cloudflare status"
-          loading={refresh.isPending}
-          onClick={() => refresh.mutate()}
-        />
-      </LayerCard.Secondary>
-      <LayerCard.Primary className="flex flex-col gap-4">
-        <Text variant="secondary">
+        </CardTitle>
+        <CardDescription>
           Publishes your domains through a Cloudflare Tunnel.
-        </Text>
+        </CardDescription>
+        <CardAction>
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            aria-label="Refresh Cloudflare status"
+            disabled={refresh.isPending}
+            onClick={() => refresh.mutate()}
+          >
+            <RefreshCwIcon
+              className={refresh.isPending ? "animate-spin" : undefined}
+            />
+          </Button>
+        </CardAction>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-4">
         {!integration ? (
-          <Empty
-            title="Connection details unavailable"
-            description="Refresh to try again."
-          />
+          <Empty>
+            <EmptyHeader>
+              <EmptyTitle>Connection details unavailable</EmptyTitle>
+              <EmptyDescription>Refresh to try again.</EmptyDescription>
+            </EmptyHeader>
+          </Empty>
         ) : (
           <>
             {error && (
-              <Banner
-                variant="alert"
-                icon={<WarningIcon weight="fill" />}
-                description="Couldn’t refresh the connection. Details may be out of date."
-              />
+              <Alert>
+                <TriangleAlertIcon />
+                <AlertDescription>
+                  Couldn’t refresh the connection. Details may be out of date.
+                </AlertDescription>
+              </Alert>
             )}
             {configured && (
               <Details>
@@ -78,7 +102,7 @@ export function CloudflareConnection() {
                 <Detail label="Token">
                   <span className="flex flex-wrap items-center gap-2">
                     <Id value={integration.tokenId} short />
-                    <Text as="span" variant="secondary" size="sm">
+                    <span className="text-muted-foreground">
                       {integration.expiresAt ? (
                         <ObservedTime
                           value={integration.expiresAt}
@@ -87,7 +111,7 @@ export function CloudflareConnection() {
                       ) : (
                         "No expiry"
                       )}
-                    </Text>
+                    </span>
                   </span>
                 </Detail>
                 <Detail label="Last verified">
@@ -97,27 +121,28 @@ export function CloudflareConnection() {
             )}
             {configured && !editing ? (
               <div className="flex gap-2">
-                <Button onClick={() => setEditing(true)}>
+                <Button variant="outline" onClick={() => setEditing(true)}>
                   Replace token or domains
                 </Button>
               </div>
             ) : (
               <>
-                <Text variant="secondary" size="sm">
+                <p className="text-sm text-muted-foreground">
                   Create an <strong>account API token</strong> (Manage Account →
                   Account API Tokens) with{" "}
                   <em>Cloudflare One Connector: cloudflared → Edit</em> on the
                   account, and <em>Zone → Read</em> plus <em>DNS → Edit</em> on
                   your domain.{" "}
-                  <Link
+                  <a
                     href="https://developers.cloudflare.com/fundamentals/api/get-started/account-owned-tokens/"
                     target="_blank"
                     rel="noreferrer"
+                    className="inline-flex items-center gap-1 text-foreground underline underline-offset-4"
                   >
                     Guide
-                    <Link.ExternalIcon />
-                  </Link>
-                </Text>
+                    <ExternalLinkIcon className="size-3" aria-hidden="true" />
+                  </a>
+                </p>
                 <CloudflareForm
                   integration={integration}
                   metadataError={!!error}
@@ -127,7 +152,7 @@ export function CloudflareConnection() {
             )}
           </>
         )}
-      </LayerCard.Primary>
-    </LayerCard>
+      </CardContent>
+    </Card>
   );
 }

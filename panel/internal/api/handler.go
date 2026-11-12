@@ -92,7 +92,8 @@ func New(database *sql.DB, authentication *auth.Service, origin string, metadata
 	routing.Handle("/", frontend)
 	secured := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("X-Content-Type-Options", "nosniff")
-		w.Header().Set("Content-Security-Policy", "default-src 'self'; script-src 'self' "+webassets.ThemeScriptHash+"; frame-ancestors 'none'; base-uri 'none'; form-action 'self' https://github.com")
+		// sonner (toasts) injects its stylesheet at runtime; inline styles cannot run script.
+		w.Header().Set("Content-Security-Policy", "default-src 'self'; script-src 'self' "+webassets.ThemeScriptHash+"; style-src 'self' 'unsafe-inline'; frame-ancestors 'none'; base-uri 'none'; form-action 'self' https://github.com")
 		w.Header().Set("Strict-Transport-Security", "max-age=31536000")
 		w.Header().Set("Cache-Control", "no-store")
 		r.Body = http.MaxBytesReader(w, r.Body, maxRPCBytes)

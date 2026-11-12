@@ -5,19 +5,17 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Panel</title>
     <script>
-      // kumo themes from data-mode; set it before first paint to follow the system.
+      // Follow the system theme from first paint; shadcn's dark styles key off the .dark class.
       {
         const dark = matchMedia("(prefers-color-scheme: dark)");
         const apply = () =>
-          (document.documentElement.dataset.mode = dark.matches
-            ? "dark"
-            : "light");
+          document.documentElement.classList.toggle("dark", dark.matches);
         apply();
         dark.addEventListener("change", apply);
       }
     </script>
   </head>
-  <body class="bg-kumo-base text-kumo-default">
+  <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

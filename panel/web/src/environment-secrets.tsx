@@ -1,20 +1,39 @@
-import {
-  Banner,
-  Button,
-  Checkbox,
-  Empty,
-  Input,
-  LayerCard,
-  SensitiveInput,
-  Text,
-  useKumoToastManager,
-} from "@cloudflare/kumo";
-import { KeyIcon, PlusIcon, TrashIcon } from "@phosphor-icons/react";
 import { Code, ConnectError } from "@connectrpc/connect";
 import { useMutation, useSuspenseQuery } from "@tanstack/react-query";
 import { getRouteApi } from "@tanstack/react-router";
-import { useRef, useState } from "react";
+import { Fragment, useRef, useState } from "react";
 import type { FormEvent } from "react";
+import { KeyRoundIcon, PlusIcon, Trash2Icon } from "lucide-react";
+import { toast } from "sonner";
+
+import { Alert, AlertAction, AlertTitle } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@/components/ui/empty";
+import { Field, FieldLabel } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
+import {
+  Item,
+  ItemActions,
+  ItemContent,
+  ItemGroup,
+  ItemSeparator,
+  ItemTitle,
+} from "@/components/ui/item";
 
 import type { Environment, SecretValue } from "../../gen/ts/panel/v1/panel_pb";
 import {
@@ -25,7 +44,12 @@ import {
   queryClient,
   refreshEnvironment,
 } from "./api";
-import { ButtonLink, EnvironmentStatus, Page } from "./components";
+import {
+  ButtonLink,
+  EnvironmentStatus,
+  Page,
+  PendingButton,
+} from "./components";
 import { secretChangeProblem } from "./secret-changes";
 import { useSessionExpiry } from "./use-session-expiry";
 
@@ -43,14 +67,16 @@ export function EnvironmentSecrets({ id }: { id: string }) {
   if (!environment?.settings)
     return (
       <Page title="Environment not found">
-        <Empty
-          title="Environment not found"
-          contents={
+        <Empty>
+          <EmptyHeader>
+            <EmptyTitle>Environment not found</EmptyTitle>
+          </EmptyHeader>
+          <EmptyContent>
             <ButtonLink to="/projects" search={{ cursor: "" }}>
               Back to projects
             </ButtonLink>
-          }
-        />
+          </EmptyContent>
+        </Empty>
       </Page>
     );
   return (
@@ -58,7 +84,14 @@ export function EnvironmentSecrets({ id }: { id: string }) {
       title="Secrets"
       description="Environment variables your services read. Values are encrypted and never shown again."
       crumbs={[
-        { label: environment.settings.name, href: `/environments/${id}` },
+        {
+          label: environment.settings.name,
+          link: {
+            to: "/environments/$environmentId",
+            params: { environmentId: id },
+            search: { services: "", releases: "" },
+          },
+        },
       ]}
       actions={<EnvironmentStatus environment={environment} />}
     >
@@ -85,11 +118,11 @@ function SecretForm({
   const [base, setBase] = useState(environment);
   const [rows, setRows] = useState<string[]>([]);
   const [removals, setRemovals] = useState<string[]>([]);
-  // Bumping this remounts every value input, which drops its typed value.
+  // Value inputs stay uncontrolled so plaintext never enters React state;
+  // bumping this remounts them, which drops what was typed.
   const [valueEpoch, setValueEpoch] = useState(0);
   const [needsRefresh, setNeedsRefresh] = useState(false);
-  const toast = useKumoToastManager();
-  const fail = (title: string) => toast.add({ title, variant: "error" });
+  const fail = (title: string) => toast.error(title);
   const refreshing = useMutation({ mutationFn: refresh });
   const saving = useMutation({ mutationFn: save });
   const pending = refreshing.isPending || saving.isPending;
@@ -141,10 +174,7 @@ function SecretForm({
         for (const item of upserts) item.value = "";
       }
       if (!result.environment) throw new Error("Missing saved environment");
-      toast.add({
-        title: "Saved. Deploy to apply the new values.",
-        variant: "success",
-      });
+      toast.success("Saved. Deploy to apply the new values.");
       setNeedsRefresh(true);
       try {
         await queryClient.invalidateQueries({
@@ -212,26 +242,24 @@ function SecretForm({
   return (
     <>
       {stale && (
-        <Banner
-          variant="alert"
-          title="Secrets changed since you opened this page."
-          action={
-            <Button
+        <Alert>
+          <AlertTitle>Secrets changed since you opened this page.</AlertTitle>
+          <AlertAction>
+            <PendingButton
               size="sm"
-              loading={refreshing.isPending}
+              pending={refreshing.isPending}
               disabled={pending}
               onClick={() => refreshing.mutate()}
             >
               Load latest
-            </Button>
-          }
-        />
+            </PendingButton>
+          </AlertAction>
+        </Alert>
       )}
       {metadataError && (
-        <Banner
-          variant="alert"
-          title="Couldn’t refresh. Reload before saving."
-        />
+        <Alert>
+          <AlertTitle>Couldn’t refresh. Reload before saving.</AlertTitle>
+        </Alert>
       )}
       <form
         ref={form}
@@ -241,55 +269,74 @@ function SecretForm({
         aria-busy={pending}
       >
         <fieldset disabled={blocked} className="flex flex-col gap-6">
-          <LayerCard>
-            <LayerCard.Secondary>Saved secrets</LayerCard.Secondary>
-            <LayerCard.Primary className="flex flex-col gap-3">
-              {base.secretNames.length ? (
-                <>
-                  <Text variant="secondary">
-                    To change a value, add it again below with the same name.
-                  </Text>
-                  <ul className="flex flex-col divide-y divide-kumo-line">
-                    {base.secretNames.map((name) => (
-                      <li
-                        key={name}
-                        className="flex items-center justify-between gap-4 py-2"
-                      >
-                        <Text variant="mono">{name}</Text>
-                        <Checkbox
-                          label="Remove"
-                          aria-label={`Remove ${name}`}
-                          disabled={blocked}
-                          checked={removals.includes(name)}
-                          onCheckedChange={(checked) =>
-                            setRemovals(
-                              checked
-                                ? [...removals, name]
-                                : removals.filter((entry) => entry !== name),
-                            )
-                          }
-                        />
-                      </li>
-                    ))}
-                  </ul>
-                </>
-              ) : (
-                <Empty
-                  size="sm"
-                  icon={<KeyIcon size={32} />}
-                  title="No secrets yet"
-                  description="Add the values your Compose file expects below."
-                />
+          <Card>
+            <CardHeader>
+              <CardTitle>Saved secrets</CardTitle>
+              {base.secretNames.length > 0 && (
+                <CardDescription>
+                  To change a value, add it again below with the same name.
+                </CardDescription>
               )}
-            </LayerCard.Primary>
-          </LayerCard>
-          <LayerCard>
-            <LayerCard.Secondary>Add or replace</LayerCard.Secondary>
-            <LayerCard.Primary className="flex flex-col gap-4">
-              <Text variant="secondary">
+            </CardHeader>
+            <CardContent>
+              {base.secretNames.length ? (
+                <ItemGroup>
+                  {base.secretNames.map((name, index) => (
+                    <Fragment key={name}>
+                      {index > 0 && <ItemSeparator />}
+                      <Item size="sm">
+                        <ItemContent>
+                          <ItemTitle className="font-mono">{name}</ItemTitle>
+                        </ItemContent>
+                        <ItemActions>
+                          <Field orientation="horizontal">
+                            <Checkbox
+                              id={`remove-${name}`}
+                              disabled={blocked}
+                              checked={removals.includes(name)}
+                              onCheckedChange={(checked) =>
+                                setRemovals(
+                                  checked
+                                    ? [...removals, name]
+                                    : removals.filter(
+                                        (entry) => entry !== name,
+                                      ),
+                                )
+                              }
+                            />
+                            <FieldLabel htmlFor={`remove-${name}`}>
+                              <span className="sr-only">{name}: </span>Remove
+                            </FieldLabel>
+                          </Field>
+                        </ItemActions>
+                      </Item>
+                    </Fragment>
+                  ))}
+                </ItemGroup>
+              ) : (
+                <Empty>
+                  <EmptyHeader>
+                    <EmptyMedia variant="icon">
+                      <KeyRoundIcon />
+                    </EmptyMedia>
+                    <EmptyTitle>No secrets yet</EmptyTitle>
+                    <EmptyDescription>
+                      Add the values your Compose file expects below.
+                    </EmptyDescription>
+                  </EmptyHeader>
+                </Empty>
+              )}
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle>Add or replace</CardTitle>
+              <CardDescription>
                 Values are masked and cleared as soon as you save. An empty
                 value is allowed.
-              </Text>
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="flex flex-col gap-4">
               {rows.map((row, index) => (
                 <div
                   className="flex flex-wrap items-end gap-2"
@@ -297,71 +344,76 @@ function SecretForm({
                   role="group"
                   aria-label={`Secret ${index + 1}`}
                 >
-                  <Input
-                    id={`name-${row}`}
-                    name={`name-${row}`}
-                    label="Name"
-                    className="min-w-40 flex-1 font-mono"
-                    required
-                    maxLength={128}
-                    pattern="[A-Za-z_][A-Za-z0-9_]*"
-                    autoComplete="off"
-                    spellCheck={false}
-                    placeholder="API_TOKEN"
-                  />
-                  <SensitiveInput
-                    key={`${row}:${valueEpoch}`}
-                    id={`value-${row}`}
-                    name={`value-${row}`}
-                    label="Value"
-                    className="min-w-48 flex-2"
-                    disabled={blocked}
-                    maxLength={16384}
-                    spellCheck={false}
-                  />
+                  <Field className="min-w-40 flex-1">
+                    <FieldLabel htmlFor={`name-${row}`}>Name</FieldLabel>
+                    <Input
+                      id={`name-${row}`}
+                      name={`name-${row}`}
+                      className="font-mono"
+                      required
+                      maxLength={128}
+                      pattern="[A-Za-z_][A-Za-z0-9_]*"
+                      autoComplete="off"
+                      spellCheck={false}
+                      placeholder="API_TOKEN"
+                    />
+                  </Field>
+                  <Field className="min-w-48 flex-2">
+                    <FieldLabel htmlFor={`value-${row}`}>Value</FieldLabel>
+                    <Input
+                      key={`${row}:${valueEpoch}`}
+                      id={`value-${row}`}
+                      name={`value-${row}`}
+                      type="password"
+                      autoComplete="new-password"
+                      maxLength={16384}
+                      spellCheck={false}
+                    />
+                  </Field>
                   <Button
                     type="button"
                     variant="ghost"
-                    shape="square"
+                    size="icon"
                     aria-label={`Discard secret ${index + 1}`}
-                    icon={<TrashIcon size={16} />}
                     onClick={() =>
                       setRows(rows.filter((entry) => entry !== row))
                     }
-                  />
+                  >
+                    <Trash2Icon />
+                  </Button>
                 </div>
               ))}
               <div>
                 <Button
                   type="button"
-                  icon={<PlusIcon size={16} />}
+                  variant="outline"
                   disabled={rows.length >= 64}
                   onClick={() => setRows([...rows, crypto.randomUUID()])}
                 >
+                  <PlusIcon data-icon="inline-start" />
                   Add secret
                 </Button>
               </div>
-            </LayerCard.Primary>
-          </LayerCard>
+            </CardContent>
+          </Card>
         </fieldset>
         <div className="flex flex-wrap items-center gap-2">
-          <Button
+          <PendingButton
             type="submit"
-            variant="primary"
-            loading={saving.isPending}
+            pending={saving.isPending}
             disabled={blocked}
           >
             Save secrets
-          </Button>
-          <Button
+          </PendingButton>
+          <PendingButton
             type="button"
             variant="ghost"
-            loading={refreshing.isPending}
+            pending={refreshing.isPending}
             disabled={pending}
             onClick={() => refreshing.mutate()}
           >
             Discard changes
-          </Button>
+          </PendingButton>
         </div>
       </form>
     </>

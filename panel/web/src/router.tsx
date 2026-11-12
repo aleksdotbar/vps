@@ -28,7 +28,13 @@ import {
   sessionQuery,
   unauthenticated,
 } from "./api";
-import { Empty } from "@cloudflare/kumo";
+import {
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyTitle,
+} from "@/components/ui/empty";
 
 import { ButtonLink, ErrorPage } from "./components";
 import { Environment } from "./environment";
@@ -89,17 +95,19 @@ const root = createRootRoute({
   component: Root,
   errorComponent: ErrorPage,
   notFoundComponent: () => (
-    <main className="p-4 md:p-6">
-      <Empty
-        title="Page not found"
-        description="Check the address, or start from your projects."
-        contents={
-          <ButtonLink to="/projects" search={{ cursor: "" }}>
-            Go to projects
-          </ButtonLink>
-        }
-      />
-    </main>
+    <Empty className="min-h-svh">
+      <EmptyHeader>
+        <EmptyTitle>Page not found</EmptyTitle>
+        <EmptyDescription>
+          Check the address, or start from your projects.
+        </EmptyDescription>
+      </EmptyHeader>
+      <EmptyContent>
+        <ButtonLink to="/projects" search={{ cursor: "" }}>
+          Go to projects
+        </ButtonLink>
+      </EmptyContent>
+    </Empty>
   ),
 });
 

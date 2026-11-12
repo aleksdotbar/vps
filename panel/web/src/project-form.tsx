@@ -1,21 +1,26 @@
 import { Code, ConnectError } from "@connectrpc/connect";
-import {
-  Banner,
-  Button,
-  Input,
-  LayerCard,
-  Link,
-  useKumoToastManager,
-} from "@cloudflare/kumo";
-import { InfoIcon } from "@phosphor-icons/react";
 import { useMutation } from "@tanstack/react-query";
-import { useRouter } from "@tanstack/react-router";
+import { Link, useRouter } from "@tanstack/react-router";
+import { InfoIcon } from "lucide-react";
 import { useState } from "react";
 import type { FormEvent } from "react";
+import { toast } from "sonner";
 import { z } from "zod";
+
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
 
 import type { Repository } from "../../gen/ts/panel/v1/panel_pb";
 import { mutationRejected, panel, projectsQuery, queryClient } from "./api";
+import { PendingButton } from "./components";
 import { useSessionExpiry } from "./use-session-expiry";
 import { usePageContinuation } from "./use-page-continuation";
 
@@ -31,8 +36,6 @@ export function ProjectForm({
   const expireSession = useSessionExpiry();
   const [intent, setIntent] =
     useState<Parameters<typeof panel.createProject>[0]>();
-  const toast = useKumoToastManager();
-  const fail = (title: string) => toast.add({ title, variant: "error" });
   const [createdId, setCreatedId] = useState("");
 
   const creation = useMutation({ mutationFn: create });
@@ -63,7 +66,9 @@ export function ProjectForm({
       } catch (navigationError) {
         if (!isCurrent()) return;
         if (!(await expireSession(navigationError)) && isCurrent())
-          fail("Project created, but it didn’t open. Use the link below.");
+          toast.error(
+            "Project created, but it didn’t open. Use the link below.",
+          );
       }
     } catch (createError) {
       if (!isCurrent()) return;
@@ -72,14 +77,14 @@ export function ProjectForm({
       if (mutationRejected(createError)) {
         setIntent(undefined);
         onLockChange(false);
-        fail(
+        toast.error(
           createError instanceof ConnectError &&
             createError.code === Code.AlreadyExists
             ? "This repository already has a project."
             : "The project couldn’t be created. Check repository access.",
         );
       } else {
-        fail(
+        toast.error(
           "We couldn’t confirm this. Check again — it won’t create a duplicate.",
         );
       }
@@ -103,60 +108,71 @@ export function ProjectForm({
   }
 
   return (
-    <LayerCard>
-      <LayerCard.Secondary>2. Project</LayerCard.Secondary>
-      <LayerCard.Primary>
-        <form
-          className="flex flex-col gap-4"
-          onSubmit={submit}
-          aria-busy={pending}
-        >
-          <Input
-            label="Name"
-            name="name"
-            defaultValue={repository.name}
-            required
-            maxLength={100}
-            readOnly={pending || !!intent || !!createdId}
-          />
-          <Banner
-            icon={<InfoIcon weight="fill" />}
-            title="How builds work"
-            description={
-              <>
-                Your CI pushes one image per service, tagged with the commit
-                SHA. In <code>compose.yaml</code>, reference it as{" "}
-                <code>ghcr.io/owner/name:${"{GIT_SHA}"}</code>. Creating the
-                project doesn’t deploy anything yet.
-              </>
-            }
-          />
-          <div className="flex items-center gap-3">
-            {intent ? (
-              <Button
-                type="button"
-                variant="primary"
-                loading={pending}
-                onClick={() => run(intent)}
-              >
-                Check result
-              </Button>
-            ) : (
-              <Button
-                type="submit"
-                variant="primary"
-                loading={pending}
-                disabled={!!createdId}
-              >
-                Create project
-              </Button>
-            )}
-            {createdId && (
-              <Link href={`/projects/${createdId}`}>Open project</Link>
-            )}
-          </div>
+    <Card>
+      <CardHeader>
+        <CardTitle>Project</CardTitle>
+        <CardDescription>
+          Name it; you can add environments next.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <form onSubmit={submit} aria-busy={pending}>
+          <FieldGroup>
+            <Field>
+              <FieldLabel htmlFor="project-name">Name</FieldLabel>
+              <Input
+                id="project-name"
+                name="name"
+                defaultValue={repository.name}
+                required
+                maxLength={100}
+                readOnly={pending || !!intent || !!createdId}
+              />
+            </Field>
+            <Alert>
+              <InfoIcon />
+              <AlertTitle>How builds work</AlertTitle>
+              <AlertDescription>
+                <p>
+                  Your CI pushes one image per service, tagged with the commit
+                  SHA. In <code>compose.yaml</code>, reference it as{" "}
+                  <code>ghcr.io/owner/name:${"{GIT_SHA}"}</code>. Creating the
+                  project doesn’t deploy anything yet.
+                </p>
+              </AlertDescription>
+            </Alert>
+            <Field orientation="horizontal">
+              {intent ? (
+                <PendingButton
+                  type="button"
+                  pending={pending}
+                  onClick={() => run(intent)}
+                >
+                  Check result
+                </PendingButton>
+              ) : (
+                <PendingButton
+                  type="submit"
+                  pending={pending}
+                  disabled={!!createdId}
+                >
+                  Create project
+                </PendingButton>
+              )}
+              {createdId && (
+                <Link
+                  to="/projects/$projectId"
+                  params={{ projectId: createdId }}
+                  search={{ cursor: "" }}
+                  className="text-sm font-medium underline-offset-4 hover:underline"
+                >
+                  Open project
+                </Link>
+              )}
+            </Field>
+          </FieldGroup>
         </form>
-      </LayerCard.Primary>
-    </LayerCard>
+      </CardContent>
+    </Card>
   );
 }

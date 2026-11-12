@@ -1,25 +1,35 @@
+import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
+import { Link } from "@tanstack/react-router";
 import {
-  Badge,
-  Banner,
-  Empty,
-  LayerCard,
-  Link,
-  Grid,
-  Pagination,
-  Text,
-} from "@cloudflare/kumo";
-import {
-  CheckCircleIcon,
+  CircleCheckIcon,
   CircleIcon,
-  FolderSimpleIcon,
+  FolderIcon,
   GitBranchIcon,
-  GithubLogoIcon,
   GlobeIcon,
   PlusIcon,
-  WarningIcon,
-} from "@phosphor-icons/react";
-import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
-import { Link as RouterLink, useNavigate } from "@tanstack/react-router";
+  TriangleAlertIcon,
+  FolderGit2Icon,
+} from "lucide-react";
+import type { ReactNode } from "react";
+
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import {
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@/components/ui/empty";
 
 import { ServerTunnelPhase } from "../../gen/ts/panel/v1/cloudflare_pb";
 import type {
@@ -37,79 +47,84 @@ import {
 } from "./api";
 import {
   ButtonLink,
+  type Crumb,
   EnvironmentStatus,
   ObservedTime,
-  cardLink,
-  cardTitleLink,
   Page,
+  StatusBadge,
+  CursorPagination,
 } from "./components";
+
+// A clickable card: the title link's hit area stretches over the card, so badges stay outside the link.
+const clickableCard =
+  "relative transition-colors hover:bg-muted/50 has-[a:focus-visible]:ring-3 has-[a:focus-visible]:ring-ring/30";
+const stretchedLink = "after:absolute after:inset-0 focus-visible:outline-none";
+
+function StaleAlert({ children }: { children: ReactNode }) {
+  return (
+    <Alert>
+      <TriangleAlertIcon />
+      <AlertDescription>{children}</AlertDescription>
+    </Alert>
+  );
+}
 
 export function Projects({ cursor }: { cursor: string }) {
   const { data, error } = useSuspenseQuery(projectsQuery(cursor));
-  const navigate = useNavigate({ from: "/projects" });
   return (
     <Page
       title="Projects"
       description="Apps deployed from your GitHub repositories."
       actions={
-        <ButtonLink
-          variant="primary"
-          icon={<PlusIcon />}
-          to="/projects/new"
-          search={{ repository: "" }}
-        >
+        <ButtonLink to="/projects/new" search={{ repository: "" }}>
+          <PlusIcon data-icon="inline-start" />
           New project
         </ButtonLink>
       }
     >
       <SetupChecklist hasProject={data.projects.length > 0 || !!cursor} />
       {error && (
-        <Banner
-          variant="alert"
-          icon={<WarningIcon weight="fill" />}
-          description="Couldn’t refresh projects. Showing the last loaded list."
-        />
+        <StaleAlert>
+          Couldn’t refresh projects. Showing the last loaded list.
+        </StaleAlert>
       )}
       {data.projects.length ? (
-        <Grid variant="3up" gap="base">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {data.projects.map((project) => (
             <ProjectCard key={project.id} project={project} />
           ))}
-        </Grid>
+        </div>
       ) : (
-        <Empty
-          icon={<FolderSimpleIcon size={48} />}
-          title={cursor ? "No more projects" : "No projects yet"}
-          description="A project connects one GitHub repository. Its environments decide which branch deploys where."
-          contents={
-            <ButtonLink
-              variant="primary"
-              to="/projects/new"
-              search={{ repository: "" }}
-            >
+        <Empty className="border">
+          <EmptyHeader>
+            <EmptyMedia variant="icon">
+              <FolderIcon />
+            </EmptyMedia>
+            <EmptyTitle>
+              {cursor ? "No more projects" : "No projects yet"}
+            </EmptyTitle>
+            <EmptyDescription>
+              A project connects one GitHub repository. Its environments decide
+              which branch deploys where.
+            </EmptyDescription>
+          </EmptyHeader>
+          <EmptyContent>
+            <ButtonLink to="/projects/new" search={{ repository: "" }}>
               New project
             </ButtonLink>
-          }
-        />
+          </EmptyContent>
+        </Empty>
       )}
-      {(cursor || data.page?.nextPageToken) && (
-        <Pagination
-          controls="simple"
-          page={cursor ? 2 : 1}
-          hasNextPage={!!data.page?.nextPageToken}
-          // The API cursor can't step back, so Previous returns to the first page.
-          setPage={(page) =>
-            void navigate({
-              search: {
-                cursor:
-                  page > (cursor ? 2 : 1)
-                    ? (data.page?.nextPageToken ?? "")
-                    : "",
-              },
-            })
-          }
-        />
-      )}
+      <CursorPagination
+        previous={
+          cursor ? { to: "/projects", search: { cursor: "" } } : undefined
+        }
+        next={
+          data.page?.nextPageToken
+            ? { to: "/projects", search: { cursor: data.page.nextPageToken } }
+            : undefined
+        }
+      />
     </Page>
   );
 }
@@ -119,53 +134,52 @@ function ProjectCard({ project }: { project: ProjectRecord }) {
   const environments = useQuery(environmentsQuery(project.id)).data
     ?.environments;
   return (
-    <LayerCard className={cardLink}>
-      <LayerCard.Secondary className="flex items-center gap-2">
-        <FolderSimpleIcon size={18} aria-hidden="true" />
-        <Text variant="heading" truncate>
-          <RouterLink
-            className={cardTitleLink}
+    <Card className={clickableCard}>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <FolderIcon className="size-4 text-muted-foreground" />
+          <Link
+            className={stretchedLink}
             to="/projects/$projectId"
             params={{ projectId: project.id }}
             search={{ cursor: "" }}
           >
             {project.name}
-          </RouterLink>
-        </Text>
-      </LayerCard.Secondary>
-      <LayerCard.Primary className="flex-1 flex flex-col gap-2">
-        <Text variant="secondary" size="sm" truncate>
-          <span className="flex items-center gap-1.5">
-            <GithubLogoIcon aria-hidden="true" />
+          </Link>
+        </CardTitle>
+        <CardDescription className="flex items-center gap-1.5">
+          <FolderGit2Icon />
+          <span className="truncate">
             {project.repository
               ? `${project.repository.owner}/${project.repository.name}`
               : "Repository unavailable"}
           </span>
-        </Text>
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-3">
         {!!environments?.length && (
-          <div className="flex flex-wrap gap-1">
+          <div className="flex flex-wrap gap-1.5">
             {environments.map((environment) => (
-              <Badge
+              <StatusBadge
                 key={environment.id}
-                variant={
+                tone={
                   environment.pendingChanges
                     ? "warning"
                     : environment.currentReleaseId
                       ? "success"
                       : "neutral"
                 }
-                appearance="dot"
               >
                 {environment.settings?.name ?? "Environment"}
-              </Badge>
+              </StatusBadge>
             ))}
           </div>
         )}
-        <Text variant="secondary" size="sm">
+        <span className="text-muted-foreground">
           <ObservedTime value={project.createdAt} prefix="Created" />
-        </Text>
-      </LayerCard.Primary>
-    </LayerCard>
+        </span>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -179,38 +193,36 @@ function EnvironmentCard({
   const settings = environment.settings;
   const domains = settings?.domains ?? [];
   return (
-    <LayerCard className={cardLink}>
-      <LayerCard.Secondary className="flex items-center justify-between gap-2">
-        <Text variant="heading" truncate>
-          <RouterLink
-            className={cardTitleLink}
+    <Card className={clickableCard}>
+      <CardHeader>
+        <CardTitle className="truncate">
+          <Link
+            className={stretchedLink}
             to="/environments/$environmentId"
             params={{ environmentId: environment.id }}
             search={{ services: "", releases: "" }}
           >
             {settings?.name ?? "Environment"}
-          </RouterLink>
-        </Text>
-        <EnvironmentStatus environment={environment} />
-      </LayerCard.Secondary>
-      <LayerCard.Primary className="flex-1 flex flex-col gap-2">
-        <Text variant="secondary" size="sm" truncate>
-          <span className="flex items-center gap-1.5">
-            <GitBranchIcon aria-hidden="true" />
-            {settings?.branch} · {serverName}
-            {settings?.autoDeploy && " · Auto-deploy"}
-          </span>
-        </Text>
-        <Text variant="secondary" size="sm" truncate>
-          <span className="flex items-center gap-1.5">
-            <GlobeIcon aria-hidden="true" />
-            {domains[0]
-              ? `${domains[0].hostname}${domains.length > 1 ? ` +${domains.length - 1}` : ""}`
-              : "No domain"}
-          </span>
-        </Text>
-      </LayerCard.Primary>
-    </LayerCard>
+          </Link>
+        </CardTitle>
+        <CardAction>
+          <EnvironmentStatus environment={environment} />
+        </CardAction>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-2 text-muted-foreground">
+        <span className="flex items-center gap-1.5 truncate">
+          <GitBranchIcon className="size-4 shrink-0" />
+          {settings?.branch} · {serverName}
+          {settings?.autoDeploy && " · Auto-deploy"}
+        </span>
+        <span className="flex items-center gap-1.5 truncate">
+          <GlobeIcon className="size-4 shrink-0" />
+          {domains[0]
+            ? `${domains[0].hostname}${domains.length > 1 ? ` +${domains.length - 1}` : ""}`
+            : "No domain"}
+        </span>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -255,6 +267,8 @@ function ChecklistView({
   const panelHost = useSuspenseQuery(serversQuery()).data.servers.find(
     (server) => server.panelHost,
   );
+  const linkClass =
+    "w-fit text-sm font-medium underline-offset-4 hover:underline";
   const steps = [
     {
       done: github.installed,
@@ -262,137 +276,165 @@ function ChecklistView({
       detail: github.registered
         ? "Install the App on your repositories."
         : "Create the GitHub App for this panel.",
-      href: "/settings#github",
-      action: "Open settings",
+      link: (
+        <Link className={linkClass} to="/settings" hash="github">
+          Open settings
+        </Link>
+      ),
     },
     {
       done: !!cloudflare?.configured,
       title: "Connect Cloudflare",
       detail: "Add an account API token and pick your domain.",
-      href: "/settings#cloudflare",
-      action: "Open settings",
+      link: (
+        <Link className={linkClass} to="/settings" hash="cloudflare">
+          Open settings
+        </Link>
+      ),
     },
     {
       done: tunnelReady,
       title: "Create the tunnel",
       detail: "Lets public domains reach this server.",
-      href: panelHost ? `/servers/${panelHost.id}` : "/servers",
-      action: panelHost ? "Open server" : "Open servers",
+      link: panelHost ? (
+        <Link
+          className={linkClass}
+          to="/servers/$serverId"
+          params={{ serverId: panelHost.id }}
+        >
+          Open server
+        </Link>
+      ) : (
+        <Link className={linkClass} to="/servers" search={{ cursor: "" }}>
+          Open servers
+        </Link>
+      ),
     },
     {
       done: hasProject,
       title: "Add a project",
       detail: "Pick a repository whose CI pushes images.",
-      href: "/projects/new",
-      action: "New project",
+      link: (
+        <Link
+          className={linkClass}
+          to="/projects/new"
+          search={{ repository: "" }}
+        >
+          New project
+        </Link>
+      ),
     },
   ];
   const done = steps.filter((step) => step.done).length;
   if (done === steps.length) return null;
   return (
-    <LayerCard>
-      <LayerCard.Secondary className="flex items-center justify-between gap-2">
-        <span>Finish setting up</span>
-        <Badge variant="neutral">
-          {done} of {steps.length} done
-        </Badge>
-      </LayerCard.Secondary>
-      <LayerCard.Primary>
+    <Card>
+      <CardHeader>
+        <CardTitle>Finish setting up</CardTitle>
+        <CardDescription>A few steps before your first deploy.</CardDescription>
+        <CardAction>
+          <Badge variant="secondary">
+            {done} of {steps.length} done
+          </Badge>
+        </CardAction>
+      </CardHeader>
+      <CardContent>
         <ol className="flex flex-col gap-4">
           {steps.map((step) => (
             <li key={step.title} className="flex items-start gap-3">
               {step.done ? (
-                <CheckCircleIcon
-                  size={20}
-                  weight="fill"
-                  className="shrink-0 text-kumo-success"
+                <CircleCheckIcon
+                  className="size-5 shrink-0 text-emerald-500"
                   aria-label="Done"
                 />
               ) : (
                 <CircleIcon
-                  size={20}
-                  className="shrink-0 text-kumo-subtle"
+                  className="size-5 shrink-0 text-muted-foreground"
                   aria-label="To do"
                 />
               )}
               <div className="flex flex-col gap-1">
-                <Text bold>{step.title}</Text>
+                <span className="font-medium">{step.title}</span>
                 {!step.done && (
                   <>
-                    <Text variant="secondary">{step.detail}</Text>
-                    <Link href={step.href}>{step.action}</Link>
+                    <span className="text-muted-foreground">{step.detail}</span>
+                    {step.link}
                   </>
                 )}
               </div>
             </li>
           ))}
         </ol>
-      </LayerCard.Primary>
-    </LayerCard>
+      </CardContent>
+    </Card>
   );
 }
+
+const projectsCrumb: Crumb = {
+  label: "Projects",
+  // Crumb links take untyped search; the route defaults cursor to "".
+  link: { to: "/projects" },
+};
 
 export function Project({ id, cursor }: { id: string; cursor: string }) {
   const project = useSuspenseQuery(projectQuery(id)).data.project;
   const environments = useSuspenseQuery(environmentsQuery(id, cursor));
   const servers = useSuspenseQuery(serversQuery()).data.servers;
-  const navigate = useNavigate({ from: "/projects/$projectId" });
   if (!project)
     return (
-      <Page
-        title="Project not found"
-        crumbs={[{ label: "Projects", href: "/projects" }]}
-      >
-        <Empty
-          title="Project not found"
-          description="It may have been removed."
-          contents={
+      <Page title="Project not found" crumbs={[projectsCrumb]}>
+        <Empty className="border">
+          <EmptyHeader>
+            <EmptyTitle>Project not found</EmptyTitle>
+            <EmptyDescription>It may have been removed.</EmptyDescription>
+          </EmptyHeader>
+          <EmptyContent>
             <ButtonLink to="/projects" search={{ cursor: "" }}>
               Back to projects
             </ButtonLink>
-          }
-        />
+          </EmptyContent>
+        </Empty>
       </Page>
     );
   const serverName = (serverId: string) =>
     servers.find((server) => server.id === serverId)?.name ?? "Server";
+  const repository = project.repository;
 
   return (
     <Page
       title={project.name}
-      crumbs={[{ label: "Projects", href: "/projects" }]}
+      crumbs={[projectsCrumb]}
+      description={
+        repository && (
+          <a
+            href={`https://github.com/${repository.owner}/${repository.name}`}
+            target="_blank"
+            rel="noreferrer"
+            className="flex w-fit items-center gap-1.5 hover:text-foreground"
+          >
+            <FolderGit2Icon />
+            {repository.owner}/{repository.name}
+          </a>
+        )
+      }
       actions={
         <ButtonLink
-          variant="primary"
-          icon={<PlusIcon />}
           to="/projects/$projectId/environments/new"
           params={{ projectId: id }}
           search={{ preset: "staging", servers: "" }}
         >
+          <PlusIcon data-icon="inline-start" />
           New environment
         </ButtonLink>
       }
     >
-      {project.repository && (
-        <Link
-          href={`https://github.com/${project.repository.owner}/${project.repository.name}`}
-          target="_blank"
-          rel="noreferrer"
-          className="flex w-fit items-center gap-1.5 pl-3"
-        >
-          <GithubLogoIcon aria-hidden="true" />
-          {project.repository.owner}/{project.repository.name}
-        </Link>
-      )}
       {environments.error && (
-        <Banner
-          variant="alert"
-          icon={<WarningIcon weight="fill" />}
-          description="Couldn’t refresh environments. Showing the last loaded list."
-        />
+        <StaleAlert>
+          Couldn’t refresh environments. Showing the last loaded list.
+        </StaleAlert>
       )}
       {environments.data.environments.length ? (
-        <Grid variant="3up" gap="base">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {environments.data.environments.map((environment) => (
             <EnvironmentCard
               key={environment.id}
@@ -400,41 +442,47 @@ export function Project({ id, cursor }: { id: string; cursor: string }) {
               serverName={serverName(environment.settings?.serverId ?? "")}
             />
           ))}
-        </Grid>
+        </div>
       ) : (
-        <Empty
-          title="No environments yet"
-          description="An environment deploys one branch to a server, with its own secrets and domains."
-          contents={
+        <Empty className="border">
+          <EmptyHeader>
+            <EmptyTitle>No environments yet</EmptyTitle>
+            <EmptyDescription>
+              An environment deploys one branch to a server, with its own
+              secrets and domains.
+            </EmptyDescription>
+          </EmptyHeader>
+          <EmptyContent>
             <ButtonLink
-              variant="primary"
               to="/projects/$projectId/environments/new"
               params={{ projectId: id }}
               search={{ preset: "production", servers: "" }}
             >
               Add an environment
             </ButtonLink>
-          }
-        />
+          </EmptyContent>
+        </Empty>
       )}
-      {(cursor || environments.data.page?.nextPageToken) && (
-        <Pagination
-          controls="simple"
-          page={cursor ? 2 : 1}
-          hasNextPage={!!environments.data.page?.nextPageToken}
-          // The API cursor can't step back, so Previous returns to the first page.
-          setPage={(page) =>
-            void navigate({
-              search: {
-                cursor:
-                  page > (cursor ? 2 : 1)
-                    ? (environments.data.page?.nextPageToken ?? "")
-                    : "",
-              },
-            })
-          }
-        />
-      )}
+      <CursorPagination
+        previous={
+          cursor
+            ? {
+                to: "/projects/$projectId",
+                params: { projectId: id },
+                search: { cursor: "" },
+              }
+            : undefined
+        }
+        next={
+          environments.data.page?.nextPageToken
+            ? {
+                to: "/projects/$projectId",
+                params: { projectId: id },
+                search: { cursor: environments.data.page.nextPageToken },
+              }
+            : undefined
+        }
+      />
     </Page>
   );
 }

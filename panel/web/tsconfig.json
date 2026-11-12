@@ -15,6 +15,7 @@
     "verbatimModuleSyntax": true,
     "types": ["vite/client", "node"],
     "paths": {
+      "@/*": ["./src/*"],
       "@bufbuild/protobuf": [
         "./node_modules/@bufbuild/protobuf/dist/esm/index.d.ts"
       ],
