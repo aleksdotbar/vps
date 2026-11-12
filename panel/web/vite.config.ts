@@ -1,3 +1,4 @@
+import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 import { readFileSync } from "node:fs";
@@ -17,7 +18,10 @@ function developmentTLS() {
 
 export default defineConfig(({ command }) => ({
   publicDir: false,
-  plugins: [react({ babel: { plugins: ["babel-plugin-react-compiler"] } })],
+  plugins: [
+    react({ babel: { plugins: ["babel-plugin-react-compiler"] } }),
+    tailwindcss(),
+  ],
   resolve: { dedupe: ["react", "react-dom", "@bufbuild/protobuf"] },
   server: {
     host: "127.0.0.1",

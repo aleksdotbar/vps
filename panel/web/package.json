@@ -34,6 +34,7 @@
   "devDependencies": {
     "@babel/core": "7.29.7",
     "@eslint/js": "10.0.1",
+    "@tailwindcss/vite": "4.3.4",
     "@types/babel__core": "7.20.5",
     "@types/babel__traverse": "7.28.0",
     "@types/node": "24.19.2",
@@ -44,6 +45,7 @@
     "eslint": "10.13.0",
     "eslint-plugin-react-hooks": "7.1.1",
     "prettier": "3.9.10",
+    "tailwindcss": "4.3.4",
     "typescript": "6.0.3",
     "typescript-eslint": "8.72.1",
     "vite": "8.3.5"

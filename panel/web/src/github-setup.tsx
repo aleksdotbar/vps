@@ -1,3 +1,14 @@
+import {
+  Banner,
+  Button,
+  Grid,
+  Input,
+  LinkButton,
+  Select,
+  Text,
+} from "@cloudflare/kumo";
+import { InfoIcon } from "@phosphor-icons/react";
+import { useMutation } from "@tanstack/react-query";
 import { useState } from "react";
 import type { FormEvent, ReactNode } from "react";
 
@@ -9,7 +20,6 @@ import {
   queryClient,
 } from "./api";
 import { githubDestination, githubRegistration } from "./github-navigation";
-import { Banner, Button } from "./components";
 import { useSessionExpiry } from "./use-session-expiry";
 
 type Intent =
@@ -35,12 +45,13 @@ export function GitHubSetup({
   const expireSession = useSessionExpiry();
   const [intent, setIntent] = useState<Intent>();
   const [destination, setDestination] = useState<Destination>();
-  const [pending, setPending] = useState(false);
   const [failure, setFailure] = useState("");
+  const [ownerKind, setOwnerKind] = useState("user");
+  const preparation = useMutation({ mutationFn: prepare });
+  const refreshing = useMutation({ mutationFn: refresh });
+  const pending = preparation.isPending || refreshing.isPending;
 
   async function prepare(next: Intent) {
-    if (pending) return;
-    setPending(true);
     setIntent(next);
     setFailure("");
     try {
@@ -72,8 +83,6 @@ export function GitHubSetup({
           "We couldn’t confirm this step. Retry — it won’t create anything twice.",
         );
       }
-    } finally {
-      setPending(false);
     }
   }
 
@@ -81,20 +90,18 @@ export function GitHubSetup({
     event.preventDefault();
     if (pending || intent) return;
     const values = new FormData(event.currentTarget);
-    void prepare({
+    preparation.mutate({
       kind: "registration",
       request: {
         mutation: { requestId: crypto.randomUUID() },
         owner: String(values.get("owner") ?? ""),
-        organization: values.get("kind") === "organization",
+        organization: ownerKind === "organization",
         name: String(values.get("name") ?? ""),
       },
     });
   }
 
   async function refresh() {
-    if (pending) return;
-    setPending(true);
     setFailure("");
     try {
       await queryClient.cancelQueries({
@@ -105,62 +112,57 @@ export function GitHubSetup({
       setDestination(undefined);
     } catch (error) {
       if (!(await expireSession(error))) setFailure(errorMessage(error));
-    } finally {
-      setPending(false);
     }
   }
 
   return (
-    <div className="stack" aria-busy={pending}>
+    <div className="flex flex-col gap-4" aria-busy={pending}>
       {!registered && !destination && (
-        <form className="form" onSubmit={register}>
-          <p className="muted">
+        <form className="flex flex-col gap-4" onSubmit={register}>
+          <Text variant="secondary">
             Create a GitHub App for this panel. GitHub then asks which
             repositories it may read — choose only the ones you deploy.
-          </p>
-          <fieldset className="fields" disabled={pending || !!intent}>
-            <div className="fields-2">
-              <div className="field">
-                <label htmlFor="github-owner-kind">Owner type</label>
-                <select id="github-owner-kind" name="kind">
-                  <option value="user">Personal account</option>
-                  <option value="organization">Organization</option>
-                </select>
-              </div>
-              <div className="field">
-                <label htmlFor="github-owner">GitHub owner</label>
-                <input
-                  id="github-owner"
-                  name="owner"
-                  required
-                  maxLength={100}
-                  pattern={"[A-Za-z0-9][A-Za-z0-9\\-]*"}
-                  autoComplete="off"
-                  placeholder="your-username"
-                />
-              </div>
-            </div>
-            <div className="field">
-              <label htmlFor="github-app-name">App name</label>
-              <input
-                id="github-app-name"
-                name="name"
+          </Text>
+          <fieldset
+            className="flex flex-col gap-4"
+            disabled={pending || !!intent}
+          >
+            <Grid variant="2up" gap="sm">
+              <Select
+                label="Owner type"
+                value={ownerKind}
+                disabled={pending || !!intent}
+                onValueChange={(value) => setOwnerKind(value ?? "user")}
+                items={{
+                  user: "Personal account",
+                  organization: "Organization",
+                }}
+              />
+              <Input
+                label="GitHub owner"
+                name="owner"
                 required
                 maxLength={100}
-                aria-describedby="github-app-name-help"
-                placeholder="your-username-panel"
+                pattern={"[A-Za-z0-9][A-Za-z0-9\\-]*"}
+                autoComplete="off"
+                placeholder="your-username"
               />
-              <p className="help" id="github-app-name-help">
-                Must be unique across GitHub.
-              </p>
-            </div>
+            </Grid>
+            <Input
+              label="App name"
+              name="name"
+              required
+              maxLength={100}
+              description="Must be unique across GitHub."
+              placeholder="your-username-panel"
+            />
           </fieldset>
-          <div className="form-actions">
+          <div>
             <Button
               type="submit"
               variant="primary"
-              pending={pending}
-              disabled={!!intent}
+              loading={preparation.isPending}
+              disabled={!!intent || refreshing.isPending}
             >
               Create GitHub App
             </Button>
@@ -168,12 +170,12 @@ export function GitHubSetup({
         </form>
       )}
       {registered && !destination && !intent && (
-        <div className="form-actions">
+        <div className="flex flex-wrap items-center gap-2">
           <Button
             variant={installed ? "secondary" : "primary"}
-            pending={pending}
+            loading={preparation.isPending}
             onClick={() =>
-              void prepare({
+              preparation.mutate({
                 kind: "installation",
                 request: { mutation: { requestId: crypto.randomUUID() } },
               })
@@ -192,48 +194,54 @@ export function GitHubSetup({
             value={destination.manifestJson}
           />
           <Banner
-            tone="info"
+            icon={<InfoIcon weight="fill" />}
             title="Ready to continue on GitHub"
-            actions={
+            description="GitHub creates the App, then asks where to install it. Continue within 15 minutes."
+            action={
               <Button type="submit" variant="primary">
                 Continue to GitHub
               </Button>
             }
-          >
-            GitHub creates the App, then asks where to install it. Continue
-            within 15 minutes.
-          </Banner>
+          />
         </form>
       )}
       {destination?.kind === "installation" && (
         <Banner
-          tone="info"
+          icon={<InfoIcon weight="fill" />}
           title="Ready to continue on GitHub"
-          actions={
-            <a href={destination.href} rel="noreferrer">
+          description="Choose “Only select repositories” and pick the ones you deploy."
+          action={
+            <LinkButton
+              variant="primary"
+              href={destination.href}
+              rel="noreferrer"
+            >
               Continue to GitHub
-            </a>
+            </LinkButton>
           }
-        >
-          Choose “Only select repositories” and pick the ones you deploy.
-        </Banner>
+        />
       )}
       {failure && (
-        <p className="field-error" role="alert">
+        <Text variant="error" role="alert">
           {failure}
-        </p>
+        </Text>
       )}
       {(intent || destination) && (
-        <div className="form-actions">
+        <div className="flex flex-wrap items-center gap-2">
           {intent && (
-            <Button pending={pending} onClick={() => void prepare(intent)}>
+            <Button
+              loading={preparation.isPending}
+              disabled={refreshing.isPending}
+              onClick={() => preparation.mutate(intent)}
+            >
               Retry
             </Button>
           )}
           <Button
             variant="ghost"
-            disabled={pending}
-            onClick={() => void refresh()}
+            loading={refreshing.isPending}
+            disabled={preparation.isPending}
+            onClick={() => refreshing.mutate()}
           >
             I’m done on GitHub
           </Button>

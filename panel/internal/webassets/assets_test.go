@@ -3,6 +3,8 @@
 package webassets
 
 import (
+	"crypto/sha256"
+	"encoding/base64"
 	"net/http"
 	"net/http/httptest"
 	"regexp"
@@ -36,5 +38,20 @@ func TestReleaseServesRealBundledEntrypointAndRejectsBuildMetadata(t *testing.T)
 	handler.ServeHTTP(response, httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/.vite/manifest.json", nil))
 	if response.Code != http.StatusNotFound {
 		t.Fatalf("build metadata exposed: %d", response.Code)
+	}
+}
+
+func TestReleaseInlineScriptMatchesCSPHash(t *testing.T) {
+	index, err := content.ReadFile("dist/index.html")
+	if err != nil {
+		t.Fatal(err)
+	}
+	scripts := regexp.MustCompile(`(?s)<script>(.*?)</script>`).FindAllSubmatch(index, -1)
+	if len(scripts) != 1 {
+		t.Fatalf("index.html has %d inline scripts, want exactly the theme script", len(scripts))
+	}
+	sum := sha256.Sum256(scripts[0][1])
+	if got := "'sha256-" + base64.StdEncoding.EncodeToString(sum[:]) + "'"; got != ThemeScriptHash {
+		t.Fatalf("theme script hash %s, ThemeScriptHash %s", got, ThemeScriptHash)
 	}
 }

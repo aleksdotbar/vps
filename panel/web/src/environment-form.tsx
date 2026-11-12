@@ -1,7 +1,8 @@
 import { create } from "@bufbuild/protobuf";
 import { Code, ConnectError } from "@connectrpc/connect";
-import { useSuspenseQuery } from "@tanstack/react-query";
-import { Link, useRouter } from "@tanstack/react-router";
+import { Banner, Button, Pagination, Text } from "@cloudflare/kumo";
+import { useMutation, useSuspenseQuery } from "@tanstack/react-query";
+import { Link, useNavigate, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
 import type { FormEvent } from "react";
 import { z } from "zod";
@@ -17,7 +18,6 @@ import {
   serverQuery,
   serversQuery,
 } from "./api";
-import { Banner, Button, ButtonLink } from "./components";
 import { EnvironmentFields } from "./environment-fields";
 import { usePageContinuation } from "./use-page-continuation";
 import { useSessionExpiry } from "./use-session-expiry";
@@ -44,7 +44,7 @@ export function EnvironmentForm({
   onLockChange?: (value: boolean) => void;
 }) {
   const router = useRouter();
-  const { capturePage, isMounted } = usePageContinuation();
+  const { capturePage } = usePageContinuation();
   const expireSession = useSessionExpiry();
   const serverPage = useSuspenseQuery(serversQuery(cursor));
   const [settings, setSettings] = useState(
@@ -59,12 +59,14 @@ export function EnvironmentForm({
   const [baseVersion, setBaseVersion] = useState(environment?.version ?? 0n);
   const [selectedServer, setSelectedServer] = useState(initialServer);
   const [intent, setIntent] = useState<Intent>();
-  const [pending, setPending] = useState(false);
   const [needsRefresh, setNeedsRefresh] = useState(false);
   const [failure, setFailure] = useState("");
   const [notice, setNotice] = useState("");
   const [createdId, setCreatedId] = useState("");
   const stale = !!environment && environment.version !== baseVersion;
+  const refreshing = useMutation({ mutationFn: refresh });
+  const saving = useMutation({ mutationFn: save });
+  const pending = refreshing.isPending || saving.isPending;
   const blocked =
     pending ||
     !!intent ||
@@ -90,9 +92,8 @@ export function EnvironmentForm({
   }
 
   async function refresh() {
-    if (pending || intent || router.state.status === "pending") return;
+    if (intent || router.state.status === "pending") return;
     const isCurrent = capturePage();
-    setPending(true);
     setFailure("");
     setNotice("");
     try {
@@ -103,15 +104,12 @@ export function EnvironmentForm({
       if (!isCurrent()) return;
       if (!(await expireSession(error)) && isCurrent())
         setFailure("Couldn’t reload the settings. Try again.");
-    } finally {
-      if (isMounted()) setPending(false);
     }
   }
 
   async function save(next: Intent) {
-    if (pending || createdId || router.state.status === "pending") return;
+    if (createdId || router.state.status === "pending") return;
     const isCurrent = capturePage();
-    setPending(true);
     onLockChange?.(true);
     setIntent(next);
     setFailure("");
@@ -186,8 +184,6 @@ export function EnvironmentForm({
           "We couldn’t confirm the save. Check again — it won’t apply twice.",
         );
       }
-    } finally {
-      if (isMounted()) setPending(false);
     }
   }
 
@@ -206,7 +202,7 @@ export function EnvironmentForm({
       return;
     }
     const mutation = { requestId: crypto.randomUUID() };
-    void save(
+    saving.mutate(
       environment
         ? {
             kind: "update",
@@ -225,32 +221,44 @@ export function EnvironmentForm({
     <>
       {stale && !intent && (
         <Banner
-          tone="warning"
-          actions={
-            <Button size="sm" pending={pending} onClick={() => void refresh()}>
+          variant="alert"
+          title="These settings changed since you opened this page."
+          action={
+            <Button
+              size="sm"
+              loading={refreshing.isPending}
+              disabled={pending}
+              onClick={() => refreshing.mutate()}
+            >
               Load latest
             </Button>
           }
-        >
-          These settings changed since you opened this page.
-        </Banner>
+        />
       )}
       {serverPage.error && (
-        <Banner tone="warning">
-          Couldn’t load servers. Reload the page before saving.
-        </Banner>
+        <Banner
+          variant="alert"
+          title="Couldn’t load servers. Reload the page before saving."
+        />
       )}
       {!serverPage.data.servers.length && !selectedServer && (
-        <Banner tone="info">
-          No servers are registered yet.{" "}
-          <Link to="/servers" search={{ cursor: "" }}>
-            Open servers
-          </Link>
-        </Banner>
+        <Banner
+          title="No servers are registered yet."
+          action={
+            <Link to="/servers" search={{ cursor: "" }}>
+              Open servers
+            </Link>
+          }
+        />
       )}
-      <form className="form" onSubmit={submit} aria-busy={pending}>
-        <fieldset disabled={blocked} className="stack">
+      <form
+        className="flex flex-col gap-6"
+        onSubmit={submit}
+        aria-busy={pending}
+      >
+        <fieldset disabled={blocked} className="flex flex-col gap-6">
           <EnvironmentFields
+            disabled={blocked}
             settings={settings}
             onChange={setSettings}
             servers={serverPage.data.servers}
@@ -269,76 +277,34 @@ export function EnvironmentForm({
               !intent &&
               !createdId &&
               (cursor || serverPage.data.page?.nextPageToken) ? (
-                <span className="row">
-                  {cursor &&
-                    (environment ? (
-                      <ButtonLink
-                        variant="secondary"
-                        size="sm"
-                        to="/environments/$environmentId/settings"
-                        params={{ environmentId: environment.id }}
-                        search={{ servers: "" }}
-                      >
-                        First servers
-                      </ButtonLink>
-                    ) : (
-                      <ButtonLink
-                        variant="secondary"
-                        size="sm"
-                        to="/projects/$projectId/environments/new"
-                        params={{ projectId }}
-                        search={{ preset, servers: "" }}
-                      >
-                        First servers
-                      </ButtonLink>
-                    ))}
-                  {serverPage.data.page?.nextPageToken &&
-                    (environment ? (
-                      <ButtonLink
-                        variant="secondary"
-                        size="sm"
-                        to="/environments/$environmentId/settings"
-                        params={{ environmentId: environment.id }}
-                        search={{ servers: serverPage.data.page.nextPageToken }}
-                      >
-                        More servers
-                      </ButtonLink>
-                    ) : (
-                      <ButtonLink
-                        variant="secondary"
-                        size="sm"
-                        to="/projects/$projectId/environments/new"
-                        params={{ projectId }}
-                        search={{
-                          preset,
-                          servers: serverPage.data.page.nextPageToken,
-                        }}
-                      >
-                        More servers
-                      </ButtonLink>
-                    ))}
-                </span>
+                <ServerPages
+                  environmentId={environment?.id}
+                  projectId={projectId}
+                  preset={preset}
+                  cursor={cursor}
+                  next={serverPage.data.page?.nextPageToken ?? ""}
+                />
               ) : undefined
             }
           />
         </fieldset>
         {failure && (
-          <p className="field-error" role="alert">
+          <Text variant="error" role="alert">
             {failure}
-          </p>
+          </Text>
         )}
         {notice && (
-          <p className="help" role="status">
+          <Text variant="secondary" role="status">
             {notice}
-          </p>
+          </Text>
         )}
-        <div className="form-actions">
+        <div className="flex flex-wrap items-center gap-2">
           {intent ? (
             <Button
               type="button"
               variant="primary"
-              pending={pending}
-              onClick={() => void save(intent)}
+              loading={saving.isPending}
+              onClick={() => saving.mutate(intent)}
             >
               Check save
             </Button>
@@ -346,8 +312,8 @@ export function EnvironmentForm({
             <Button
               type="submit"
               variant="primary"
-              pending={pending}
-              disabled={blocked && !pending}
+              loading={saving.isPending}
+              disabled={blocked}
             >
               {environment ? "Save changes" : "Create environment"}
             </Button>
@@ -356,8 +322,9 @@ export function EnvironmentForm({
             <Button
               type="button"
               variant="ghost"
+              loading={refreshing.isPending}
               disabled={pending || !!intent}
-              onClick={() => void refresh()}
+              onClick={() => refreshing.mutate()}
             >
               Discard changes
             </Button>
@@ -374,5 +341,43 @@ export function EnvironmentForm({
         </div>
       </form>
     </>
+  );
+}
+
+function ServerPages({
+  environmentId,
+  projectId,
+  preset,
+  cursor,
+  next,
+}: {
+  environmentId?: string;
+  projectId: string;
+  preset: "staging" | "production";
+  cursor: string;
+  next: string;
+}) {
+  const navigate = useNavigate();
+  return (
+    <Pagination
+      controls="simple"
+      page={cursor ? 2 : 1}
+      hasNextPage={!!next}
+      setPage={(page) => {
+        // Cursor paging can't step back, so Previous returns to the first page.
+        const servers = page > (cursor ? 2 : 1) ? next : "";
+        void (environmentId
+          ? navigate({
+              to: "/environments/$environmentId/settings",
+              params: { environmentId },
+              search: { servers },
+            })
+          : navigate({
+              to: "/projects/$projectId/environments/new",
+              params: { projectId },
+              search: { preset, servers },
+            }));
+      }}
+    />
   );
 }

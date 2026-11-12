@@ -1,22 +1,23 @@
 <!doctype html>
-<html lang="en" data-theme="kumo">
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="color-scheme" content="light dark" />
-    <meta
-      name="theme-color"
-      content="#f6f6f7"
-      media="(prefers-color-scheme: light)"
-    />
-    <meta
-      name="theme-color"
-      content="#0c0c0e"
-      media="(prefers-color-scheme: dark)"
-    />
     <title>Panel</title>
+    <script>
+      // kumo themes from data-mode; set it before first paint to follow the system.
+      {
+        const dark = matchMedia("(prefers-color-scheme: dark)");
+        const apply = () =>
+          (document.documentElement.dataset.mode = dark.matches
+            ? "dark"
+            : "light");
+        apply();
+        dark.addEventListener("change", apply);
+      }
+    </script>
   </head>
-  <body>
+  <body class="bg-kumo-base text-kumo-default">
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

@@ -3,7 +3,6 @@ import {
   createRoute,
   createRouter,
   lazyRouteComponent,
-  Link,
   Outlet,
   redirect,
 } from "@tanstack/react-router";
@@ -29,12 +28,14 @@ import {
   sessionQuery,
   unauthenticated,
 } from "./api";
-import { Card, Empty, ErrorPage, InitialLoading } from "./components";
+import { Empty } from "@cloudflare/kumo";
+
+import { ButtonLink, ErrorPage } from "./components";
 import { Environment } from "./environment";
 import { Project, Projects } from "./projects";
 import { Server, Servers } from "./servers";
 import { Login } from "./session";
-import { NavigationProgress, Shell } from "./shell";
+import { NavigationProgress, RouteEffects, Shell } from "./shell";
 
 const cursor = z.string().max(512).catch("");
 const pageSearch = z.object({ cursor: cursor.default("") });
@@ -77,6 +78,7 @@ async function required<T>(value: Promise<T>): Promise<T> {
 function Root() {
   return (
     <>
+      <RouteEffects />
       <NavigationProgress />
       <Outlet />
     </>
@@ -87,19 +89,16 @@ const root = createRootRoute({
   component: Root,
   errorComponent: ErrorPage,
   notFoundComponent: () => (
-    <main className="standalone">
-      <Card>
-        <Empty
-          title="Page not found"
-          actions={
-            <Link to="/projects" search={{ cursor: "" }}>
-              Go to projects
-            </Link>
-          }
-        >
-          Check the address, or start from your projects.
-        </Empty>
-      </Card>
+    <main className="p-4 md:p-6">
+      <Empty
+        title="Page not found"
+        description="Check the address, or start from your projects."
+        contents={
+          <ButtonLink to="/projects" search={{ cursor: "" }}>
+            Go to projects
+          </ButtonLink>
+        }
+      />
     </main>
   ),
 });
@@ -458,8 +457,8 @@ export const router = createRouter({
       repositorySelection,
     ]),
   ]),
+  // Keep the current page while the next one loads; NavigationProgress shows the wait.
   defaultPendingMs: Infinity,
-  defaultPendingComponent: InitialLoading,
   defaultPreload: false,
   defaultPreloadStaleTime: 0,
   scrollRestoration: true,

@@ -1,6 +1,17 @@
+import {
+  Banner,
+  Button,
+  Combobox,
+  Grid,
+  Input,
+  SensitiveInput,
+  Text,
+} from "@cloudflare/kumo";
 import { Code, ConnectError } from "@connectrpc/connect";
+import { WarningIcon } from "@phosphor-icons/react";
+import { useMutation } from "@tanstack/react-query";
 import { useRouter } from "@tanstack/react-router";
-import { useRef, useState } from "react";
+import { useState } from "react";
 import type { FormEvent } from "react";
 
 import type {
@@ -13,13 +24,13 @@ import {
   mutationRejected,
   queryClient,
 } from "./api";
-import { Banner, Button, Empty } from "./components";
 import { usePageContinuation } from "./use-page-continuation";
 import { useSessionExpiry } from "./use-session-expiry";
 
 const tokenPattern = /^[A-Za-z0-9._~+/-]+=*$/;
 
 type Zone = { id: string; name: string; eligible: boolean; reason?: string };
+type ZoneItem = { value: string; label: string; disabled: boolean };
 
 function zoneReason(zone: CandidateZone) {
   if (zone.paused) return "paused";
@@ -39,8 +50,9 @@ export function CloudflareForm({
 }) {
   const router = useRouter();
   const expireSession = useSessionExpiry();
-  const { capturePage, isMounted } = usePageContinuation();
-  const form = useRef<HTMLFormElement>(null);
+  const { capturePage } = usePageContinuation();
+  // Held only until the next Cloudflare call, then cleared.
+  const [token, setToken] = useState("");
   const [baseVersion, setBaseVersion] = useState(integration.version);
   const [accountId, setAccountId] = useState(integration.accountId);
   const [zones, setZones] = useState<Zone[]>(() =>
@@ -50,23 +62,14 @@ export function CloudflareForm({
     integration.zones.map((zone) => zone.id),
   );
   const [truncated, setTruncated] = useState(false);
-  const [listing, setListing] = useState(false);
   const [listed, setListed] = useState(integration.zones.length > 0);
-  const [pending, setPending] = useState(false);
   const [needsRefresh, setNeedsRefresh] = useState(false);
   const [failure, setFailure] = useState("");
   const [notice, setNotice] = useState("");
   const stale = integration.version !== baseVersion;
-  const blocked = pending || needsRefresh || stale || metadataError;
-
-  function tokenInput() {
-    const input = form.current?.elements.namedItem("cloudflare-token");
-    return input instanceof HTMLInputElement ? input : undefined;
-  }
 
   function clearToken() {
-    const input = tokenInput();
-    if (input) input.value = "";
+    setToken("");
   }
 
   async function reload(isCurrent: () => boolean) {
@@ -90,314 +93,295 @@ export function CloudflareForm({
     setNeedsRefresh(false);
   }
 
-  async function refresh() {
-    if (pending || router.state.status === "pending") return;
-    const isCurrent = capturePage();
-    clearToken();
-    setPending(true);
-    setFailure("");
-    setNotice("");
-    try {
-      await reload(isCurrent);
-    } catch (error) {
-      if (isCurrent() && !(await expireSession(error)) && isCurrent())
-        setFailure("Couldn’t reload the saved connection. Try again.");
-    } finally {
-      if (isMounted()) setPending(false);
-    }
-  }
-
-  async function findZones() {
-    if (listing || blocked) return;
-    const input = tokenInput();
-    const token = input?.value ?? "";
-    setFailure("");
-    if (!/^[0-9a-f]{32}$/.test(accountId)) {
-      setFailure("Enter the 32-character account ID first.");
-      return;
-    }
-    if (!tokenPattern.test(token) || token.length > 4096) {
-      setFailure("Paste the API token first.");
-      input?.focus();
-      return;
-    }
-    const isCurrent = capturePage();
-    setListing(true);
-    try {
-      // The token is read from the field for this call only; never kept in state.
-      const result = await cloudflare.listCandidateZones({ accountId, token });
-      if (!isCurrent()) return;
-      const next = result.zones.map((zone) => {
-        const reason = zoneReason(zone);
-        return {
-          id: zone.id,
-          name: zone.name,
-          eligible: zone.eligible,
-          reason,
-        };
-      });
-      setZones(next);
-      setTruncated(result.truncated);
-      setListed(true);
-      setSelected((current) => {
-        const kept = current.filter((id) =>
-          next.some((zone) => zone.id === id && zone.eligible),
-        );
-        const eligible = next.filter((zone) => zone.eligible);
-        // A single usable domain is preselected; otherwise the operator chooses.
-        const only = eligible.length === 1 ? eligible[0] : undefined;
-        return kept.length || !only ? kept : [only.id];
-      });
-    } catch (error) {
-      if (!isCurrent() || (await expireSession(error)) || !isCurrent()) return;
-      setFailure(
-        error instanceof ConnectError && error.code === Code.PermissionDenied
-          ? error.rawMessage
-          : "Couldn’t reach Cloudflare. Check the account ID and try again.",
-      );
-    } finally {
-      if (isMounted()) setListing(false);
-    }
-  }
-
-  async function submit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (blocked || router.state.status === "pending") return;
-    const input = event.currentTarget.elements.namedItem("cloudflare-token");
-    if (!(input instanceof HTMLInputElement)) return;
-    const request = {
-      mutation: { requestId: crypto.randomUUID() },
-      expectedVersion: baseVersion,
-      accountId,
-      zoneIds: [...selected],
-      token: input.value,
-    } satisfies Parameters<typeof cloudflare.connectAccount>[0];
-    setFailure("");
-    setNotice("");
-    if (!tokenPattern.test(request.token) || request.token.length > 4096) {
-      request.token = "";
-      setFailure("Paste the API token (a single line).");
-      input.focus();
-      return;
-    }
-    if (!selected.length) {
-      request.token = "";
-      setFailure("Choose at least one domain.");
-      return;
-    }
-    input.value = "";
-    const isCurrent = capturePage();
-    setPending(true);
-    try {
-      let result;
-      try {
-        result = await cloudflare.connectAccount(request);
-      } finally {
-        request.token = "";
-      }
-      if (!result.integration?.configured)
-        throw new Error("Missing saved Cloudflare connection");
-      if (isCurrent()) {
-        setNotice("Cloudflare connected.");
-        setNeedsRefresh(true);
-      }
+  const refresh = useMutation({
+    mutationFn: async () => {
+      const isCurrent = capturePage();
+      clearToken();
+      setFailure("");
+      setNotice("");
       try {
         await reload(isCurrent);
-        if (isCurrent()) onDone?.();
-      } catch (refreshError) {
-        if (isCurrent() && !(await expireSession(refreshError)) && isCurrent())
-          setFailure("Saved, but the page couldn’t reload. Refresh it.");
+      } catch (error) {
+        if (isCurrent() && !(await expireSession(error)) && isCurrent())
+          setFailure("Couldn’t reload the saved connection. Try again.");
       }
-    } catch (error) {
-      if (!isCurrent() || (await expireSession(error)) || !isCurrent()) return;
-      if (error instanceof ConnectError && error.code === Code.Aborted) {
-        setNeedsRefresh(true);
+    },
+  });
+
+  const listZones = useMutation({
+    mutationFn: async () => {
+      setFailure("");
+      if (!/^[0-9a-f]{32}$/.test(accountId)) {
+        setFailure("Enter the 32-character account ID first.");
+        return;
+      }
+      if (!tokenPattern.test(token) || token.length > 4096) {
+        setFailure("Paste the API token first.");
+        return;
+      }
+      const isCurrent = capturePage();
+      try {
+        const result = await cloudflare.listCandidateZones({
+          accountId,
+          token,
+        });
+        if (!isCurrent()) return;
+        const next = result.zones.map((zone) => {
+          const reason = zoneReason(zone);
+          return {
+            id: zone.id,
+            name: zone.name,
+            eligible: zone.eligible,
+            reason,
+          };
+        });
+        setZones(next);
+        setTruncated(result.truncated);
+        setListed(true);
+        setSelected((current) => {
+          const kept = current.filter((id) =>
+            next.some((zone) => zone.id === id && zone.eligible),
+          );
+          const eligible = next.filter((zone) => zone.eligible);
+          // A single usable domain is preselected; otherwise the operator chooses.
+          const only = eligible.length === 1 ? eligible[0] : undefined;
+          return kept.length || !only ? kept : [only.id];
+        });
+      } catch (error) {
+        if (!isCurrent() || (await expireSession(error)) || !isCurrent())
+          return;
         setFailure(
-          "The connection was changed elsewhere. Review it, then paste the token again.",
+          error instanceof ConnectError && error.code === Code.PermissionDenied
+            ? error.rawMessage
+            : "Couldn’t reach Cloudflare. Check the account ID and try again.",
         );
+      }
+    },
+  });
+
+  const save = useMutation({
+    mutationFn: async () => {
+      const request = {
+        mutation: { requestId: crypto.randomUUID() },
+        expectedVersion: baseVersion,
+        accountId,
+        zoneIds: [...selected],
+        token,
+      } satisfies Parameters<typeof cloudflare.connectAccount>[0];
+      setFailure("");
+      setNotice("");
+      if (!tokenPattern.test(request.token) || request.token.length > 4096) {
+        request.token = "";
+        setFailure("Paste the API token (a single line).");
+        return;
+      }
+      if (!selected.length) {
+        request.token = "";
+        setFailure("Choose at least one domain.");
+        return;
+      }
+      clearToken();
+      const isCurrent = capturePage();
+      try {
+        let result;
+        try {
+          result = await cloudflare.connectAccount(request);
+        } finally {
+          request.token = "";
+        }
+        if (!result.integration?.configured)
+          throw new Error("Missing saved Cloudflare connection");
+        if (isCurrent()) {
+          setNotice("Cloudflare connected.");
+          setNeedsRefresh(true);
+        }
         try {
           await reload(isCurrent);
+          if (isCurrent()) onDone?.();
         } catch (refreshError) {
           if (
             isCurrent() &&
             !(await expireSession(refreshError)) &&
             isCurrent()
           )
-            setFailure("The connection changed elsewhere. Reload this page.");
+            setFailure("Saved, but the page couldn’t reload. Refresh it.");
         }
-      } else if (
-        error instanceof ConnectError &&
-        error.code === Code.PermissionDenied
-      ) {
-        // The server returns fixed, actionable Cloudflare guidance here.
-        setFailure(`${error.rawMessage} Then paste the token again.`);
-      } else if (mutationRejected(error)) {
-        setFailure(
-          "Cloudflare refused the connection. Check the token’s permissions and the chosen domains, then paste the token again.",
-        );
-      } else {
-        setNeedsRefresh(true);
-        setFailure(
-          "We couldn’t confirm whether this saved. Reload the connection to check, then paste the token again if needed.",
-        );
-      }
-    } finally {
-      if (isMounted()) {
-        setPending(false);
+      } catch (error) {
+        if (!isCurrent() || (await expireSession(error)) || !isCurrent())
+          return;
+        if (error instanceof ConnectError && error.code === Code.Aborted) {
+          setNeedsRefresh(true);
+          setFailure(
+            "The connection was changed elsewhere. Review it, then paste the token again.",
+          );
+          try {
+            await reload(isCurrent);
+          } catch (refreshError) {
+            if (
+              isCurrent() &&
+              !(await expireSession(refreshError)) &&
+              isCurrent()
+            )
+              setFailure("The connection changed elsewhere. Reload this page.");
+          }
+        } else if (
+          error instanceof ConnectError &&
+          error.code === Code.PermissionDenied
+        ) {
+          // The server returns fixed, actionable Cloudflare guidance here.
+          setFailure(`${error.rawMessage} Then paste the token again.`);
+        } else if (mutationRejected(error)) {
+          setFailure(
+            "Cloudflare refused the connection. Check the token’s permissions and the chosen domains, then paste the token again.",
+          );
+        } else {
+          setNeedsRefresh(true);
+          setFailure(
+            "We couldn’t confirm whether this saved. Reload the connection to check, then paste the token again if needed.",
+          );
+        }
+      } finally {
         if (!isCurrent()) setNeedsRefresh(true);
       }
-    }
+    },
+  });
+
+  const pending = refresh.isPending || save.isPending;
+  const blocked = pending || needsRefresh || stale || metadataError;
+
+  function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (blocked || router.state.status === "pending") return;
+    save.mutate();
   }
+
+  const zoneItems: ZoneItem[] = zones.map((zone) => ({
+    value: zone.id,
+    label: zone.eligible
+      ? zone.name
+      : `${zone.name} — can’t be used (${zone.reason ?? "not eligible"})`,
+    disabled: !zone.eligible,
+  }));
 
   return (
     <form
-      ref={form}
-      className="form"
-      onSubmit={(event) => void submit(event)}
+      className="flex flex-col gap-4"
+      onSubmit={submit}
       aria-busy={pending}
       autoComplete="off"
     >
       {stale && (
         <Banner
-          tone="warning"
-          actions={
-            <Button size="sm" onClick={() => void refresh()} pending={pending}>
+          variant="alert"
+          icon={<WarningIcon weight="fill" />}
+          description="The connection changed since you opened this form."
+          action={
+            <Button
+              size="sm"
+              onClick={() => refresh.mutate()}
+              loading={refresh.isPending}
+            >
               Reload
             </Button>
           }
-        >
-          The connection changed since you opened this form.
-        </Banner>
+        />
       )}
-      <fieldset disabled={blocked} className="fields">
-        <div className="fields-2">
-          <div className="field">
-            <label htmlFor="cloudflare-account">Account ID</label>
-            <input
-              id="cloudflare-account"
-              value={accountId}
-              onChange={(event) => setAccountId(event.target.value.trim())}
-              required
-              minLength={32}
-              maxLength={32}
-              pattern="[0-9a-f]{32}"
-              spellCheck={false}
-              className="mono"
-              aria-describedby="cloudflare-account-help"
+      <fieldset disabled={blocked} className="flex flex-col gap-4">
+        <Grid variant="2up" gap="sm">
+          <Input
+            label="Account ID"
+            description="On your domain’s overview page, under API."
+            value={accountId}
+            onChange={(event) => setAccountId(event.target.value.trim())}
+            required
+            minLength={32}
+            maxLength={32}
+            pattern="[0-9a-f]{32}"
+            spellCheck={false}
+          />
+          <SensitiveInput
+            label="API token"
+            description="Stored encrypted. Never shown again."
+            value={token}
+            onValueChange={setToken}
+            required
+            maxLength={4096}
+            spellCheck={false}
+          />
+        </Grid>
+        {listed && zones.length ? (
+          <Combobox
+            label="Domains"
+            description={
+              truncated
+                ? "Only the first domains are shown. Restrict the token to the domains you need."
+                : undefined
+            }
+            multiple
+            items={zoneItems}
+            value={zoneItems.filter((item) => selected.includes(item.value))}
+            onValueChange={(value) =>
+              setSelected((value as ZoneItem[]).map((item) => item.value))
+            }
+            isItemEqualToValue={(item: ZoneItem, value: ZoneItem) =>
+              item.value === value.value
+            }
+          >
+            <Combobox.TriggerMultipleWithInput
+              placeholder="Choose domains"
+              value={zoneItems.filter((item) => selected.includes(item.value))}
+              renderItem={(item: ZoneItem) => (
+                <Combobox.Chip key={item.value}>{item.label}</Combobox.Chip>
+              )}
             />
-            <p className="help" id="cloudflare-account-help">
-              On your domain’s overview page, under API.
-            </p>
-          </div>
-          <div className="field">
-            <label htmlFor="cloudflare-token">API token</label>
-            <input
-              id="cloudflare-token"
-              name="cloudflare-token"
-              type="password"
-              required
-              maxLength={4096}
-              autoComplete="off"
-              spellCheck={false}
-              aria-describedby="cloudflare-token-help"
-            />
-            <p className="help" id="cloudflare-token-help">
-              Stored encrypted. Never shown again.
-            </p>
-          </div>
-        </div>
-        <div className="field">
-          <span className="label" id="cloudflare-zones-label">
-            Domains
-          </span>
-          {listed ? (
-            zones.length ? (
-              <div
-                className="card"
-                role="group"
-                aria-labelledby="cloudflare-zones-label"
-                style={{ boxShadow: "none" }}
-              >
-                <ul className="list">
-                  {zones.map((zone) => (
-                    <li key={zone.id}>
-                      <label
-                        className="checkbox list-row"
-                        style={{
-                          cursor: zone.eligible ? "pointer" : "default",
-                        }}
-                      >
-                        <input
-                          type="checkbox"
-                          checked={selected.includes(zone.id)}
-                          disabled={!zone.eligible}
-                          onChange={(event) =>
-                            setSelected(
-                              event.target.checked
-                                ? [...selected, zone.id]
-                                : selected.filter((id) => id !== zone.id),
-                            )
-                          }
-                        />
-                        <span className="checkbox-text">
-                          <span>{zone.name}</span>
-                          {!zone.eligible && (
-                            <span className="subtle">
-                              Can’t be used ({zone.reason ?? "not eligible"})
-                            </span>
-                          )}
-                        </span>
-                      </label>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ) : (
-              <div className="card" style={{ boxShadow: "none" }}>
-                <Empty title="No domains found">
-                  The token can’t see any domains. Give it Zone → Read and DNS →
-                  Edit on your domain.
-                </Empty>
-              </div>
-            )
-          ) : (
-            <p className="help">
-              Paste the token, then load the domains it can manage.
-            </p>
-          )}
-          {truncated && (
-            <p className="help">
-              Only the first domains are shown. Restrict the token to the
-              domains you need.
-            </p>
-          )}
-          <div>
-            <Button
-              type="button"
-              size="sm"
-              pending={listing}
-              onClick={() => void findZones()}
-            >
-              {listed ? "Reload domains" : "Load domains"}
-            </Button>
-          </div>
+            <Combobox.Content>
+              <Combobox.Empty />
+              <Combobox.List>
+                {(item: ZoneItem) => (
+                  <Combobox.Item
+                    key={item.value}
+                    value={item}
+                    disabled={item.disabled}
+                  >
+                    {item.label}
+                  </Combobox.Item>
+                )}
+              </Combobox.List>
+            </Combobox.Content>
+          </Combobox>
+        ) : (
+          <Text variant="secondary" size="sm">
+            {listed
+              ? "The token can’t see any domains. Give it Zone → Read and DNS → Edit on your domain."
+              : "Paste the token, then load the domains it can manage."}
+          </Text>
+        )}
+        <div className="flex">
+          <Button
+            type="button"
+            size="sm"
+            loading={listZones.isPending}
+            onClick={() => listZones.mutate()}
+          >
+            {listed ? "Reload domains" : "Load domains"}
+          </Button>
         </div>
       </fieldset>
       {failure && (
-        <p className="field-error" role="alert">
-          {failure}
-        </p>
+        <Text variant="error" size="sm">
+          <span role="alert">{failure}</span>
+        </Text>
       )}
       {notice && (
-        <p className="help" role="status">
-          {notice}
-        </p>
+        <Text variant="secondary" size="sm">
+          <span role="status">{notice}</span>
+        </Text>
       )}
-      <div className="form-actions">
+      <div className="flex flex-wrap gap-2">
         <Button
           type="submit"
           variant="primary"
-          pending={pending}
+          loading={save.isPending}
           disabled={blocked || !selected.length}
         >
           {integration.configured ? "Save connection" : "Connect Cloudflare"}

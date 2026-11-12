@@ -1,15 +1,23 @@
 import {
-  CaretRightIcon,
+  Badge,
+  Banner,
+  Empty,
+  LayerCard,
+  Link,
+  Pagination,
+  Table,
+  Text,
+} from "@cloudflare/kumo";
+import {
+  CheckCircleIcon,
+  CircleIcon,
   FolderSimpleIcon,
-  GitBranchIcon,
   GithubLogoIcon,
-  GlobeIcon,
-  HardDrivesIcon,
-  LightningIcon,
   PlusIcon,
+  WarningIcon,
 } from "@phosphor-icons/react";
 import { useSuspenseQuery } from "@tanstack/react-query";
-import { Link } from "@tanstack/react-router";
+import { useNavigate } from "@tanstack/react-router";
 
 import { ServerTunnelPhase } from "../../gen/ts/panel/v1/cloudflare_pb";
 import {
@@ -22,122 +30,102 @@ import {
   serverTunnelQuery,
 } from "./api";
 import {
-  Banner,
-  Card,
-  Empty,
-  EnvironmentStatus,
   ButtonLink,
+  EnvironmentStatus,
   ObservedTime,
-  PageHeader,
+  Page,
 } from "./components";
 
 export function Projects({ cursor }: { cursor: string }) {
   const { data, error } = useSuspenseQuery(projectsQuery(cursor));
+  const navigate = useNavigate({ from: "/projects" });
   return (
-    <>
-      <PageHeader
-        title="Projects"
-        description="Apps deployed from your GitHub repositories."
-      >
+    <Page
+      title="Projects"
+      description="Apps deployed from your GitHub repositories."
+      actions={
         <ButtonLink
           variant="primary"
+          icon={<PlusIcon />}
           to="/projects/new"
           search={{ repository: "" }}
         >
-          <PlusIcon size={16} aria-hidden="true" />
           New project
         </ButtonLink>
-      </PageHeader>
-      <div className="stack">
-        <SetupChecklist hasProject={data.projects.length > 0 || !!cursor} />
-        {error && (
-          <Banner tone="warning">
-            Couldn’t refresh projects. Showing the last loaded list.
-          </Banner>
-        )}
-        <section className="card" aria-label="Projects">
-          {data.projects.length ? (
-            <ul className="list">
+      }
+    >
+      <SetupChecklist hasProject={data.projects.length > 0 || !!cursor} />
+      {error && (
+        <Banner
+          variant="alert"
+          icon={<WarningIcon weight="fill" />}
+          description="Couldn’t refresh projects. Showing the last loaded list."
+        />
+      )}
+      {data.projects.length ? (
+        <LayerCard className="p-0">
+          <Table>
+            <Table.Header>
+              <Table.Row>
+                <Table.Head>Name</Table.Head>
+                <Table.Head>Repository</Table.Head>
+                <Table.Head>Created</Table.Head>
+              </Table.Row>
+            </Table.Header>
+            <Table.Body>
               {data.projects.map((project) => (
-                <li key={project.id}>
-                  <Link
-                    className="list-row"
-                    to="/projects/$projectId"
-                    params={{ projectId: project.id }}
-                    search={{ cursor: "" }}
-                  >
-                    <span className="empty-icon" style={{ margin: 0 }}>
-                      <FolderSimpleIcon size={18} aria-hidden="true" />
-                    </span>
-                    <span className="list-main">
-                      <span className="list-title">{project.name}</span>
-                      <span className="list-meta">
-                        {project.repository ? (
-                          <span className="row" style={{ gap: "0.25rem" }}>
-                            <GithubLogoIcon size={14} aria-hidden="true" />
-                            {project.repository.owner}/{project.repository.name}
-                          </span>
-                        ) : (
-                          "Repository unavailable"
-                        )}
-                      </span>
-                    </span>
-                    <span className="list-aside">
-                      <ObservedTime
-                        value={project.createdAt}
-                        prefix="Created"
-                      />
-                      <CaretRightIcon className="chevron" size={16} />
-                    </span>
-                  </Link>
-                </li>
+                <Table.Row key={project.id}>
+                  <Table.Cell>
+                    <Link href={`/projects/${project.id}`}>{project.name}</Link>
+                  </Table.Cell>
+                  <Table.Cell>
+                    {project.repository
+                      ? `${project.repository.owner}/${project.repository.name}`
+                      : "Repository unavailable"}
+                  </Table.Cell>
+                  <Table.Cell>
+                    <ObservedTime value={project.createdAt} />
+                  </Table.Cell>
+                </Table.Row>
               ))}
-            </ul>
-          ) : (
-            <Empty
-              icon={<FolderSimpleIcon size={20} />}
-              title={cursor ? "No more projects" : "No projects yet"}
-              actions={
-                <ButtonLink
-                  variant="primary"
-                  to="/projects/new"
-                  search={{ repository: "" }}
-                >
-                  New project
-                </ButtonLink>
-              }
+            </Table.Body>
+          </Table>
+        </LayerCard>
+      ) : (
+        <Empty
+          icon={<FolderSimpleIcon size={48} />}
+          title={cursor ? "No more projects" : "No projects yet"}
+          description="A project connects one GitHub repository. Its environments decide which branch deploys where."
+          contents={
+            <ButtonLink
+              variant="primary"
+              to="/projects/new"
+              search={{ repository: "" }}
             >
-              A project connects one GitHub repository. Its environments decide
-              which branch deploys where.
-            </Empty>
-          )}
-          {(cursor || data.page?.nextPageToken) && (
-            <nav className="pagination" aria-label="Project pages">
-              {cursor && (
-                <ButtonLink
-                  variant="secondary"
-                  size="sm"
-                  to="/projects"
-                  search={{ cursor: "" }}
-                >
-                  Newest
-                </ButtonLink>
-              )}
-              {data.page?.nextPageToken && (
-                <ButtonLink
-                  variant="secondary"
-                  size="sm"
-                  to="/projects"
-                  search={{ cursor: data.page.nextPageToken }}
-                >
-                  Older
-                </ButtonLink>
-              )}
-            </nav>
-          )}
-        </section>
-      </div>
-    </>
+              New project
+            </ButtonLink>
+          }
+        />
+      )}
+      {(cursor || data.page?.nextPageToken) && (
+        <Pagination
+          controls="simple"
+          page={cursor ? 2 : 1}
+          hasNextPage={!!data.page?.nextPageToken}
+          // The API cursor can't step back, so Previous returns to the first page.
+          setPage={(page) =>
+            void navigate({
+              search: {
+                cursor:
+                  page > (cursor ? 2 : 1)
+                    ? (data.page?.nextPageToken ?? "")
+                    : "",
+              },
+            })
+          }
+        />
+      )}
+    </Page>
   );
 }
 
@@ -189,88 +177,73 @@ function ChecklistView({
       detail: github.registered
         ? "Install the App on your repositories."
         : "Create the GitHub App for this panel.",
-      link: (
-        <Link to="/settings" hash="github">
-          Open settings
-        </Link>
-      ),
+      href: "/settings#github",
+      action: "Open settings",
     },
     {
       done: !!cloudflare?.configured,
       title: "Connect Cloudflare",
       detail: "Add an account API token and pick your domain.",
-      link: (
-        <Link to="/settings" hash="cloudflare">
-          Open settings
-        </Link>
-      ),
+      href: "/settings#cloudflare",
+      action: "Open settings",
     },
     {
       done: tunnelReady,
       title: "Create the tunnel",
       detail: "Lets public domains reach this server.",
-      link: panelHost ? (
-        <Link to="/servers/$serverId" params={{ serverId: panelHost.id }}>
-          Open server
-        </Link>
-      ) : (
-        <Link to="/servers" search={{ cursor: "" }}>
-          Open servers
-        </Link>
-      ),
+      href: panelHost ? `/servers/${panelHost.id}` : "/servers",
+      action: panelHost ? "Open server" : "Open servers",
     },
     {
       done: hasProject,
       title: "Add a project",
       detail: "Pick a repository whose CI pushes images.",
-      link: (
-        <Link to="/projects/new" search={{ repository: "" }}>
-          New project
-        </Link>
-      ),
+      href: "/projects/new",
+      action: "New project",
     },
   ];
   const done = steps.filter((step) => step.done).length;
   if (done === steps.length) return null;
   return (
-    <Card
-      title="Finish setting up"
-      description="Complete these steps to deploy your first app."
-      labelledBy="setup-title"
-      actions={
-        <span className="row subtle">
-          <span className="progress" aria-hidden="true">
-            <span style={{ width: `${(done / steps.length) * 100}%` }} />
-          </span>
-          {done} of {steps.length}
-        </span>
-      }
-      flush
-    >
-      <ol className="checklist">
-        {steps.map((step, index) => (
-          <li key={step.title} className={step.done ? "check-done" : undefined}>
-            <span className="check-icon" aria-hidden="true">
-              {step.done ? "✓" : index + 1}
-            </span>
-            <span className="check-text">
-              <strong>
-                {step.title}
-                <span className="visually-hidden">
-                  {step.done ? " (done)" : " (to do)"}
-                </span>
-              </strong>
-              {!step.done && (
-                <>
-                  <span className="subtle">{step.detail}</span>
-                  <span style={{ fontSize: "0.8125rem" }}>{step.link}</span>
-                </>
+    <LayerCard>
+      <LayerCard.Secondary className="flex items-center justify-between gap-2">
+        <span>Finish setting up</span>
+        <Badge variant="neutral">
+          {done} of {steps.length} done
+        </Badge>
+      </LayerCard.Secondary>
+      <LayerCard.Primary>
+        <ol className="flex flex-col gap-4">
+          {steps.map((step) => (
+            <li key={step.title} className="flex items-start gap-3">
+              {step.done ? (
+                <CheckCircleIcon
+                  size={20}
+                  weight="fill"
+                  className="shrink-0 text-kumo-success"
+                  aria-label="Done"
+                />
+              ) : (
+                <CircleIcon
+                  size={20}
+                  className="shrink-0 text-kumo-subtle"
+                  aria-label="To do"
+                />
               )}
-            </span>
-          </li>
-        ))}
-      </ol>
-    </Card>
+              <div className="flex flex-col gap-1">
+                <Text bold>{step.title}</Text>
+                {!step.done && (
+                  <>
+                    <Text variant="secondary">{step.detail}</Text>
+                    <Link href={step.href}>{step.action}</Link>
+                  </>
+                )}
+              </div>
+            </li>
+          ))}
+        </ol>
+      </LayerCard.Primary>
+    </LayerCard>
   );
 }
 
@@ -278,157 +251,144 @@ export function Project({ id, cursor }: { id: string; cursor: string }) {
   const project = useSuspenseQuery(projectQuery(id)).data.project;
   const environments = useSuspenseQuery(environmentsQuery(id, cursor));
   const servers = useSuspenseQuery(serversQuery()).data.servers;
+  const navigate = useNavigate({ from: "/projects/$projectId" });
   if (!project)
     return (
-      <Card>
-        <Empty title="Project not found">
-          It may have been removed.{" "}
-          <Link to="/projects" search={{ cursor: "" }}>
-            Back to projects
-          </Link>
-        </Empty>
-      </Card>
+      <Page
+        title="Project not found"
+        crumbs={[{ label: "Projects", href: "/projects" }]}
+      >
+        <Empty
+          title="Project not found"
+          description="It may have been removed."
+          contents={
+            <ButtonLink to="/projects" search={{ cursor: "" }}>
+              Back to projects
+            </ButtonLink>
+          }
+        />
+      </Page>
     );
   const serverName = (serverId: string) =>
     servers.find((server) => server.id === serverId)?.name ?? "Server";
 
   return (
-    <>
-      <PageHeader
-        breadcrumbs={[
-          <Link key="projects" to="/projects" search={{ cursor: "" }}>
-            Projects
-          </Link>,
-        ]}
-        title={project.name}
-        description={
-          project.repository && (
-            <a
-              className="row"
-              style={{ gap: "0.375rem", color: "inherit" }}
-              href={`https://github.com/${project.repository.owner}/${project.repository.name}`}
-              target="_blank"
-              rel="noreferrer"
-            >
-              <GithubLogoIcon size={16} aria-hidden="true" />
-              {project.repository.owner}/{project.repository.name}
-            </a>
-          )
-        }
-      >
+    <Page
+      title={project.name}
+      crumbs={[{ label: "Projects", href: "/projects" }]}
+      actions={
         <ButtonLink
           variant="primary"
+          icon={<PlusIcon />}
           to="/projects/$projectId/environments/new"
           params={{ projectId: id }}
           search={{ preset: "staging", servers: "" }}
         >
-          <PlusIcon size={16} aria-hidden="true" />
           New environment
         </ButtonLink>
-      </PageHeader>
-      <div className="stack">
-        {environments.error && (
-          <Banner tone="warning">
-            Couldn’t refresh environments. Showing the last loaded list.
-          </Banner>
-        )}
-        <Card title="Environments" labelledBy="environments-title" flush>
-          {environments.data.environments.length ? (
-            <ul className="list">
+      }
+    >
+      {project.repository && (
+        <Link
+          href={`https://github.com/${project.repository.owner}/${project.repository.name}`}
+          target="_blank"
+          rel="noreferrer"
+          className="flex w-fit items-center gap-1.5 pl-3"
+        >
+          <GithubLogoIcon aria-hidden="true" />
+          {project.repository.owner}/{project.repository.name}
+        </Link>
+      )}
+      {environments.error && (
+        <Banner
+          variant="alert"
+          icon={<WarningIcon weight="fill" />}
+          description="Couldn’t refresh environments. Showing the last loaded list."
+        />
+      )}
+      {environments.data.environments.length ? (
+        <LayerCard className="p-0">
+          <Table>
+            <Table.Header>
+              <Table.Row>
+                <Table.Head>Environment</Table.Head>
+                <Table.Head>Status</Table.Head>
+                <Table.Head>Branch</Table.Head>
+                <Table.Head>Server</Table.Head>
+                <Table.Head>Domain</Table.Head>
+              </Table.Row>
+            </Table.Header>
+            <Table.Body>
               {environments.data.environments.map((environment) => {
                 const settings = environment.settings;
                 return (
-                  <li key={environment.id}>
-                    <Link
-                      className="list-row"
-                      to="/environments/$environmentId"
-                      params={{ environmentId: environment.id }}
-                      search={{ services: "", releases: "" }}
-                    >
-                      <span className="list-main">
-                        <span className="list-title">
-                          {settings?.name ?? "Environment"}
-                          <EnvironmentStatus environment={environment} />
-                        </span>
-                        <span className="list-meta">
-                          <span className="row" style={{ gap: "0.25rem" }}>
-                            <GitBranchIcon size={14} aria-hidden="true" />
-                            {settings?.branch}
-                          </span>
-                          <span className="row" style={{ gap: "0.25rem" }}>
-                            <HardDrivesIcon size={14} aria-hidden="true" />
-                            {serverName(settings?.serverId ?? "")}
-                          </span>
-                          {settings?.domains[0] && (
-                            <span className="row" style={{ gap: "0.25rem" }}>
-                              <GlobeIcon size={14} aria-hidden="true" />
-                              {settings.domains[0].hostname}
-                              {settings.domains.length > 1 &&
-                                ` +${settings.domains.length - 1}`}
-                            </span>
-                          )}
-                          {settings?.autoDeploy && (
-                            <span className="row" style={{ gap: "0.25rem" }}>
-                              <LightningIcon size={14} aria-hidden="true" />
-                              Auto-deploy
-                            </span>
-                          )}
-                        </span>
-                      </span>
-                      <span className="list-aside">
-                        <CaretRightIcon className="chevron" size={16} />
-                      </span>
-                    </Link>
-                  </li>
+                  <Table.Row key={environment.id}>
+                    <Table.Cell>
+                      <Link href={`/environments/${environment.id}`}>
+                        {settings?.name ?? "Environment"}
+                      </Link>
+                    </Table.Cell>
+                    <Table.Cell>
+                      <div className="flex flex-wrap gap-1">
+                        <EnvironmentStatus environment={environment} />
+                        {settings?.autoDeploy && (
+                          <Badge variant="outline">Auto-deploy</Badge>
+                        )}
+                      </div>
+                    </Table.Cell>
+                    <Table.Cell>{settings?.branch}</Table.Cell>
+                    <Table.Cell>
+                      {serverName(settings?.serverId ?? "")}
+                    </Table.Cell>
+                    <Table.Cell>
+                      {settings?.domains[0]
+                        ? `${settings.domains[0].hostname}${
+                            settings.domains.length > 1
+                              ? ` +${settings.domains.length - 1}`
+                              : ""
+                          }`
+                        : "—"}
+                    </Table.Cell>
+                  </Table.Row>
                 );
               })}
-            </ul>
-          ) : (
-            <Empty
-              title="No environments yet"
-              actions={
-                <ButtonLink
-                  variant="primary"
-                  to="/projects/$projectId/environments/new"
-                  params={{ projectId: id }}
-                  search={{ preset: "production", servers: "" }}
-                >
-                  Add an environment
-                </ButtonLink>
-              }
+            </Table.Body>
+          </Table>
+        </LayerCard>
+      ) : (
+        <Empty
+          title="No environments yet"
+          description="An environment deploys one branch to a server, with its own secrets and domains."
+          contents={
+            <ButtonLink
+              variant="primary"
+              to="/projects/$projectId/environments/new"
+              params={{ projectId: id }}
+              search={{ preset: "production", servers: "" }}
             >
-              An environment deploys one branch to a server, with its own
-              secrets and domains.
-            </Empty>
-          )}
-          {(cursor || environments.data.page?.nextPageToken) && (
-            <nav className="pagination" aria-label="Environment pages">
-              {cursor && (
-                <ButtonLink
-                  variant="secondary"
-                  size="sm"
-                  to="/projects/$projectId"
-                  params={{ projectId: id }}
-                  search={{ cursor: "" }}
-                >
-                  Newest
-                </ButtonLink>
-              )}
-              {environments.data.page?.nextPageToken && (
-                <ButtonLink
-                  variant="secondary"
-                  size="sm"
-                  to="/projects/$projectId"
-                  params={{ projectId: id }}
-                  search={{ cursor: environments.data.page.nextPageToken }}
-                >
-                  Older
-                </ButtonLink>
-              )}
-            </nav>
-          )}
-        </Card>
-      </div>
-    </>
+              Add an environment
+            </ButtonLink>
+          }
+        />
+      )}
+      {(cursor || environments.data.page?.nextPageToken) && (
+        <Pagination
+          controls="simple"
+          page={cursor ? 2 : 1}
+          hasNextPage={!!environments.data.page?.nextPageToken}
+          // The API cursor can't step back, so Previous returns to the first page.
+          setPage={(page) =>
+            void navigate({
+              search: {
+                cursor:
+                  page > (cursor ? 2 : 1)
+                    ? (environments.data.page?.nextPageToken ?? "")
+                    : "",
+              },
+            })
+          }
+        />
+      )}
+    </Page>
   );
 }

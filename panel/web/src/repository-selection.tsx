@@ -1,5 +1,13 @@
-import { useSuspenseQuery } from "@tanstack/react-query";
-import { Link } from "@tanstack/react-router";
+import {
+  Banner,
+  Button,
+  Checkbox,
+  Empty,
+  LayerCard,
+  Text,
+} from "@cloudflare/kumo";
+import { WarningIcon } from "@phosphor-icons/react";
+import { useMutation, useSuspenseQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import type { FormEvent } from "react";
 
@@ -10,39 +18,32 @@ import {
   queryClient,
   repositoriesQuery,
 } from "./api";
-import { Banner, Button, Card, Empty, PageHeader } from "./components";
+import { ButtonLink, Page } from "./components";
 import { useSessionExpiry } from "./use-session-expiry";
 
 export function RepositorySelection() {
   const integration = useSuspenseQuery(integrationQuery()).data;
   return (
-    <>
-      <PageHeader
-        breadcrumbs={[
-          <Link key="settings" to="/settings">
-            Settings
-          </Link>,
-        ]}
-        title="Repositories"
-        description="Choose which installed repositories the panel may deploy."
-      />
-      <div className="stack" style={{ maxWidth: "40rem" }}>
+    <Page
+      title="Repositories"
+      description="Choose which installed repositories the panel may deploy."
+      crumbs={[{ label: "Settings", href: "/settings" }]}
+    >
+      <div className="flex max-w-2xl flex-col gap-6">
         {integration.installed ? (
           <SelectionForm />
         ) : (
-          <Card>
-            <Empty
-              title="Connect GitHub first"
-              actions={
-                <Link to="/settings" hash="github">
-                  Open settings
-                </Link>
-              }
-            />
-          </Card>
+          <Empty
+            title="Connect GitHub first"
+            contents={
+              <ButtonLink to="/settings" hash="github">
+                Open settings
+              </ButtonLink>
+            }
+          />
         )}
       </div>
-    </>
+    </Page>
   );
 }
 
@@ -52,7 +53,6 @@ function SelectionForm() {
   const expireSession = useSessionExpiry();
   const [intent, setIntent] =
     useState<Parameters<typeof github.selectRepositories>[0]>();
-  const [pending, setPending] = useState(false);
   const [failure, setFailure] = useState("");
   const [notice, setNotice] = useState("");
   const selectedIds = Array.from(
@@ -60,12 +60,16 @@ function SelectionForm() {
     String,
   );
   const selectionKey = `${intent ? "request" : "confirmed"}:${selectedIds.join(",")}`;
+  // Reset the checkboxes whenever the confirmed or requested selection changes.
+  const [chosen, setChosen] = useState({ key: selectionKey, ids: selectedIds });
+  if (chosen.key !== selectionKey)
+    setChosen({ key: selectionKey, ids: selectedIds });
+  const saving = useMutation({ mutationFn: save });
+  const pending = saving.isPending;
 
   async function save(
     request: Parameters<typeof github.selectRepositories>[0],
   ) {
-    if (pending) return;
-    setPending(true);
     setIntent(request);
     setFailure("");
     setNotice("");
@@ -94,102 +98,92 @@ function SelectionForm() {
           "We couldn’t confirm the save. Retry — it won’t apply twice.",
         );
       }
-    } finally {
-      setPending(false);
     }
   }
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (pending || intent || error) return;
-    const values = new FormData(event.currentTarget).getAll("repository");
     const repositoryIds = data.repositories
       .filter((repository) =>
-        values.includes(String(repository.githubRepositoryId)),
+        chosen.ids.includes(String(repository.githubRepositoryId)),
       )
       .map((repository) => repository.githubRepositoryId);
     if (!repositoryIds.length) {
       setFailure("Select at least one repository.");
       return;
     }
-    void save({ mutation: { requestId: crypto.randomUUID() }, repositoryIds });
+    saving.mutate({
+      mutation: { requestId: crypto.randomUUID() },
+      repositoryIds,
+    });
   }
 
   if (data.page?.nextPageToken && !intent)
     return (
-      <Card>
-        <Empty title="Too many repositories">
-          Limit the GitHub App installation to at most 100 repositories.
-        </Empty>
-      </Card>
+      <Empty
+        title="Too many repositories"
+        description="Limit the GitHub App installation to at most 100 repositories."
+      />
     );
   if (!data.repositories.length && !intent)
     return (
-      <Card>
-        <Empty title="No repositories installed">
-          Give the GitHub App access to your repositories in Settings, then come
-          back here.
-        </Empty>
-      </Card>
+      <Empty
+        title="No repositories installed"
+        description="Give the GitHub App access to your repositories in Settings, then come back here."
+      />
     );
 
   return (
     <>
       {error && (
-        <Banner tone="warning">
-          Couldn’t refresh repositories. Reload the page before editing.
-        </Banner>
+        <Banner
+          variant="alert"
+          icon={<WarningIcon weight="fill" />}
+          description="Couldn’t refresh repositories. Reload the page before editing."
+        />
       )}
-      <form className="form" onSubmit={submit} aria-busy={pending}>
-        <Card
-          title="Available repositories"
-          description="Unchecking one stops deployments of its project."
-          labelledBy="repositories-title"
-          flush
-        >
-          <fieldset
-            key={selectionKey}
-            disabled={pending || !!intent || !!error}
-          >
-            <legend className="visually-hidden">Repositories</legend>
-            <ul className="list">
+      <form
+        className="flex flex-col gap-4"
+        onSubmit={submit}
+        aria-busy={pending}
+      >
+        <LayerCard>
+          <LayerCard.Secondary>Available repositories</LayerCard.Secondary>
+          <LayerCard.Primary>
+            <Checkbox.Group
+              legend="Unchecking one stops deployments of its project."
+              value={chosen.ids}
+              onValueChange={(ids) => setChosen({ key: selectionKey, ids })}
+              disabled={pending || !!intent || !!error}
+            >
               {data.repositories.map((repository) => (
-                <li key={String(repository.githubRepositoryId)}>
-                  <label className="checkbox list-row">
-                    <input
-                      type="checkbox"
-                      name="repository"
-                      value={String(repository.githubRepositoryId)}
-                      defaultChecked={selectedIds.includes(
-                        String(repository.githubRepositoryId),
-                      )}
-                    />
-                    <span className="checkbox-text">
-                      {repository.owner}/{repository.name}
-                    </span>
-                  </label>
-                </li>
+                <Checkbox.Item
+                  key={String(repository.githubRepositoryId)}
+                  value={String(repository.githubRepositoryId)}
+                  label={`${repository.owner}/${repository.name}`}
+                />
               ))}
-            </ul>
-          </fieldset>
-        </Card>
+            </Checkbox.Group>
+          </LayerCard.Primary>
+        </LayerCard>
         {failure && (
-          <p className="field-error" role="alert">
+          <Text variant="error" role="alert">
             {failure}
-          </p>
+          </Text>
         )}
         {notice && (
-          <p className="help" role="status">
+          <Text variant="secondary" role="status">
             {notice}
-          </p>
+          </Text>
         )}
-        <div className="form-actions">
+        <div className="flex items-center gap-2">
           {intent ? (
             <Button
               type="button"
               variant="primary"
-              pending={pending}
-              onClick={() => void save(intent)}
+              loading={pending}
+              onClick={() => saving.mutate(intent)}
             >
               Retry
             </Button>
@@ -197,7 +191,7 @@ function SelectionForm() {
             <Button
               type="submit"
               variant="primary"
-              pending={pending}
+              loading={pending}
               disabled={!!error}
             >
               Save

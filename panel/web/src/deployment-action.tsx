@@ -1,6 +1,13 @@
+import { Banner, Button, LayerCard, Text } from "@cloudflare/kumo";
 import { Code, ConnectError } from "@connectrpc/connect";
+import {
+  InfoIcon,
+  WarningCircleIcon,
+  WarningIcon,
+} from "@phosphor-icons/react";
+import { useMutation } from "@tanstack/react-query";
 import { Link, useRouter } from "@tanstack/react-router";
-import { useRef, useState } from "react";
+import { useState } from "react";
 import type { ReactNode } from "react";
 import { z } from "zod";
 
@@ -17,15 +24,7 @@ import {
   panel,
   refreshEnvironment,
 } from "./api";
-import {
-  Banner,
-  Button,
-  Card,
-  Detail,
-  Details,
-  Id,
-  ObservedTime,
-} from "./components";
+import { Detail, Details, Id, ObservedTime } from "./components";
 import { usePageContinuation } from "./use-page-continuation";
 import { useSessionExpiry } from "./use-session-expiry";
 
@@ -78,9 +77,7 @@ export function DeploymentAction({
 }) {
   const router = useRouter();
   const expireSession = useSessionExpiry();
-  const { capturePage, isMounted } = usePageContinuation();
-  const running = useRef(false);
-  const [pending, setPending] = useState(false);
+  const { capturePage } = usePageContinuation();
   // shortcut: unresolved intent survives only this page; persist it if recovery across reloads is required.
   const [selection, setSelection] = useState<Selection>();
   const [unknown, setUnknown] = useState(false);
@@ -90,79 +87,13 @@ export function DeploymentAction({
     !!selection && environment.version !== selection.environment.version;
   const requestId = selection?.intent.request.mutation?.requestId;
 
-  async function prepare() {
-    if (
-      running.current ||
-      unknown ||
-      acceptedId ||
-      router.state.status === "pending"
-    )
-      return;
-    const isCurrent = capturePage();
-    running.current = true;
-    setPending(true);
-    setFailure("");
-    setSelection(undefined);
-    try {
-      const current = await refreshEnvironment(environment.id);
-      let intent: Intent;
-      let source: string;
-      if (release) {
-        if (release.environmentId !== current.id)
-          throw new Error("Release assignment mismatch");
-        intent = {
-          kind: "rollback",
-          request: {
-            mutation: { requestId: crypto.randomUUID() },
-            environmentId: current.id,
-            expectedVersion: current.version,
-            releaseId: release.id,
-          },
-        };
-        source = release.build?.sourceSha || "Source metadata unavailable";
-      } else {
-        const result = await panel.getDeploymentSource({
-          environmentId: current.id,
-          expectedVersion: current.version,
-        });
-        source = z
-          .string()
-          .regex(/^[0-9a-f]{40}$/)
-          .parse(result.sourceSha);
-        if (
-          result.environmentVersion !== current.version ||
-          result.branch !== current.settings?.branch
-        )
-          throw new Error("Deployment source changed");
-        intent = {
-          kind: "deploy",
-          request: {
-            mutation: { requestId: crypto.randomUUID() },
-            environmentId: current.id,
-            expectedVersion: current.version,
-            sourceSha: source,
-          },
-        };
-      }
-      if (isCurrent()) setSelection({ intent, environment: current, source });
-    } catch (error) {
-      if (isCurrent() && !(await expireSession(error)) && isCurrent())
-        setFailure(deploymentError(error));
-    } finally {
-      running.current = false;
-      if (isMounted()) setPending(false);
-    }
-  }
-
   async function accepted(
     id: string,
     selected: Selection,
     isCurrent: () => boolean,
   ) {
-    if (isMounted()) {
-      setAcceptedId(id);
-      setUnknown(false);
-    }
+    setAcceptedId(id);
+    setUnknown(false);
     try {
       await invalidateDeploymentMetadata(selected.environment);
       if (isCurrent())
@@ -178,78 +109,140 @@ export function DeploymentAction({
     }
   }
 
-  async function submit() {
-    if (
-      !selection ||
-      running.current ||
-      acceptedId ||
-      (!unknown && (stale || refreshFailed)) ||
-      router.state.status === "pending"
-    )
-      return;
-    const selected = selection;
-    const wasUnknown = unknown;
-    const isCurrent = capturePage();
-    running.current = true;
-    setPending(true);
-    setFailure("");
-    try {
-      const result =
-        selected.intent.kind === "deploy"
-          ? await panel.deployEnvironment(selected.intent.request)
-          : await panel.rollbackEnvironment(selected.intent.request);
-      const id = z.uuid().parse(result.operation?.id);
-      if (id !== selected.intent.request.mutation?.requestId)
-        throw new Error("Operation identity mismatch");
-      await accepted(id, selected, isCurrent);
-    } catch (error) {
-      if (!isMounted()) return;
-      if (isCurrent() && (await expireSession(error))) return;
-      if (mutationRejected(error) && !wasUnknown) {
-        setSelection(undefined);
-        setFailure(deploymentError(error));
-      } else {
-        setUnknown(true);
-        setFailure(
-          wasUnknown && mutationRejected(error)
-            ? `Retry refused — the first request may still have started. ${deploymentError(error)}`
-            : "We couldn’t confirm whether this started. Check its status or retry the same request — it won’t run twice.",
-        );
+  const prepare = useMutation({
+    mutationFn: async () => {
+      const isCurrent = capturePage();
+      setFailure("");
+      setSelection(undefined);
+      try {
+        const current = await refreshEnvironment(environment.id);
+        let intent: Intent;
+        let source: string;
+        if (release) {
+          if (release.environmentId !== current.id)
+            throw new Error("Release assignment mismatch");
+          intent = {
+            kind: "rollback",
+            request: {
+              mutation: { requestId: crypto.randomUUID() },
+              environmentId: current.id,
+              expectedVersion: current.version,
+              releaseId: release.id,
+            },
+          };
+          source = release.build?.sourceSha || "Source metadata unavailable";
+        } else {
+          const result = await panel.getDeploymentSource({
+            environmentId: current.id,
+            expectedVersion: current.version,
+          });
+          source = z
+            .string()
+            .regex(/^[0-9a-f]{40}$/)
+            .parse(result.sourceSha);
+          if (
+            result.environmentVersion !== current.version ||
+            result.branch !== current.settings?.branch
+          )
+            throw new Error("Deployment source changed");
+          intent = {
+            kind: "deploy",
+            request: {
+              mutation: { requestId: crypto.randomUUID() },
+              environmentId: current.id,
+              expectedVersion: current.version,
+              sourceSha: source,
+            },
+          };
+        }
+        if (isCurrent()) setSelection({ intent, environment: current, source });
+      } catch (error) {
+        if (isCurrent() && !(await expireSession(error)) && isCurrent())
+          setFailure(deploymentError(error));
       }
-    } finally {
-      running.current = false;
-      if (isMounted()) setPending(false);
-    }
+    },
+  });
+
+  const submit = useMutation({
+    mutationFn: async (selected: Selection) => {
+      const wasUnknown = unknown;
+      const isCurrent = capturePage();
+      setFailure("");
+      try {
+        const result =
+          selected.intent.kind === "deploy"
+            ? await panel.deployEnvironment(selected.intent.request)
+            : await panel.rollbackEnvironment(selected.intent.request);
+        const id = z.uuid().parse(result.operation?.id);
+        if (id !== selected.intent.request.mutation?.requestId)
+          throw new Error("Operation identity mismatch");
+        await accepted(id, selected, isCurrent);
+      } catch (error) {
+        if (isCurrent() && (await expireSession(error))) return;
+        if (mutationRejected(error) && !wasUnknown) {
+          setSelection(undefined);
+          setFailure(deploymentError(error));
+        } else {
+          setUnknown(true);
+          setFailure(
+            wasUnknown && mutationRejected(error)
+              ? `Retry refused — the first request may still have started. ${deploymentError(error)}`
+              : "We couldn’t confirm whether this started. Check its status or retry the same request — it won’t run twice.",
+          );
+        }
+      }
+    },
+  });
+
+  const check = useMutation({
+    mutationFn: async ({
+      selected,
+      id,
+    }: {
+      selected: Selection;
+      id: string;
+    }) => {
+      const isCurrent = capturePage();
+      setFailure("");
+      try {
+        const result = await panel.getOperation({ id });
+        if (result.operation?.id !== id)
+          throw new Error("Operation identity unavailable");
+        await accepted(id, selected, isCurrent);
+      } catch (error) {
+        if (isCurrent() && !(await expireSession(error)) && isCurrent())
+          setFailure(
+            error instanceof ConnectError && error.code === Code.NotFound
+              ? "Not visible yet — it may still be processing. Check again or retry the same request."
+              : `Couldn’t check the status. ${deploymentError(error)}`,
+          );
+      }
+    },
+  });
+
+  const pending = prepare.isPending || submit.isPending || check.isPending;
+  const navigating = () => router.state.status === "pending";
+
+  function startReview() {
+    if (pending || unknown || acceptedId || navigating()) return;
+    prepare.mutate();
   }
 
-  async function check() {
+  function confirm() {
     if (
       !selection ||
-      !requestId ||
-      running.current ||
-      router.state.status === "pending"
+      pending ||
+      acceptedId ||
+      (!unknown && (stale || refreshFailed)) ||
+      navigating()
     )
       return;
-    const isCurrent = capturePage();
-    running.current = true;
-    setPending(true);
-    setFailure("");
-    try {
-      const result = await panel.getOperation({ id: requestId });
-      if (result.operation?.id !== requestId)
-        throw new Error("Operation identity unavailable");
-      await accepted(requestId, selection, isCurrent);
-    } catch (error) {
-      if (isCurrent() && !(await expireSession(error)) && isCurrent())
-        setFailure(
-          error instanceof ConnectError && error.code === Code.NotFound
-            ? "Not visible yet — it may still be processing. Check again or retry the same request."
-            : `Couldn’t check the status. ${deploymentError(error)}`,
-        );
-    } finally {
-      running.current = false;
-      if (isMounted()) setPending(false);
-    }
+    submit.mutate(selection);
+  }
+
+  function checkStatus() {
+    if (!selection || !requestId || pending || navigating()) return;
+    check.mutate({ selected: selection, id: requestId });
   }
 
   const name =
@@ -257,9 +250,9 @@ export function DeploymentAction({
   const trigger = acceptedId ? null : (
     <Button
       variant={release ? "secondary" : "primary"}
-      pending={pending && !selection}
+      loading={prepare.isPending && !selection}
       disabled={pending || !!selection}
-      onClick={() => void prepare()}
+      onClick={startReview}
     >
       {release ? "Roll back to this release" : "Deploy"}
     </Button>
@@ -268,121 +261,146 @@ export function DeploymentAction({
   const review = (
     <>
       {selection && !acceptedId && (
-        <Card
-          title={release ? `Roll back ${name}?` : `Deploy to ${name}?`}
-          labelledBy="deploy-review-title"
-          footer={
-            unknown ? (
-              <>
-                <Button
-                  variant="primary"
-                  pending={pending}
-                  onClick={() => void check()}
-                >
-                  Check status
-                </Button>
-                <Button disabled={pending} onClick={() => void submit()}>
-                  Retry same request
-                </Button>
-              </>
-            ) : (
-              <>
-                <Button
-                  variant="primary"
-                  pending={pending}
-                  disabled={stale || refreshFailed}
-                  onClick={() => void submit()}
-                >
-                  {release ? "Roll back" : "Deploy now"}
-                </Button>
-                <Button
-                  variant="ghost"
-                  disabled={pending}
-                  onClick={() => {
-                    setSelection(undefined);
-                    setFailure("");
-                  }}
-                >
-                  Cancel
-                </Button>
-              </>
-            )
-          }
-        >
-          <p>
-            {release ? (
-              <>
-                Restores this release’s images, configuration, domains and
-                secrets. Databases and other data are not rolled back.
-              </>
-            ) : (
-              <>
-                Deploys the latest commit on{" "}
-                <code>{selection.environment.settings?.branch}</code> with the
-                current settings and secrets. If its images aren’t built yet,
-                the deployment waits for them.
-              </>
-            )}{" "}
-            <span className="muted">
+        <LayerCard>
+          <LayerCard.Secondary>
+            {release ? `Roll back ${name}?` : `Deploy to ${name}?`}
+          </LayerCard.Secondary>
+          <LayerCard.Primary className="flex flex-col gap-4">
+            <Text>
+              {release ? (
+                <>
+                  Restores this release’s images, configuration, domains and
+                  secrets. Databases and other data are not rolled back.
+                </>
+              ) : (
+                <>
+                  Deploys the latest commit on{" "}
+                  <code>{selection.environment.settings?.branch}</code> with the
+                  current settings and secrets. If its images aren’t built yet,
+                  the deployment waits for them.
+                </>
+              )}{" "}
               Services restart, so expect a brief interruption.
-            </span>
-          </p>
-          <Details>
-            <Detail label="Commit">
-              <Id value={selection.source} short label="commit" />
-            </Detail>
-            <Detail label="Branch">
-              {release
-                ? release.build?.branch || "—"
-                : selection.environment.settings?.branch}
-            </Detail>
-            <Detail label="Server">{serverName ?? "Assigned server"}</Detail>
-            {release && (
-              <Detail label="Release from">
-                <ObservedTime value={release.createdAt} />
+            </Text>
+            <Details>
+              <Detail label="Commit">
+                <Id value={selection.source} short />
               </Detail>
+              <Detail label="Branch">
+                {release
+                  ? release.build?.branch || "—"
+                  : selection.environment.settings?.branch}
+              </Detail>
+              <Detail label="Server">{serverName ?? "Assigned server"}</Detail>
+              {release && (
+                <Detail label="Release from">
+                  <ObservedTime value={release.createdAt} />
+                </Detail>
+              )}
+            </Details>
+            {!unknown && (stale || refreshFailed) && (
+              <Banner
+                variant="alert"
+                icon={<WarningIcon weight="fill" />}
+                description="The environment changed while you were reviewing."
+                action={
+                  <Button
+                    size="sm"
+                    loading={prepare.isPending}
+                    onClick={startReview}
+                  >
+                    Review again
+                  </Button>
+                }
+              />
             )}
-          </Details>
-          {!unknown && (stale || refreshFailed) && (
-            <Banner
-              tone="warning"
-              actions={
-                <Button
-                  size="sm"
-                  pending={pending}
-                  onClick={() => void prepare()}
-                >
-                  Review again
-                </Button>
-              }
-            >
-              The environment changed while you were reviewing.
-            </Banner>
-          )}
-          {unknown && (
-            <Banner tone="warning" title="Outcome not confirmed">
-              Keep this page open until it’s resolved. Request{" "}
-              <Id value={requestId ?? ""} short label="request ID" />
-            </Banner>
-          )}
-          {failure && (
-            <p className="field-error" role="alert">
-              {failure}
-            </p>
-          )}
-        </Card>
+            {unknown && (
+              <Banner
+                variant="alert"
+                icon={<WarningIcon weight="fill" />}
+                title="Outcome not confirmed"
+                description={
+                  <>
+                    Keep this page open until it’s resolved. Request{" "}
+                    <Id value={requestId ?? ""} short />
+                  </>
+                }
+              />
+            )}
+            {failure && (
+              <Text variant="error" role="alert">
+                {failure}
+              </Text>
+            )}
+            <div className="flex flex-wrap gap-2">
+              {unknown ? (
+                <>
+                  <Button
+                    variant="primary"
+                    loading={check.isPending}
+                    disabled={pending}
+                    onClick={checkStatus}
+                  >
+                    Check status
+                  </Button>
+                  <Button
+                    loading={submit.isPending}
+                    disabled={pending}
+                    onClick={confirm}
+                  >
+                    Retry same request
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Button
+                    variant="primary"
+                    loading={submit.isPending}
+                    disabled={pending || stale || refreshFailed}
+                    onClick={confirm}
+                  >
+                    {release ? "Roll back" : "Deploy now"}
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    disabled={pending}
+                    onClick={() => {
+                      setSelection(undefined);
+                      setFailure("");
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                </>
+              )}
+            </div>
+          </LayerCard.Primary>
+        </LayerCard>
       )}
-      {!selection && failure && <Banner tone="danger">{failure}</Banner>}
+      {!selection && failure && (
+        <Banner
+          variant="error"
+          icon={<WarningCircleIcon weight="fill" />}
+          description={failure}
+        />
+      )}
       {acceptedId && (
-        <Banner tone="info" role="status">
-          {release ? "Rollback" : "Deployment"} started.{" "}
-          <Link
-            to="/operations/$operationId"
-            params={{ operationId: acceptedId }}
-          >
-            Follow its progress
-          </Link>
-        </Banner>
+        <div role="status">
+          <Banner
+            icon={<InfoIcon weight="fill" />}
+            description={
+              <>
+                {release ? "Rollback" : "Deployment"} started.{" "}
+                <Link
+                  to="/operations/$operationId"
+                  params={{ operationId: acceptedId }}
+                >
+                  Follow its progress
+                </Link>
+              </>
+            }
+          />
+        </div>
       )}
     </>
   );

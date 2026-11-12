@@ -1,12 +1,23 @@
 import {
-  CaretRightIcon,
-  CheckIcon,
+  Badge,
+  Banner,
+  CodeBlock,
+  Empty,
+  Grid,
+  LayerCard,
+  Pagination,
+  RefreshButton,
+  SkeletonLine,
+  Table,
+  Text,
+} from "@cloudflare/kumo";
+import {
   PulseIcon,
   WarningCircleIcon,
-  XIcon,
+  WarningIcon,
 } from "@phosphor-icons/react";
-import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
-import { Link } from "@tanstack/react-router";
+import { useMutation, useQuery, useSuspenseQuery } from "@tanstack/react-query";
+import { Link, useNavigate } from "@tanstack/react-router";
 
 import {
   type Operation,
@@ -21,23 +32,17 @@ import {
   serverQuery,
 } from "./api";
 import {
-  Banner,
-  Card,
-  DelayedSkeleton,
+  ButtonLink,
   Detail,
   Details,
-  Empty,
   Id,
-  ButtonLink,
   ObservedTime,
-  PageHeader,
-  RefreshButton,
+  Page,
 } from "./components";
 import {
   operationActive,
   operationKind,
   OperationStatus,
-  operationSteps,
 } from "./operation-status";
 
 /** Resolves an environment to "project / environment" without blocking. */
@@ -49,29 +54,37 @@ function EnvironmentLabel({ id }: { id: string }) {
     enabled: !!projectId,
   });
   const name = environment.data?.environment?.settings?.name;
-  const loading = environment.isPending || (!!projectId && project.isPending);
+  if (environment.isPending || (!!projectId && project.isPending))
+    return <SkeletonLine minWidth={80} maxWidth={140} />;
   return (
-    <DelayedSkeleton loading={loading} width="9rem">
+    <>
       {project.data?.project?.name && `${project.data.project.name} / `}
       {name ?? "Environment"}
-    </DelayedSkeleton>
+    </>
   );
 }
 
 function ServerLabel({ id }: { id: string }) {
   const server = useQuery(serverQuery(id));
-  return (
-    <DelayedSkeleton loading={server.isPending} width="5rem">
-      {server.data?.server?.name ?? "Server"}
-    </DelayedSkeleton>
-  );
+  if (server.isPending) return <SkeletonLine minWidth={60} maxWidth={100} />;
+  return <>{server.data?.server?.name ?? "Server"}</>;
 }
 
 function Target({ operation }: { operation: Operation }) {
   if (operation.environmentId)
     return <EnvironmentLabel id={operation.environmentId} />;
   if (operation.serverId) return <ServerLabel id={operation.serverId} />;
-  return <span className="subtle">Unknown target</span>;
+  return <>Unknown target</>;
+}
+
+function RefreshFailed({ what, error }: { what: string; error: unknown }) {
+  return (
+    <Banner
+      variant="alert"
+      icon={<WarningIcon weight="fill" />}
+      description={`Couldn’t refresh ${what}. ${errorMessage(error)}`}
+    />
+  );
 }
 
 export function Operations({
@@ -83,6 +96,7 @@ export function Operations({
   server: string;
   cursor: string;
 }) {
+  const navigate = useNavigate();
   const list = useSuspenseQuery({
     ...operationsQuery(environment, server, cursor),
     refetchInterval: (query) =>
@@ -93,147 +107,121 @@ export function Operations({
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
   });
+  const refresh = useMutation({ mutationFn: () => list.refetch() });
+  const nextPageToken = list.data.page?.nextPageToken ?? "";
   const filtered = !!(environment || server);
 
   return (
-    <>
-      <PageHeader
-        title="Activity"
-        description={
-          filtered ? (
-            <span>
-              Showing{" "}
-              {environment ? (
-                <Link
-                  to="/environments/$environmentId"
-                  params={{ environmentId: environment }}
-                  search={{ services: "", releases: "" }}
-                >
-                  <EnvironmentLabel id={environment} />
-                </Link>
-              ) : (
-                <Link to="/servers/$serverId" params={{ serverId: server }}>
-                  <ServerLabel id={server} />
-                </Link>
-              )}{" "}
-              ·{" "}
-              <Link
-                to="/operations"
-                search={{ environment: "", server: "", cursor: "" }}
-              >
-                Show all
-              </Link>
-            </span>
-          ) : (
-            "Deployments, rollbacks and server changes."
-          )
-        }
-      >
+    <Page
+      title="Activity"
+      description={
+        filtered ? undefined : "Deployments, rollbacks and server changes."
+      }
+      actions={
         <RefreshButton
-          label="Refresh activity"
-          onRefresh={() => list.refetch()}
+          aria-label="Refresh activity"
+          loading={refresh.isPending}
+          onClick={() => refresh.mutate()}
         />
-      </PageHeader>
-      <div className="stack">
-        {list.error && (
-          <Banner tone="warning">
-            Couldn’t refresh activity. {errorMessage(list.error)}
-          </Banner>
-        )}
-        <section className="card" aria-label="Activity">
-          {list.data.operations.length ? (
-            <ul className="list">
-              {list.data.operations.map((operation) => {
-                const active = operationActive(operation);
-                return (
-                  <li key={operation.id}>
-                    <Link
-                      className="list-row"
-                      to="/operations/$operationId"
-                      params={{ operationId: operation.id }}
-                    >
-                      <span className="list-main">
-                        <span className="list-title">
-                          {operationKind(operation.kind)}
-                          <span className="muted" style={{ fontWeight: 400 }}>
-                            <Target operation={operation} />
-                          </span>
-                        </span>
-                        <span className="list-meta">
-                          <ObservedTime value={operation.updatedAt} />
-                          {operation.message &&
-                            operation.message !== "Operation failed." && (
-                              <span style={{ overflowWrap: "anywhere" }}>
-                                {operation.message}
-                              </span>
-                            )}
-                        </span>
-                      </span>
-                      <span className="list-aside">
-                        <OperationStatus
-                          value={operation.state}
-                          active={active}
-                        />
-                        <CaretRightIcon className="chevron" size={16} />
-                      </span>
-                    </Link>
-                  </li>
-                );
-              })}
-            </ul>
-          ) : (
-            <Empty
-              icon={<PulseIcon size={20} />}
-              title={cursor ? "No more activity" : "Nothing here yet"}
+      }
+    >
+      {filtered && (
+        <Text as="p" variant="secondary">
+          Showing{" "}
+          {environment ? (
+            <Link
+              to="/environments/$environmentId"
+              params={{ environmentId: environment }}
+              search={{ services: "", releases: "" }}
             >
-              Deployments and rollbacks appear here as soon as they start.
-            </Empty>
-          )}
-          {(cursor || list.data.page?.nextPageToken) && (
-            <nav className="pagination" aria-label="Activity pages">
-              {cursor && (
-                <ButtonLink
-                  variant="secondary"
-                  size="sm"
-                  to="/operations"
-                  search={{ environment, server, cursor: "" }}
-                >
-                  Newest
-                </ButtonLink>
-              )}
-              {list.data.page?.nextPageToken && (
-                <ButtonLink
-                  variant="secondary"
-                  size="sm"
-                  to="/operations"
-                  search={{
-                    environment,
-                    server,
-                    cursor: list.data.page.nextPageToken,
-                  }}
-                >
-                  Older
-                </ButtonLink>
-              )}
-            </nav>
-          )}
-        </section>
-      </div>
-    </>
+              <EnvironmentLabel id={environment} />
+            </Link>
+          ) : (
+            <Link to="/servers/$serverId" params={{ serverId: server }}>
+              <ServerLabel id={server} />
+            </Link>
+          )}{" "}
+          ·{" "}
+          <Link
+            to="/operations"
+            search={{ environment: "", server: "", cursor: "" }}
+          >
+            Show all
+          </Link>
+        </Text>
+      )}
+      {list.error && <RefreshFailed what="activity" error={list.error} />}
+      {list.data.operations.length ? (
+        <Table aria-label="Activity">
+          <Table.Header>
+            <Table.Row>
+              <Table.Head>Operation</Table.Head>
+              <Table.Head>Target</Table.Head>
+              <Table.Head>Status</Table.Head>
+              <Table.Head>Updated</Table.Head>
+            </Table.Row>
+          </Table.Header>
+          <Table.Body>
+            {list.data.operations.map((operation) => (
+              <Table.Row key={operation.id}>
+                <Table.Cell>
+                  <Link
+                    to="/operations/$operationId"
+                    params={{ operationId: operation.id }}
+                  >
+                    {operationKind(operation.kind)}
+                  </Link>
+                  {operation.message &&
+                    operation.message !== "Operation failed." && (
+                      <Text variant="secondary" size="sm">
+                        {operation.message}
+                      </Text>
+                    )}
+                </Table.Cell>
+                <Table.Cell>
+                  <Target operation={operation} />
+                </Table.Cell>
+                <Table.Cell>
+                  <OperationStatus
+                    value={operation.state}
+                    active={operationActive(operation)}
+                  />
+                </Table.Cell>
+                <Table.Cell>
+                  <ObservedTime value={operation.updatedAt} />
+                </Table.Cell>
+              </Table.Row>
+            ))}
+          </Table.Body>
+        </Table>
+      ) : (
+        <Empty
+          icon={<PulseIcon size={48} />}
+          title={cursor ? "No more activity" : "Nothing here yet"}
+          description="Deployments and rollbacks appear here as soon as they start."
+        />
+      )}
+      {(cursor || nextPageToken) && (
+        <Pagination
+          controls="simple"
+          page={cursor ? 2 : 1}
+          hasNextPage={!!nextPageToken}
+          setPage={(page) =>
+            void navigate({
+              to: "/operations",
+              search: {
+                environment,
+                server,
+                // The cursor API can't step back, so Previous returns to the newest page.
+                cursor: page > (cursor ? 2 : 1) ? nextPageToken : "",
+              },
+            })
+          }
+        />
+      )}
+    </Page>
   );
 }
-
-const stepIcons = {
-  done: <CheckIcon size={12} weight="bold" />,
-  failed: <XIcon size={12} weight="bold" />,
-  current: (
-    <span
-      className="spinner"
-      style={{ width: 10, height: 10, borderWidth: 1.5 }}
-    />
-  ),
-  pending: null,
-};
 
 export function OperationDetail({ id }: { id: string }) {
   const record = useSuspenseQuery({
@@ -248,136 +236,113 @@ export function OperationDetail({ id }: { id: string }) {
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
   });
+  const refresh = useMutation({ mutationFn: () => record.refetch() });
   const operation = record.data.operation;
   if (!operation)
     return (
-      <Card>
-        <Empty title="Not found">
-          <Link
-            to="/operations"
-            search={{ environment: "", server: "", cursor: "" }}
-          >
-            Back to activity
-          </Link>
-        </Empty>
-      </Card>
+      <Page title="Not found">
+        <Empty
+          title="Operation not found"
+          contents={
+            <ButtonLink
+              to="/operations"
+              search={{ environment: "", server: "", cursor: "" }}
+            >
+              Back to activity
+            </ButtonLink>
+          }
+        />
+      </Page>
     );
-  const active = operationActive(operation);
-  const steps = operationSteps(operation);
   const unresolved =
     operation.outcome === OperationOutcome.UNKNOWN ||
     operation.outcome === OperationOutcome.PARTIAL;
+  const message =
+    operation.message === "Operation failed." ? "" : operation.message;
 
   return (
-    <>
-      <PageHeader
-        breadcrumbs={[
-          <Link
-            key="activity"
-            to="/operations"
-            search={{ environment: "", server: "", cursor: "" }}
-          >
-            Activity
-          </Link>,
-        ]}
-        title={operationKind(operation.kind)}
-        badge={<OperationStatus value={operation.state} active={active} />}
-        description={
-          <span className="row" style={{ gap: "0.25rem 0.5rem" }}>
-            <Target operation={operation} />
-            <span aria-hidden="true">·</span>
-            <ObservedTime value={operation.createdAt} prefix="Started" />
-          </span>
-        }
-      >
+    <Page
+      title={operationKind(operation.kind)}
+      crumbs={[{ label: "Activity", href: "/operations" }]}
+      actions={
         <RefreshButton
-          label="Refresh status"
-          onRefresh={() => record.refetch()}
+          aria-label="Refresh status"
+          loading={refresh.isPending}
+          onClick={() => refresh.mutate()}
         />
-      </PageHeader>
-      <div className="stack">
-        {record.error && (
-          <Banner tone="warning">
-            Couldn’t refresh status. {errorMessage(record.error)}
-          </Banner>
-        )}
-        {unresolved && (
-          <Banner tone="warning" title="Outcome not confirmed yet">
-            The panel is still reconciling what happened on the server. Other
-            deployments to this environment wait until it’s resolved.
-          </Banner>
-        )}
-        <div className="grid-2">
-          <div className="stack">
-            <Card title="Progress" labelledBy="progress-title">
-              <ol className="steps">
-                {steps.map((step) => (
-                  <li key={step.title} className={`step step-${step.status}`}>
-                    <span className="step-dot" aria-hidden="true">
-                      {stepIcons[step.status]}
-                    </span>
-                    <span>
-                      <span className="step-title">
-                        {step.title}
-                        <span className="visually-hidden">
-                          {` (${step.status})`}
-                        </span>
-                      </span>
-                      {step.detail && (
-                        <span
-                          className="step-detail"
-                          style={{ display: "block" }}
-                        >
-                          {step.detail}
-                        </span>
-                      )}
-                    </span>
-                  </li>
-                ))}
-              </ol>
-            </Card>
-            {operation.diagnostics.length > 0 && (
-              <Card
-                title="What went wrong"
-                description="The last state and logs of each failing service, captured before cleanup."
-                labelledBy="diagnostics-title"
-              >
+      }
+    >
+      {record.error && <RefreshFailed what="status" error={record.error} />}
+      {unresolved && (
+        <Banner
+          variant="alert"
+          icon={<WarningIcon weight="fill" />}
+          title="Outcome not confirmed yet"
+          description="The panel is still reconciling what happened on the server. Other deployments to this environment wait until it’s resolved."
+        />
+      )}
+      <Grid variant="2-1" gap="base">
+        <div className="flex flex-col gap-6">
+          <LayerCard>
+            <LayerCard.Secondary>Status</LayerCard.Secondary>
+            <LayerCard.Primary className="flex flex-col gap-2">
+              <OperationStatus
+                value={operation.state}
+                active={operationActive(operation)}
+              />
+              {message && <Text>{message}</Text>}
+            </LayerCard.Primary>
+          </LayerCard>
+          {operation.diagnostics.length > 0 && (
+            <LayerCard>
+              <LayerCard.Secondary>What went wrong</LayerCard.Secondary>
+              <LayerCard.Primary className="flex flex-col gap-4">
+                <Text variant="secondary">
+                  The last state and logs of each failing service, captured
+                  before cleanup.
+                </Text>
                 {operation.diagnostics.map((diagnostic) => (
-                  <div className="stack-sm" key={diagnostic.service}>
-                    <div className="row">
+                  <section
+                    key={diagnostic.service}
+                    className="flex flex-col gap-2"
+                    aria-label={`Service ${diagnostic.service}`}
+                  >
+                    <div className="flex flex-wrap items-center gap-2">
                       <WarningCircleIcon
                         size={16}
-                        style={{ color: "var(--danger-fg)" }}
+                        weight="fill"
+                        className="text-kumo-danger"
                         aria-hidden="true"
                       />
-                      <strong>{diagnostic.service}</strong>
-                      <span className="chip">
+                      <Text bold as="span">
+                        {diagnostic.service}
+                      </Text>
+                      <Badge variant="outline">
                         {diagnostic.state || "unknown"}
                         {diagnostic.state === "exited" &&
                           ` (code ${diagnostic.exitCode})`}
-                      </span>
+                      </Badge>
                       {diagnostic.health && (
-                        <span className="chip">{diagnostic.health}</span>
+                        <Badge variant="outline">{diagnostic.health}</Badge>
                       )}
                     </div>
                     {diagnostic.logTail ? (
-                      <pre
-                        className="log"
-                        tabIndex={0}
-                        aria-label={`Last log lines of ${diagnostic.service}`}
-                      >
-                        {diagnostic.logTail}
-                      </pre>
+                      <CodeBlock lang="bash" code={diagnostic.logTail} />
                     ) : (
-                      <p className="subtle">No log output was captured.</p>
+                      <Text variant="secondary">
+                        No log output was captured.
+                      </Text>
                     )}
-                  </div>
+                  </section>
                 ))}
-              </Card>
-            )}
-          </div>
-          <Card title="Details" labelledBy="operation-details-title">
-            <Details stacked>
+              </LayerCard.Primary>
+            </LayerCard>
+          )}
+        </div>
+        <LayerCard>
+          <LayerCard.Secondary>Details</LayerCard.Secondary>
+          <LayerCard.Primary>
+            <Details>
               {operation.environmentId && (
                 <Detail label="Environment">
                   <Link
@@ -419,16 +384,19 @@ export function OperationDetail({ id }: { id: string }) {
                   </Link>
                 </Detail>
               )}
+              <Detail label="Started">
+                <ObservedTime value={operation.createdAt} />
+              </Detail>
               <Detail label="Last update">
                 <ObservedTime value={operation.updatedAt} />
               </Detail>
               <Detail label="ID">
-                <Id value={operation.id} short label="operation ID" />
+                <Id value={operation.id} short />
               </Detail>
             </Details>
-          </Card>
-        </div>
-      </div>
-    </>
+          </LayerCard.Primary>
+        </LayerCard>
+      </Grid>
+    </Page>
   );
 }

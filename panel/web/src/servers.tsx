@@ -1,114 +1,110 @@
 import {
-  CaretRightIcon,
-  HardDrivesIcon,
-  PulseIcon,
-} from "@phosphor-icons/react";
+  Badge,
+  Banner,
+  Empty,
+  Grid,
+  LayerCard,
+  Pagination,
+  Table,
+} from "@cloudflare/kumo";
+import { HardDrivesIcon, PulseIcon, WarningIcon } from "@phosphor-icons/react";
 import { useSuspenseQuery } from "@tanstack/react-query";
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 
 import { serverQuery, serversQuery } from "./api";
 import {
-  Badge,
-  Banner,
-  Card,
+  ButtonLink,
   Detail,
   Details,
-  Empty,
   Id,
-  ButtonLink,
   ObservedTime,
-  PageHeader,
+  Page,
   Readiness,
 } from "./components";
 import { ServerTunnel } from "./server-tunnel";
 
 export function Servers({ cursor }: { cursor: string }) {
+  const navigate = useNavigate();
   const { data, error } = useSuspenseQuery({
     ...serversQuery(cursor),
     refetchInterval: 30_000,
   });
+  const next = data.page?.nextPageToken ?? "";
   return (
-    <>
-      <PageHeader
-        title="Servers"
-        description="Hosts managed privately over Tailscale."
-      />
-      <div className="stack">
-        {error && (
-          <Banner tone="warning">
-            Couldn’t refresh servers. Status may be out of date.
-          </Banner>
-        )}
-        <section className="card" aria-label="Servers">
-          {data.servers.length ? (
-            <ul className="list">
-              {data.servers.map((server) => (
-                <li key={server.id}>
-                  <Link
-                    className="list-row"
-                    to="/servers/$serverId"
-                    params={{ serverId: server.id }}
-                  >
-                    <span className="empty-icon" style={{ margin: 0 }}>
-                      <HardDrivesIcon size={18} aria-hidden="true" />
-                    </span>
-                    <span className="list-main">
-                      <span className="list-title">
-                        {server.name}
+    <Page title="Servers" description="Hosts managed privately over Tailscale.">
+      {error && (
+        <Banner
+          variant="alert"
+          icon={<WarningIcon weight="fill" />}
+          description="Couldn’t refresh servers. Status may be out of date."
+        />
+      )}
+      {data.servers.length ? (
+        <LayerCard>
+          <LayerCard.Primary className="p-0">
+            <Table aria-label="Servers">
+              <Table.Header>
+                <Table.Row>
+                  <Table.Head>Name</Table.Head>
+                  <Table.Head>Tailscale address</Table.Head>
+                  <Table.Head>Last checked</Table.Head>
+                  <Table.Head>Status</Table.Head>
+                </Table.Row>
+              </Table.Header>
+              <Table.Body>
+                {data.servers.map((server) => (
+                  <Table.Row key={server.id}>
+                    <Table.Cell>
+                      <span className="flex items-center gap-2">
+                        <Link
+                          to="/servers/$serverId"
+                          params={{ serverId: server.id }}
+                          className="font-medium"
+                        >
+                          {server.name}
+                        </Link>
                         {server.panelHost && (
-                          <Badge tone="info" plain>
-                            Panel host
-                          </Badge>
+                          <Badge variant="info">Panel host</Badge>
                         )}
                       </span>
-                      <span className="list-meta">
-                        <code>{server.tailscaleAddress}</code>
-                        <ObservedTime
-                          value={server.observedAt}
-                          prefix="Checked"
-                        />
-                      </span>
-                    </span>
-                    <span className="list-aside">
+                    </Table.Cell>
+                    <Table.Cell>
+                      <Id value={server.tailscaleAddress} />
+                    </Table.Cell>
+                    <Table.Cell>
+                      <ObservedTime value={server.observedAt} />
+                    </Table.Cell>
+                    <Table.Cell>
                       <Readiness value={server.readiness} />
-                      <CaretRightIcon className="chevron" size={16} />
-                    </span>
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <Empty icon={<HardDrivesIcon size={20} />} title="No servers yet">
-              The panel’s own host appears here after <code>panel setup</code>.
-            </Empty>
-          )}
-          {(cursor || data.page?.nextPageToken) && (
-            <nav className="pagination" aria-label="Server pages">
-              {cursor && (
-                <ButtonLink
-                  variant="secondary"
-                  size="sm"
-                  to="/servers"
-                  search={{ cursor: "" }}
-                >
-                  Newest
-                </ButtonLink>
-              )}
-              {data.page?.nextPageToken && (
-                <ButtonLink
-                  variant="secondary"
-                  size="sm"
-                  to="/servers"
-                  search={{ cursor: data.page.nextPageToken }}
-                >
-                  Older
-                </ButtonLink>
-              )}
-            </nav>
-          )}
-        </section>
-      </div>
-    </>
+                    </Table.Cell>
+                  </Table.Row>
+                ))}
+              </Table.Body>
+            </Table>
+          </LayerCard.Primary>
+        </LayerCard>
+      ) : (
+        <Empty
+          icon={<HardDrivesIcon size={48} />}
+          title="No servers yet"
+          description="The panel’s own host appears here after panel setup."
+        />
+      )}
+      {(cursor || next) && (
+        <Pagination
+          controls="simple"
+          page={cursor ? 2 : 1}
+          hasNextPage={!!next}
+          // The cursor API can't step back, so Previous returns to the first page.
+          setPage={(page) =>
+            void navigate({
+              to: "/servers",
+              search: { cursor: page > (cursor ? 2 : 1) ? next : "" },
+            })
+          }
+        />
+      )}
+    </Page>
   );
 }
 
@@ -120,66 +116,73 @@ export function Server({ id }: { id: string }) {
   const server = data.server;
   if (!server)
     return (
-      <Card>
-        <Empty title="Server not found">
-          <Link to="/servers" search={{ cursor: "" }}>
-            Back to servers
-          </Link>
-        </Empty>
-      </Card>
+      <Page
+        title="Server not found"
+        crumbs={[{ label: "Servers", href: "/servers" }]}
+      >
+        <Empty
+          title="Server not found"
+          contents={
+            <ButtonLink to="/servers" search={{ cursor: "" }}>
+              Back to servers
+            </ButtonLink>
+          }
+        />
+      </Page>
     );
 
   return (
-    <>
-      <PageHeader
-        breadcrumbs={[
-          <Link key="servers" to="/servers" search={{ cursor: "" }}>
-            Servers
-          </Link>,
-        ]}
-        title={server.name}
-        badge={<Readiness value={server.readiness} />}
-        description={
-          server.panelHost
-            ? "Runs the panel itself, so it can’t be removed."
-            : "Managed over private SSH through Tailscale."
-        }
-      >
+    <Page
+      title={server.name}
+      crumbs={[{ label: "Servers", href: "/servers" }]}
+      description={
+        server.panelHost
+          ? "Runs the panel itself, so it can’t be removed."
+          : "Managed over private SSH through Tailscale."
+      }
+      actions={
         <ButtonLink
           variant="secondary"
+          icon={<PulseIcon size={16} />}
           to="/operations"
           search={{ environment: "", server: id, cursor: "" }}
         >
-          <PulseIcon size={16} aria-hidden="true" />
           Activity
         </ButtonLink>
-      </PageHeader>
-      <div className="stack">
-        {error && (
-          <Banner tone="warning">
-            Couldn’t refresh this server. Status may be out of date.
-          </Banner>
-        )}
-        <div className="grid-2">
-          <ServerTunnel key={server.id} server={server} />
-          <Card title="Details" labelledBy="server-details-title">
-            <Details stacked>
+      }
+    >
+      {error && (
+        <Banner
+          variant="alert"
+          icon={<WarningIcon weight="fill" />}
+          description="Couldn’t refresh this server. Status may be out of date."
+        />
+      )}
+      <Grid variant="2up" gap="base">
+        <ServerTunnel key={server.id} server={server} />
+        <LayerCard>
+          <LayerCard.Secondary className="flex items-center justify-between gap-2">
+            Details
+            <Readiness value={server.readiness} />
+          </LayerCard.Secondary>
+          <LayerCard.Primary>
+            <Details>
               <Detail label="Tailscale address">
-                <Id value={server.tailscaleAddress} label="address" />
+                <Id value={server.tailscaleAddress} />
               </Detail>
               <Detail label="Last checked">
                 <ObservedTime value={server.observedAt} />
               </Detail>
               <Detail label="SSH host key">
-                <Id value={server.sshHostKeyFingerprint} label="fingerprint" />
+                <Id value={server.sshHostKeyFingerprint} />
               </Detail>
               <Detail label="Server ID">
-                <Id value={server.id} label="server ID" />
+                <Id value={server.id} />
               </Detail>
             </Details>
-          </Card>
-        </div>
-      </div>
-    </>
+          </LayerCard.Primary>
+        </LayerCard>
+      </Grid>
+    </Page>
   );
 }

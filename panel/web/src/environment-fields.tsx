@@ -1,4 +1,13 @@
 import { create } from "@bufbuild/protobuf";
+import {
+  Button,
+  Checkbox,
+  Grid,
+  Input,
+  LayerCard,
+  Select,
+  Text,
+} from "@cloudflare/kumo";
 import { PlusIcon, TrashIcon } from "@phosphor-icons/react";
 import type { ReactNode } from "react";
 
@@ -7,7 +16,7 @@ import type {
   EnvironmentSettings,
   Server,
 } from "../../gen/ts/panel/v1/panel_pb";
-import { Button, Card, Readiness } from "./components";
+import { Readiness } from "./components";
 
 export function EnvironmentFields({
   settings,
@@ -17,6 +26,7 @@ export function EnvironmentFields({
   onServerChange,
   serverFixed,
   serverPages,
+  disabled = false,
 }: {
   settings: EnvironmentSettings;
   onChange: (value: EnvironmentSettings) => void;
@@ -25,6 +35,7 @@ export function EnvironmentFields({
   onServerChange: (value: Server) => void;
   serverFixed: boolean;
   serverPages?: ReactNode;
+  disabled?: boolean;
 }) {
   function field<K extends keyof EnvironmentSettings>(
     key: K,
@@ -49,121 +60,109 @@ export function EnvironmentFields({
       : servers;
   return (
     <>
-      <Card title="General" labelledBy="general-title">
-        <div className="fields">
-          <div className="fields-2">
-            <div className="field">
-              <label htmlFor="environment-name">Name</label>
-              <input
-                id="environment-name"
-                value={settings.name}
-                onChange={(event) => field("name", event.target.value)}
+      <LayerCard>
+        <LayerCard.Secondary>General</LayerCard.Secondary>
+        <LayerCard.Primary className="flex flex-col gap-4">
+          <Grid variant="2up" gap="sm">
+            <Input
+              id="environment-name"
+              label="Name"
+              description="Lowercase letters, digits and dashes."
+              value={settings.name}
+              onChange={(event) => field("name", event.target.value)}
+              required
+              maxLength={63}
+              pattern={"[a-z][a-z0-9\\-]*"}
+            />
+            <Input
+              id="environment-branch"
+              label="Branch"
+              value={settings.branch}
+              onChange={(event) => field("branch", event.target.value)}
+              required
+              maxLength={255}
+              pattern={"[A-Za-z0-9][A-Za-z0-9._\\/\\-]*"}
+            />
+          </Grid>
+          <div className="flex flex-col gap-2">
+            <div className="flex items-end gap-2">
+              <Select
+                className="min-w-0 flex-1"
+                label="Server"
+                description={
+                  serverFixed
+                    ? "Fixed after the first deployment."
+                    : "Can’t be changed once a deployment has started."
+                }
+                placeholder="Choose a server…"
                 required
-                maxLength={63}
-                pattern={"[a-z][a-z0-9\\-]*"}
-                aria-describedby="environment-name-help"
-              />
-              <p className="help" id="environment-name-help">
-                Lowercase letters, digits and dashes.
-              </p>
-            </div>
-            <div className="field">
-              <label htmlFor="environment-branch">Branch</label>
-              <input
-                id="environment-branch"
-                value={settings.branch}
-                onChange={(event) => field("branch", event.target.value)}
-                required
-                maxLength={255}
-                pattern={"[A-Za-z0-9][A-Za-z0-9._\\/\\-]*"}
-              />
-            </div>
-          </div>
-          <div className="field">
-            <label htmlFor="environment-server">Server</label>
-            <div className="row" style={{ flexWrap: "nowrap" }}>
-              <select
-                id="environment-server"
-                value={settings.serverId}
-                disabled={serverFixed}
-                required
-                aria-describedby="environment-server-help"
-                onChange={(event) => {
-                  const server = options.find(
-                    (entry) => entry.id === event.target.value,
-                  );
+                disabled={disabled || serverFixed}
+                value={settings.serverId || null}
+                items={options.map((server) => ({
+                  value: server.id,
+                  label: `${server.name} — ${server.tailscaleAddress}`,
+                }))}
+                onValueChange={(value) => {
+                  const server = options.find((entry) => entry.id === value);
                   if (server) {
                     field("serverId", server.id);
                     onServerChange(server);
                   }
                 }}
-              >
-                <option value="">Choose a server…</option>
-                {options.map((server) => (
-                  <option key={server.id} value={server.id}>
-                    {server.name} — {server.tailscaleAddress}
-                  </option>
-                ))}
-              </select>
+              />
               {selectedServer && <Readiness value={selectedServer.readiness} />}
             </div>
-            <p className="help" id="environment-server-help">
-              {serverFixed
-                ? "Fixed after the first deployment."
-                : "Can’t be changed once a deployment has started."}
-            </p>
             {serverPages}
           </div>
-          <div className="field">
-            <label htmlFor="environment-override">Compose override file</label>
-            <input
-              id="environment-override"
-              value={settings.composeOverridePath}
-              onChange={(event) =>
-                field("composeOverridePath", event.target.value)
-              }
-              required
-              maxLength={512}
-              className="mono"
-              aria-describedby="override-help"
-            />
-            <p id="override-help" className="help">
-              Applied on top of <code>compose.yaml</code>, e.g.{" "}
-              <code>compose.production.yaml</code>.
-            </p>
-          </div>
-          <label className="checkbox">
-            <input
-              type="checkbox"
+          <Input
+            id="environment-override"
+            label="Compose override file"
+            description={
+              <>
+                Applied on top of <code>compose.yaml</code>, e.g.{" "}
+                <code>compose.production.yaml</code>.
+              </>
+            }
+            value={settings.composeOverridePath}
+            onChange={(event) =>
+              field("composeOverridePath", event.target.value)
+            }
+            required
+            maxLength={512}
+            className="font-mono"
+          />
+          <div className="flex flex-col gap-1">
+            <Checkbox
+              label="Deploy automatically"
               checked={settings.autoDeploy}
-              onChange={(event) => field("autoDeploy", event.target.checked)}
+              disabled={disabled}
+              onCheckedChange={(checked) => field("autoDeploy", checked)}
             />
-            <span className="checkbox-text">
-              <span>Deploy automatically</span>
-              <span className="help">
-                Every push to <code>{settings.branch || "the branch"}</code>{" "}
-                deploys once its images are built.
-              </span>
-            </span>
-          </label>
-        </div>
-      </Card>
-      <Card
-        title="Domains"
-        description="Public hostnames routed to a service. Services without a domain stay private."
-        labelledBy="domains-title"
-      >
-        {settings.domains.map((entry, index) => (
-          <div
-            className="repeat-row"
-            key={index}
-            role="group"
-            aria-label={`Domain ${index + 1}`}
-          >
-            <div className="field">
-              <label htmlFor={`domain-host-${index}`}>Hostname</label>
-              <input
+            <Text variant="secondary" size="sm">
+              Every push to <code>{settings.branch || "the branch"}</code>{" "}
+              deploys once its images are built.
+            </Text>
+          </div>
+        </LayerCard.Primary>
+      </LayerCard>
+      <LayerCard>
+        <LayerCard.Secondary>Domains</LayerCard.Secondary>
+        <LayerCard.Primary className="flex flex-col gap-4">
+          <Text variant="secondary">
+            Public hostnames routed to a service. Services without a domain stay
+            private.
+          </Text>
+          {settings.domains.map((entry, index) => (
+            <div
+              className="flex flex-wrap items-end gap-2"
+              key={index}
+              role="group"
+              aria-label={`Domain ${index + 1}`}
+            >
+              <Input
                 id={`domain-host-${index}`}
+                label="Hostname"
+                className="min-w-48 flex-2"
                 value={entry.hostname}
                 required
                 maxLength={253}
@@ -175,11 +174,10 @@ export function EnvironmentFields({
                   domain(index, { hostname: event.target.value })
                 }
               />
-            </div>
-            <div className="field">
-              <label htmlFor={`domain-service-${index}`}>Service</label>
-              <input
+              <Input
                 id={`domain-service-${index}`}
+                label="Service"
+                className="min-w-32 flex-1"
                 value={entry.service}
                 required
                 maxLength={128}
@@ -189,11 +187,10 @@ export function EnvironmentFields({
                   domain(index, { service: event.target.value })
                 }
               />
-            </div>
-            <div className="field">
-              <label htmlFor={`domain-port-${index}`}>Port</label>
-              <input
+              <Input
                 id={`domain-port-${index}`}
+                label="Port"
+                className="w-24"
                 type="number"
                 value={entry.port || ""}
                 required
@@ -205,35 +202,37 @@ export function EnvironmentFields({
                   domain(index, { port: Number(event.target.value) })
                 }
               />
+              <Button
+                type="button"
+                variant="ghost"
+                shape="square"
+                aria-label={`Remove domain ${index + 1}`}
+                icon={<TrashIcon size={16} />}
+                onClick={() =>
+                  field(
+                    "domains",
+                    settings.domains.filter(
+                      (_, position) => position !== index,
+                    ),
+                  )
+                }
+              />
             </div>
+          ))}
+          <div>
             <Button
               type="button"
-              variant="ghost"
-              shape="square"
-              aria-label={`Remove domain ${index + 1}`}
-              icon={<TrashIcon size={16} />}
+              icon={<PlusIcon size={16} />}
+              disabled={settings.domains.length >= 32}
               onClick={() =>
-                field(
-                  "domains",
-                  settings.domains.filter((_, position) => position !== index),
-                )
+                field("domains", [...settings.domains, create(DomainSchema)])
               }
-            />
+            >
+              Add domain
+            </Button>
           </div>
-        ))}
-        <div>
-          <Button
-            type="button"
-            icon={<PlusIcon size={16} />}
-            disabled={settings.domains.length >= 32}
-            onClick={() =>
-              field("domains", [...settings.domains, create(DomainSchema)])
-            }
-          >
-            Add domain
-          </Button>
-        </div>
-      </Card>
+        </LayerCard.Primary>
+      </LayerCard>
     </>
   );
 }

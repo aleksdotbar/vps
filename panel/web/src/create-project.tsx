@@ -1,11 +1,12 @@
 import { useSuspenseQuery } from "@tanstack/react-query";
-import { getRouteApi, Link, useRouter } from "@tanstack/react-router";
+import { Banner, Empty, LayerCard, Link, Select } from "@cloudflare/kumo";
+import { WarningIcon } from "@phosphor-icons/react";
+import { getRouteApi, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
-import type { FormEvent } from "react";
 
 import type { Repository } from "../../gen/ts/panel/v1/panel_pb";
 import { integrationQuery, repositoriesQuery } from "./api";
-import { Banner, Button, Card, Empty, PageHeader } from "./components";
+import { ButtonLink, Page } from "./components";
 import { ProjectForm } from "./project-form";
 
 const route = getRouteApi("/_private/projects/new");
@@ -18,35 +19,27 @@ export function NewProjectRoute() {
 export function CreateProject({ repositoryId }: { repositoryId: string }) {
   const integration = useSuspenseQuery(integrationQuery()).data;
   return (
-    <>
-      <PageHeader
-        breadcrumbs={[
-          <Link key="projects" to="/projects" search={{ cursor: "" }}>
-            Projects
-          </Link>,
-        ]}
-        title="New project"
-        description="Connect a GitHub repository to deploy from."
-      />
-      <div className="stack" style={{ maxWidth: "40rem" }}>
+    <Page
+      title="New project"
+      description="Connect a GitHub repository to deploy from."
+      crumbs={[{ label: "Projects", href: "/projects" }]}
+    >
+      <div className="flex max-w-2xl flex-col gap-6">
         {integration.installed ? (
           <RepositoryPicker repositoryId={repositoryId} />
         ) : (
-          <Card>
-            <Empty
-              title="Connect GitHub first"
-              actions={
-                <Link to="/settings" hash="github">
-                  Open settings
-                </Link>
-              }
-            >
-              The panel needs access to your repositories.
-            </Empty>
-          </Card>
+          <Empty
+            title="Connect GitHub first"
+            description="The panel needs access to your repositories."
+            contents={
+              <ButtonLink to="/settings" hash="github">
+                Open settings
+              </ButtonLink>
+            }
+          />
         )}
       </div>
-    </>
+    </Page>
   );
 }
 
@@ -62,89 +55,81 @@ function RepositoryPicker({ repositoryId }: { repositoryId: string }) {
     creationRepository ??
     selected.find((value) => String(value.githubRepositoryId) === repositoryId);
 
-  function choose(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (locked) return;
-    const value = new FormData(event.currentTarget).get("repository");
+  function choose(value: string | null) {
     if (
-      typeof value === "string" &&
-      selected.some((entry) => String(entry.githubRepositoryId) === value)
+      locked ||
+      !value ||
+      !selected.some((entry) => String(entry.githubRepositoryId) === value)
     )
-      void router.navigate({
-        to: "/projects/new",
-        search: { repository: value },
-      });
+      return;
+    void router.navigate({
+      to: "/projects/new",
+      search: { repository: value },
+    });
   }
 
   if (data.page?.nextPageToken)
     return (
-      <Card>
-        <Empty title="Too many repositories">
-          Limit the GitHub App to at most 100 repositories in{" "}
-          <Link to="/settings" hash="github">
-            Settings
-          </Link>
-          .
-        </Empty>
-      </Card>
+      <Empty
+        title="Too many repositories"
+        description="Limit the GitHub App to at most 100 repositories in Settings."
+        contents={
+          <ButtonLink to="/settings" hash="github">
+            Open settings
+          </ButtonLink>
+        }
+      />
     );
   if (!selected.length && !locked)
     return (
-      <Card>
-        <Empty
-          title="No repositories available"
-          actions={<Link to="/settings/repositories">Choose repositories</Link>}
-        >
-          Choose which repositories the panel may use.
-        </Empty>
-      </Card>
+      <Empty
+        title="No repositories available"
+        description="Choose which repositories the panel may use."
+        contents={
+          <ButtonLink to="/settings/repositories">
+            Choose repositories
+          </ButtonLink>
+        }
+      />
     );
 
   return (
     <>
       {error && (
-        <Banner tone="warning">
-          Couldn’t refresh repositories. The list may be out of date.
-        </Banner>
+        <Banner
+          variant="alert"
+          icon={<WarningIcon weight="fill" />}
+          description="Couldn’t refresh repositories. The list may be out of date."
+        />
       )}
-      <Card title="1. Repository" labelledBy="repository-step-title">
-        <form className="form" onSubmit={choose}>
-          <div className="field">
-            <label htmlFor="project-repository">Repository</label>
-            <div className="row" style={{ flexWrap: "nowrap" }}>
-              <select
-                id="project-repository"
-                name="repository"
-                defaultValue={repositoryId}
-                key={repositoryId}
-                required
-                disabled={locked || !!error}
-              >
-                <option value="">Choose a repository…</option>
-                {selected.map((entry) => (
-                  <option
-                    key={String(entry.githubRepositoryId)}
-                    value={String(entry.githubRepositoryId)}
-                  >
-                    {entry.owner}/{entry.name}
-                  </option>
-                ))}
-              </select>
-              <Button type="submit" disabled={locked || !!error}>
-                Continue
-              </Button>
-            </div>
-            <p className="help">
-              Missing one?{" "}
-              <Link to="/settings/repositories">Choose repositories</Link>.
-            </p>
-          </div>
-        </form>
-      </Card>
+      <LayerCard>
+        <LayerCard.Secondary>1. Repository</LayerCard.Secondary>
+        <LayerCard.Primary>
+          <Select
+            label="Repository"
+            placeholder="Choose a repository…"
+            value={repositoryId || null}
+            onValueChange={choose}
+            disabled={locked || !!error}
+            items={selected.map((entry) => ({
+              value: String(entry.githubRepositoryId),
+              label: `${entry.owner}/${entry.name}`,
+            }))}
+            description={
+              <>
+                Missing one?{" "}
+                <Link href="/settings/repositories">Choose repositories</Link>.
+              </>
+            }
+          />
+        </LayerCard.Primary>
+      </LayerCard>
       {repositoryId && !repository && (
-        <Banner tone="warning">
-          That repository is no longer available. Choose another one.
-        </Banner>
+        <Banner
+          variant="alert"
+          icon={<WarningIcon weight="fill" />}
+          description="That repository is no longer available. Choose another one."
+        />
       )}
       {repository && (
         <ProjectForm

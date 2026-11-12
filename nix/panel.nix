@@ -25,7 +25,7 @@ let
       src = src + "/web";
       inherit pnpm;
       fetcherVersion = 4;
-      hash = "sha256-XjfwPUKdBnS361FYJplmnqAqE2BtoFMZ9EcsWc4rw+M=";
+      hash = "sha256-qjHNrAS6zVzCEvIKjIqv6lcWmfIxChaG3LPCRSffMGA=";
     };
     nativeBuildInputs = [ pkgs.nodejs_24 pnpm pkgs.pnpmConfigHook ];
     buildPhase = ''

@@ -1,7 +1,17 @@
+import {
+  Banner,
+  Button,
+  Checkbox,
+  Empty,
+  Input,
+  LayerCard,
+  SensitiveInput,
+  Text,
+} from "@cloudflare/kumo";
 import { KeyIcon, PlusIcon, TrashIcon } from "@phosphor-icons/react";
 import { Code, ConnectError } from "@connectrpc/connect";
-import { useSuspenseQuery } from "@tanstack/react-query";
-import { getRouteApi, Link } from "@tanstack/react-router";
+import { useMutation, useSuspenseQuery } from "@tanstack/react-query";
+import { getRouteApi } from "@tanstack/react-router";
 import { useRef, useState } from "react";
 import type { FormEvent } from "react";
 
@@ -14,18 +24,13 @@ import {
   queryClient,
   refreshEnvironment,
 } from "./api";
-import {
-  Banner,
-  Button,
-  Card,
-  Empty,
-  EnvironmentStatus,
-  PageHeader,
-} from "./components";
+import { ButtonLink, EnvironmentStatus, Page } from "./components";
 import { secretChangeProblem } from "./secret-changes";
 import { useSessionExpiry } from "./use-session-expiry";
 
 const route = getRouteApi("/_private/environments/$environmentId/secrets");
+
+type Upsert = Pick<SecretValue, "name" | "value">;
 
 export function EnvironmentSecretsRoute() {
   return <EnvironmentSecrets id={route.useParams().environmentId} />;
@@ -36,47 +41,35 @@ export function EnvironmentSecrets({ id }: { id: string }) {
   const environment = data.environment;
   if (!environment?.settings)
     return (
-      <Card>
-        <Empty title="Environment not found">
-          <Link to="/projects" search={{ cursor: "" }}>
-            Back to projects
-          </Link>
-        </Empty>
-      </Card>
+      <Page title="Environment not found">
+        <Empty
+          title="Environment not found"
+          contents={
+            <ButtonLink to="/projects" search={{ cursor: "" }}>
+              Back to projects
+            </ButtonLink>
+          }
+        />
+      </Page>
     );
   return (
-    <>
-      <PageHeader
-        breadcrumbs={[
-          <Link
-            key="environment"
-            to="/environments/$environmentId"
-            params={{ environmentId: id }}
-            search={{ services: "", releases: "" }}
-          >
-            {environment.settings.name}
-          </Link>,
-        ]}
-        title="Secrets"
-        badge={<EnvironmentStatus environment={environment} />}
-        description="Environment variables your services read. Values are encrypted and never shown again."
-      />
-      <div className="stack" style={{ maxWidth: "48rem" }}>
+    <Page
+      title="Secrets"
+      description="Environment variables your services read. Values are encrypted and never shown again."
+      crumbs={[
+        { label: environment.settings.name, href: `/environments/${id}` },
+      ]}
+      actions={<EnvironmentStatus environment={environment} />}
+    >
+      <div className="flex max-w-3xl flex-col gap-6">
         <SecretForm
           key={id}
           environment={environment}
           metadataError={!!error}
         />
       </div>
-    </>
+    </Page>
   );
-}
-
-function clearValues(form: HTMLFormElement) {
-  for (const input of form.querySelectorAll<HTMLTextAreaElement>(
-    "textarea[data-secret-value]",
-  ))
-    input.value = "";
 }
 
 function SecretForm({
@@ -90,25 +83,33 @@ function SecretForm({
   const form = useRef<HTMLFormElement>(null);
   const [base, setBase] = useState(environment);
   const [rows, setRows] = useState<string[]>([]);
-  const [pending, setPending] = useState(false);
+  const [removals, setRemovals] = useState<string[]>([]);
+  // Bumping this remounts every value input, which drops its typed value.
+  const [valueEpoch, setValueEpoch] = useState(0);
   const [needsRefresh, setNeedsRefresh] = useState(false);
   const [failure, setFailure] = useState("");
   const [notice, setNotice] = useState("");
+  const refreshing = useMutation({ mutationFn: refresh });
+  const saving = useMutation({ mutationFn: save });
+  const pending = refreshing.isPending || saving.isPending;
   const stale = environment.version !== base.version;
   const blocked = pending || needsRefresh || stale || metadataError;
 
+  function clearValues() {
+    setValueEpoch((epoch) => epoch + 1);
+  }
+
   async function reload() {
-    if (form.current) clearValues(form.current);
+    clearValues();
     const current = await refreshEnvironment(environment.id);
     form.current?.reset();
     setBase(current);
     setRows([]);
+    setRemovals([]);
     setNeedsRefresh(false);
   }
 
   async function refresh() {
-    if (pending) return;
-    setPending(true);
     setFailure("");
     setNotice("");
     try {
@@ -117,45 +118,18 @@ function SecretForm({
     } catch (error) {
       if (!(await expireSession(error)))
         setFailure("Couldn’t reload secrets. Try again.");
-    } finally {
-      setPending(false);
     }
   }
 
-  async function submit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (blocked) return;
-    const submittedForm = event.currentTarget;
-    const upserts: Pick<SecretValue, "name" | "value">[] = [];
-    for (const row of rows) {
-      const name = submittedForm.elements.namedItem(`name-${row}`);
-      const value = submittedForm.elements.namedItem(`value-${row}`);
-      if (
-        !(name instanceof HTMLInputElement) ||
-        !(value instanceof HTMLTextAreaElement)
-      ) {
-        clearValues(submittedForm);
-        setFailure("The form couldn’t be read. Enter the values again.");
-        return;
-      }
-      upserts.push({ name: name.value, value: value.value });
-      value.value = "";
-    }
-    const removeNames = new FormData(submittedForm)
-      .getAll("remove")
-      .map(String);
-    setFailure("");
-    setNotice("");
-    const problem = secretChangeProblem(upserts, removeNames, base.secretNames);
-    if (problem) {
-      setFailure(
-        `${problem} For safety the values were cleared — enter them again.`,
-      );
-      return;
-    }
-    setPending(true);
+  async function save({
+    upserts,
+    removeNames,
+  }: {
+    upserts: Upsert[];
+    removeNames: string[];
+  }) {
     try {
-      // Plaintext exists only in this request, never in React or Query state.
+      // Plaintext leaves only in this request; the values are blanked right after.
       let result;
       try {
         result = await panel.saveEnvironmentSecrets({
@@ -203,103 +177,151 @@ function SecretForm({
           "We couldn’t confirm the save. Reload to check, then re-enter any values still needed.",
         );
       }
-    } finally {
-      setPending(false);
     }
+  }
+
+  function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (blocked) return;
+    const submittedForm = event.currentTarget;
+    const upserts: Upsert[] = [];
+    for (const row of rows) {
+      const name = submittedForm.elements.namedItem(`name-${row}`);
+      const value = submittedForm.elements.namedItem(`value-${row}`);
+      if (
+        !(name instanceof HTMLInputElement) ||
+        !(value instanceof HTMLInputElement)
+      ) {
+        clearValues();
+        setFailure("The form couldn’t be read. Enter the values again.");
+        return;
+      }
+      upserts.push({ name: name.value, value: value.value });
+    }
+    clearValues();
+    const removeNames = [...removals];
+    setFailure("");
+    setNotice("");
+    const problem = secretChangeProblem(upserts, removeNames, base.secretNames);
+    if (problem) {
+      setFailure(
+        `${problem} For safety the values were cleared — enter them again.`,
+      );
+      return;
+    }
+    saving.mutate({ upserts, removeNames });
   }
 
   return (
     <>
       {stale && (
         <Banner
-          tone="warning"
-          actions={
-            <Button size="sm" pending={pending} onClick={() => void refresh()}>
+          variant="alert"
+          title="Secrets changed since you opened this page."
+          action={
+            <Button
+              size="sm"
+              loading={refreshing.isPending}
+              disabled={pending}
+              onClick={() => refreshing.mutate()}
+            >
               Load latest
             </Button>
           }
-        >
-          Secrets changed since you opened this page.
-        </Banner>
+        />
       )}
       {metadataError && (
-        <Banner tone="warning">Couldn’t refresh. Reload before saving.</Banner>
+        <Banner
+          variant="alert"
+          title="Couldn’t refresh. Reload before saving."
+        />
       )}
       <form
         ref={form}
-        className="form"
-        onSubmit={(event) => void submit(event)}
+        className="flex flex-col gap-6"
+        onSubmit={submit}
         autoComplete="off"
         aria-busy={pending}
       >
-        <fieldset disabled={blocked} className="stack">
-          <Card
-            title="Saved secrets"
-            description="To change a value, add it again below with the same name."
-            labelledBy="saved-secrets-title"
-            flush
-          >
-            {base.secretNames.length ? (
-              <ul className="list">
-                {base.secretNames.map((name) => (
-                  <li key={name}>
-                    <label className="list-row removable">
-                      <code>{name}</code>
-                      <span className="spacer" />
-                      <span className="checkbox subtle">
-                        <input type="checkbox" name="remove" value={name} />
-                        Remove
-                      </span>
-                    </label>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <Empty icon={<KeyIcon size={20} />} title="No secrets yet">
-                Add the values your Compose file expects below.
-              </Empty>
-            )}
-          </Card>
-          <Card
-            title="Add or replace"
-            description="Values are visible while you type and cleared as soon as you save. An empty value is allowed."
-            labelledBy="secret-changes-title"
-          >
-            {rows.map((row, index) => (
-              <div
-                className="repeat-row repeat-row-secret"
-                key={row}
-                role="group"
-                aria-label={`Secret ${index + 1}`}
-              >
-                <div className="field">
-                  <label htmlFor={`name-${row}`}>Name</label>
-                  <input
+        <fieldset disabled={blocked} className="flex flex-col gap-6">
+          <LayerCard>
+            <LayerCard.Secondary>Saved secrets</LayerCard.Secondary>
+            <LayerCard.Primary className="flex flex-col gap-3">
+              {base.secretNames.length ? (
+                <>
+                  <Text variant="secondary">
+                    To change a value, add it again below with the same name.
+                  </Text>
+                  <ul className="flex flex-col divide-y divide-kumo-line">
+                    {base.secretNames.map((name) => (
+                      <li
+                        key={name}
+                        className="flex items-center justify-between gap-4 py-2"
+                      >
+                        <Text variant="mono">{name}</Text>
+                        <Checkbox
+                          label="Remove"
+                          aria-label={`Remove ${name}`}
+                          disabled={blocked}
+                          checked={removals.includes(name)}
+                          onCheckedChange={(checked) =>
+                            setRemovals(
+                              checked
+                                ? [...removals, name]
+                                : removals.filter((entry) => entry !== name),
+                            )
+                          }
+                        />
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              ) : (
+                <Empty
+                  size="sm"
+                  icon={<KeyIcon size={32} />}
+                  title="No secrets yet"
+                  description="Add the values your Compose file expects below."
+                />
+              )}
+            </LayerCard.Primary>
+          </LayerCard>
+          <LayerCard>
+            <LayerCard.Secondary>Add or replace</LayerCard.Secondary>
+            <LayerCard.Primary className="flex flex-col gap-4">
+              <Text variant="secondary">
+                Values are masked and cleared as soon as you save. An empty
+                value is allowed.
+              </Text>
+              {rows.map((row, index) => (
+                <div
+                  className="flex flex-wrap items-end gap-2"
+                  key={row}
+                  role="group"
+                  aria-label={`Secret ${index + 1}`}
+                >
+                  <Input
                     id={`name-${row}`}
                     name={`name-${row}`}
+                    label="Name"
+                    className="min-w-40 flex-1 font-mono"
                     required
                     maxLength={128}
                     pattern="[A-Za-z_][A-Za-z0-9_]*"
                     autoComplete="off"
                     spellCheck={false}
-                    className="mono"
                     placeholder="API_TOKEN"
                   />
-                </div>
-                <div className="field">
-                  <label htmlFor={`value-${row}`}>Value</label>
-                  <textarea
+                  <SensitiveInput
+                    key={`${row}:${valueEpoch}`}
                     id={`value-${row}`}
                     name={`value-${row}`}
-                    data-secret-value=""
-                    rows={1}
-                    wrap="soft"
+                    label="Value"
+                    className="min-w-48 flex-2"
+                    disabled={blocked}
                     maxLength={16384}
-                    autoComplete="off"
                     spellCheck={false}
                   />
-                </div>
-                <div className="button-cell">
                   <Button
                     type="button"
                     variant="ghost"
@@ -311,44 +333,45 @@ function SecretForm({
                     }
                   />
                 </div>
+              ))}
+              <div>
+                <Button
+                  type="button"
+                  icon={<PlusIcon size={16} />}
+                  disabled={rows.length >= 64}
+                  onClick={() => setRows([...rows, crypto.randomUUID()])}
+                >
+                  Add secret
+                </Button>
               </div>
-            ))}
-            <div>
-              <Button
-                type="button"
-                icon={<PlusIcon size={16} />}
-                disabled={rows.length >= 64}
-                onClick={() => setRows([...rows, crypto.randomUUID()])}
-              >
-                Add secret
-              </Button>
-            </div>
-          </Card>
+            </LayerCard.Primary>
+          </LayerCard>
         </fieldset>
         {failure && (
-          <p className="field-error" role="alert">
+          <Text variant="error" role="alert">
             {failure}
-          </p>
+          </Text>
         )}
         {notice && (
-          <p className="help" role="status">
+          <Text variant="secondary" role="status">
             {notice}
-          </p>
+          </Text>
         )}
-        <div className="form-actions">
+        <div className="flex flex-wrap items-center gap-2">
           <Button
             type="submit"
             variant="primary"
-            pending={pending}
-            disabled={blocked && !pending}
+            loading={saving.isPending}
+            disabled={blocked}
           >
             Save secrets
           </Button>
           <Button
             type="button"
             variant="ghost"
+            loading={refreshing.isPending}
             disabled={pending}
-            onClick={() => void refresh()}
+            onClick={() => refreshing.mutate()}
           >
             Discard changes
           </Button>
