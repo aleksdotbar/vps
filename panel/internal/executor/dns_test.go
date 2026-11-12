@@ -126,7 +126,7 @@ func TestDNSConfirmationRequiresNativeCandidateAndProgressesAcrossBoundedBatches
 	service.remote = fixtureHelper(func(_ context.Context, _ remote.Target, _ []byte, payload []byte) (remote.Result, error) {
 		var response any
 		if request, err := hosthelper.ParseReadinessRequest(payload); err == nil {
-			response = hosthelper.ReadinessResponse{SchemaVersion: 1, Action: "readiness", InstallationID: request.InstallationID, ServerID: request.ServerID, Challenge: request.Challenge, Role: "panel", Stage: "final", CurrentSystem: finalSystem, SystemProfile: finalSystem, BootedSystem: finalSystem, Status: "ready", DockerVersion: hosthelper.DockerVersion, ComposeVersion: hosthelper.ComposeVersion}
+			response = hosthelper.ReadinessResponse{SchemaVersion: 1, Action: "readiness", InstallationID: request.InstallationID, ServerID: request.ServerID, Challenge: request.Challenge, Role: "panel", CurrentSystem: finalSystem, SystemProfile: finalSystem, BootedSystem: finalSystem, Status: "ready", DockerVersion: hosthelper.DockerVersion, ComposeVersion: hosthelper.ComposeVersion}
 		} else {
 			request, err := deployment.ParseExecution(payload)
 			if err != nil {

@@ -18,8 +18,6 @@ type Result struct {
 	Status                string `json:"status"`
 	InstallationID        string `json:"installation_id"`
 	ServerID              string `json:"server_id"`
-	OperationID           string `json:"operation_id"`
-	InputSHA256           string `json:"input_sha256"`
 	ManagementFingerprint string `json:"management_fingerprint"`
 	ObservedAt            string `json:"observed_at"`
 	Ready                 bool   `json:"ready"`
@@ -37,6 +35,9 @@ func Bootstrap(ctx context.Context, input Handoff) (Result, error) {
 		return Result{}, ErrIdentity
 	}
 	lock, err := privatefile.LockProcess(StateDirectory)
+	if errors.Is(err, privatefile.ErrProcessBusy) {
+		return Result{}, ErrRunning
+	}
 	if err != nil {
 		return Result{}, ErrIdentity
 	}
@@ -113,7 +114,7 @@ func register(ctx context.Context, database *sql.DB, cipher *securestate.Cipher,
 	queries := store.New(tx)
 	existing, err := queries.GetInstallation(ctx)
 	if err == nil {
-		if existing.InstallationID != input.InstallationID || existing.PanelServerID != input.ServerID || existing.OperationID != input.OperationID || existing.InputSha256 != input.InputSHA256 || existing.SourceSystem != input.SourceSystem || existing.EnrollmentSystem != input.EnrollmentSystem || !hmac.Equal(existing.BootstrapIdentity, identity) {
+		if existing.InstallationID != input.InstallationID || existing.PanelServerID != input.ServerID || !hmac.Equal(existing.BootstrapIdentity, identity) {
 			return Result{}, ErrIdentity
 		}
 		server, err := queries.GetServer(ctx, existing.PanelServerID)
@@ -145,7 +146,7 @@ func register(ctx context.Context, database *sql.DB, cipher *securestate.Cipher,
 	if queries.CreateServerManagement(ctx, store.CreateServerManagementParams{ServerID: input.ServerID, CredentialKind: string(ref.Kind), CredentialOwnerID: ref.OwnerID, CredentialVersion: ref.Version, HostPublicKey: input.HostPublicKey, ManagementFingerprint: input.ManagementFingerprint}) != nil {
 		return Result{}, ErrIdentity
 	}
-	if queries.CreateInstallation(ctx, store.CreateInstallationParams{InstallationID: input.InstallationID, PanelServerID: input.ServerID, OperationID: input.OperationID, InputSha256: input.InputSHA256, SourceSystem: input.SourceSystem, EnrollmentSystem: input.EnrollmentSystem, BootstrapIdentity: identity, CreatedAt: now}) != nil {
+	if queries.CreateInstallation(ctx, store.CreateInstallationParams{InstallationID: input.InstallationID, PanelServerID: input.ServerID, BootstrapIdentity: identity, CreatedAt: now}) != nil {
 		return Result{}, ErrIdentity
 	}
 	if tx.Commit() != nil {
@@ -158,5 +159,5 @@ func credentialOwner(installationID, serverID string) string {
 	return "ssh:" + installationID + ":" + serverID
 }
 func registrationResult(input Handoff) Result {
-	return Result{Status: "registered", InstallationID: input.InstallationID, ServerID: input.ServerID, OperationID: input.OperationID, InputSHA256: input.InputSHA256, ManagementFingerprint: input.ManagementFingerprint, Ready: false}
+	return Result{Status: "registered", InstallationID: input.InstallationID, ServerID: input.ServerID, ManagementFingerprint: input.ManagementFingerprint, Ready: false}
 }

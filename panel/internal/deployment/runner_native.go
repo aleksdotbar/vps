@@ -15,11 +15,13 @@ import (
 	"time"
 )
 
-type runnerTools struct{ docker, systemctl, systemdRun, panel, env string }
+// system is the generation whose tools serve one operation; it may be newer than
+// the generation that staged the release.
+type runnerTools struct{ docker, systemctl, systemdRun, panel, env, system string }
 
 func systemTools(system string) runnerTools {
 	bin := system + "/sw/bin/"
-	return runnerTools{bin + "docker", bin + "systemctl", bin + "systemd-run", bin + "panel", bin + "env"}
+	return runnerTools{bin + "docker", bin + "systemctl", bin + "systemd-run", bin + "panel", bin + "env", system}
 }
 
 type limitedOutput struct {

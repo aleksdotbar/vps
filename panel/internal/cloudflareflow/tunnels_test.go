@@ -77,7 +77,7 @@ func setupTunnel(t *testing.T, admit bool) *tunnelFixture {
 	if _, err := service.database.ExecContext(ctx, `INSERT INTO server_management(server_id,credential_kind,credential_owner_id,credential_version,host_public_key,management_fingerprint) VALUES(?,'credential',?,1,?,?)`, tunnelServerID, owner, string(ssh.MarshalAuthorizedKey(public)), ssh.FingerprintSHA256(signer.PublicKey())); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := service.database.ExecContext(ctx, `INSERT INTO installation(id,installation_id,panel_server_id,operation_id,input_sha256,source_system,enrollment_system,bootstrap_identity,private_proof_at,created_at) VALUES(1,?,?,?,'fixture','fixture','fixture',?,1,1)`, tunnelInstallationID, tunnelServerID, uuid.NewString(), bytes.Repeat([]byte{1}, 32)); err != nil {
+	if _, err := service.database.ExecContext(ctx, `INSERT INTO installation(id,installation_id,panel_server_id,bootstrap_identity,private_proof_at,created_at) VALUES(1,?,?,?,1,1)`, tunnelInstallationID, tunnelServerID, bytes.Repeat([]byte{1}, 32)); err != nil {
 		t.Fatal(err)
 	}
 	result := &tunnelFixture{}

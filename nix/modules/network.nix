@@ -2,8 +2,6 @@
 let
   firewall = config.networking.firewall;
   transport = config.services.tailscale.interfaceName;
-  privatePorts = [ 22 ] ++ lib.optional (config.services.vpsPanel.enable or false) 443;
-  onlyDhcp = ports: lib.all (port: builtins.elem port [ 68 546 ]) ports;
 in
 {
   networking.nftables.enable = true;
@@ -28,19 +26,18 @@ in
     backend = "nftables";
     filterForward = true;
     extraForwardRules = ''iifname "vps-*" accept'';
-    trustedInterfaces = lib.mkForce [ "lo" ];
-    allowedTCPPorts = lib.mkDefault [ ];
-    allowedTCPPortRanges = lib.mkForce [ ];
-    allowedUDPPortRanges = lib.mkForce [ ];
-    interfaces.${transport}.allowedTCPPorts = privatePorts;
+    # Private SSH and, on the panel host, its HTTPS origin. Public SSH follows
+    # services.openssh.openFirewall, which the operator closes explicitly.
+    interfaces.${transport}.allowedTCPPorts =
+      [ 22 ] ++ lib.optional (config.services.vpsPanel.enable or false) 443;
   };
 
   # Stop the listening endpoint before removing the policy that makes SSH private.
-  systemd.services.sshd = lib.mkIf (!config.services.openssh.startWhenNeeded) {
+  systemd.services.sshd = lib.mkIf (config.services.openssh.enable && !config.services.openssh.startWhenNeeded) {
     requires = [ "nftables.service" ];
     after = [ "nftables.service" ];
   };
-  systemd.sockets.sshd = lib.mkIf config.services.openssh.startWhenNeeded {
+  systemd.sockets.sshd = lib.mkIf (config.services.openssh.enable && config.services.openssh.startWhenNeeded) {
     requires = [ "nftables.service" ];
     after = [ "nftables.service" ];
   };
@@ -52,17 +49,8 @@ in
         && firewall.filterForward
         && !config.networking.nftables.flushRuleset
         && firewall.extraForwardRules == ''iifname "vps-*" accept''
-        && firewall.allowedTCPPorts == [ ]
-        && onlyDhcp firewall.allowedUDPPorts
-        && firewall.extraInputRules == ""
-        && lib.all (name:
-          let ports = firewall.interfaces.${name}; in
-          ports.allowedTCPPorts == (if name == transport then privatePorts else [ ])
-          && ports.allowedTCPPortRanges == [ ]
-          && onlyDhcp ports.allowedUDPPorts
-          && ports.allowedUDPPortRanges == [ ]
-        ) (builtins.attrNames firewall.interfaces);
-      message = "Foundation permits only private SSH, optional panel HTTPS and DHCP; public application and management ports must stay closed.";
+        && !(builtins.elem transport firewall.trustedInterfaces);
+      message = "The host firewall must stay enabled with forwarding limited to panel-managed bridges and no blanket Tailscale trust.";
     }
   ];
 }

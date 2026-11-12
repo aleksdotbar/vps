@@ -13,10 +13,6 @@ CREATE TABLE installation (
     id INTEGER PRIMARY KEY CHECK (id=1),
     installation_id TEXT NOT NULL UNIQUE,
     panel_server_id TEXT NOT NULL UNIQUE REFERENCES server_management(server_id),
-    operation_id TEXT NOT NULL,
-    input_sha256 TEXT NOT NULL,
-    source_system TEXT NOT NULL,
-    enrollment_system TEXT NOT NULL,
     bootstrap_identity BLOB NOT NULL CHECK (length(bootstrap_identity)=32),
     private_proof_at INTEGER NOT NULL DEFAULT 0,
     created_at INTEGER NOT NULL

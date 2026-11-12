@@ -114,7 +114,7 @@ func seedReleaseRouting(t *testing.T, service *Service, serverID string) {
 	if err := queries.CreateServerManagement(ctx, store.CreateServerManagementParams{ServerID: serverID, CredentialKind: "credential", CredentialOwnerID: "fixture-ssh", CredentialVersion: 1, HostPublicKey: "fixture", ManagementFingerprint: "fixture"}); err != nil {
 		t.Fatal(err)
 	}
-	if err := queries.CreateInstallation(ctx, store.CreateInstallationParams{InstallationID: installationID, PanelServerID: serverID, OperationID: uuid.NewString(), InputSha256: "fixture", SourceSystem: "fixture", EnrollmentSystem: "fixture", BootstrapIdentity: bytes.Repeat([]byte{1}, 32), CreatedAt: 1}); err != nil {
+	if err := queries.CreateInstallation(ctx, store.CreateInstallationParams{InstallationID: installationID, PanelServerID: serverID, BootstrapIdentity: bytes.Repeat([]byte{1}, 32), CreatedAt: 1}); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := service.database.ExecContext(ctx, `INSERT INTO server_tunnels(server_id,request_id,installation_id,account_id,credential_version,name,phase,create_attempted,create_attempted_at,tunnel_id,config_sha256,observed_at,created_at,updated_at) VALUES(?,?,?,?,1,'fixture','ready',TRUE,1,?,?,1,1,1)`, serverID, uuid.NewString(), installationID, account, uuid.NewString(), strings.Repeat("a", 64)); err != nil {

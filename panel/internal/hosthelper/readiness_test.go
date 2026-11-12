@@ -9,26 +9,28 @@ import (
 func readinessFixture() (ReadinessRequest, ReadinessResponse) {
 	request := ReadinessRequest{1, "readiness", "11111111-1111-4111-8111-111111111111", "22222222-2222-4222-8222-222222222222", strings.Repeat("ab", 32)}
 	path := "/nix/store/" + strings.Repeat("a", 32) + "-nixos-system-fixture"
-	return request, ReadinessResponse{1, "readiness", request.InstallationID, request.ServerID, request.Challenge, "panel", "final", path, path, path, "ready", DockerVersion, ComposeVersion}
+	return request, ReadinessResponse{1, "readiness", request.InstallationID, request.ServerID, request.Challenge, "panel", path, path, path, "ready", DockerVersion, ComposeVersion}
 }
 
-func TestReadinessEvidenceRequiresFreshFinalBootAndExactIdentity(t *testing.T) {
+func TestReadinessEvidenceRequiresRunningProfileAndExactIdentity(t *testing.T) {
 	request, response := readinessFixture()
-	data, err := json.Marshal(response)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err := ParseReadinessResponse(data, request); err != nil {
-		t.Fatal(err)
-	}
 	for name, change := range map[string]func(*ReadinessResponse){
-		"challenge":    func(p *ReadinessResponse) { p.Challenge = strings.Repeat("cd", 32) },
-		"installation": func(p *ReadinessResponse) { p.InstallationID = request.ServerID },
-		"server":       func(p *ReadinessResponse) { p.ServerID = request.InstallationID },
-		"enrollment":   func(p *ReadinessResponse) { p.Stage = "enrollment" },
-		"old boot": func(p *ReadinessResponse) {
+		"booted": func(*ReadinessResponse) {},
+		"not yet rebooted": func(p *ReadinessResponse) {
 			p.BootedSystem = strings.Replace(p.CurrentSystem, "fixture", "previous", 1)
 		},
+	} {
+		value := response
+		change(&value)
+		data, _ := json.Marshal(value)
+		if _, err := ParseReadinessResponse(data, request); err != nil {
+			t.Fatalf("%s: ready running profile refused: %v", name, err)
+		}
+	}
+	for name, change := range map[string]func(*ReadinessResponse){
+		"challenge":           func(p *ReadinessResponse) { p.Challenge = strings.Repeat("cd", 32) },
+		"installation":        func(p *ReadinessResponse) { p.InstallationID = request.ServerID },
+		"server":              func(p *ReadinessResponse) { p.ServerID = request.InstallationID },
 		"profile":             func(p *ReadinessResponse) { p.SystemProfile = p.CurrentSystem + "-external" },
 		"unsupported engine":  func(p *ReadinessResponse) { p.DockerVersion = "0.0.0" },
 		"unsupported compose": func(p *ReadinessResponse) { p.ComposeVersion = "0.0.0" },
@@ -48,17 +50,18 @@ func TestReadinessEvidenceRequiresFreshFinalBootAndExactIdentity(t *testing.T) {
 			t.Fatal("accepted executable/ambiguous request")
 		}
 	}
-	lease := FinalLease{request.InstallationID, request.ServerID, response.CurrentSystem, func() error { return nil }}
-	probe := ProbeResponse{1, request.InstallationID, request.ServerID, request.Challenge, "panel", "final", response.CurrentSystem, response.BootedSystem, response.SystemProfile, false}
-	if !readinessFinalMatches(request, probe, lease) {
-		t.Fatal("settled booted final refused")
+	lease := HostLease{request.InstallationID, request.ServerID, response.CurrentSystem, func() error { return nil }}
+	probe := ProbeResponse{1, request.InstallationID, request.ServerID, request.Challenge, "panel", response.CurrentSystem, response.BootedSystem + "-old", response.SystemProfile, false}
+	if !readinessMatches(request, probe, lease) {
+		t.Fatal("running profile refused because another generation is booted")
 	}
-	probe.BootedSystem += "-old"
-	if !readinessSetupMatches(request, probe, lease) {
-		t.Fatal("settled pre-reboot setup was not recognized")
+	probe.CurrentSystem += "-switched"
+	if readinessMatches(request, probe, lease) {
+		t.Fatal("generation changed after the lease was taken")
 	}
-	if readinessFinalMatches(request, probe, lease) {
-		t.Fatal("settled pre-reboot setup authorized deployment")
+	lease.InstallationID = request.ServerID
+	if readinessMatches(request, ProbeResponse{CurrentSystem: response.CurrentSystem, SystemProfile: response.SystemProfile}, lease) {
+		t.Fatal("foreign host lease admitted")
 	}
 }
 
@@ -89,7 +92,7 @@ func TestReadinessRejectsUnsupportedDaemonAndIncompleteNativeUnits(t *testing.T)
 			}
 		})
 	}
-	unit := "Id=docker.service\nLoadState=loaded\nActiveState=active\nSubState=running\nMainPID=100\nFragmentPath=/nix/store/fixture/docker.service\nDropInPaths=\nNeedDaemonReload=no\n\nId=nftables.service\nLoadState=loaded\nActiveState=active\nSubState=exited\nMainPID=0\nFragmentPath=/nix/store/fixture/nftables.service\nDropInPaths=\nNeedDaemonReload=no\n"
+	unit := "Id=docker.service\nLoadState=loaded\nActiveState=active\nSubState=running\nMainPID=100\nFragmentPath=/nix/store/fixture/docker.service\nDropInPaths=\nNeedDaemonReload=no\n\nId=nftables.service\nLoadState=loaded\nActiveState=active\nSubState=exited\nMainPID=0\nFragmentPath=/nix/store/fixture/nftables.service\nDropInPaths=\nNeedDaemonReload=no\n\nId=panel-cloudflared.service\nLoadState=loaded\nActiveState=inactive\nSubState=dead\nMainPID=0\nFragmentPath=/nix/store/fixture/panel-cloudflared.service\nDropInPaths=\nNeedDaemonReload=no\n"
 	if _, err := parseReadinessUnits([]byte(unit)); err != nil {
 		t.Fatal(err)
 	}
@@ -100,35 +103,25 @@ func TestReadinessRejectsUnsupportedDaemonAndIncompleteNativeUnits(t *testing.T)
 	}
 }
 
-func TestPendingRebootRequiresSettledGenerationWithoutClaimingReadiness(t *testing.T) {
+func TestPendingSwitchReportsSetupPendingWithoutClaimingReadiness(t *testing.T) {
 	request, response := readinessFixture()
 	response.Status = "setup_pending"
 	response.DockerVersion, response.ComposeVersion = "", ""
-	response.BootedSystem += "-previous"
+	response.SystemProfile = strings.Replace(response.CurrentSystem, "fixture", "next", 1)
 	for name, change := range map[string]func(*ReadinessResponse){
-		"pending reboot":    func(*ReadinessResponse) {},
-		"divergent profile": func(p *ReadinessResponse) { p.SystemProfile += "-other" },
-		"already booted":    func(p *ReadinessResponse) { p.BootedSystem = p.CurrentSystem },
-		"invalid boot":      func(p *ReadinessResponse) { p.BootedSystem = "unknown" },
-		"claims runtime":    func(p *ReadinessResponse) { p.DockerVersion = DockerVersion },
+		"pending switch":  func(*ReadinessResponse) {},
+		"already running": func(p *ReadinessResponse) { p.SystemProfile = p.CurrentSystem },
+		"invalid profile": func(p *ReadinessResponse) { p.SystemProfile = "unknown" },
+		"claims runtime":  func(p *ReadinessResponse) { p.DockerVersion = DockerVersion },
 	} {
 		t.Run(name, func(t *testing.T) {
 			value := response
 			change(&value)
 			data, _ := json.Marshal(value)
 			_, err := ParseReadinessResponse(data, request)
-			if (err == nil) != (name == "pending reboot") {
+			if (err == nil) != (name == "pending switch") {
 				t.Fatalf("pending readiness accepted incorrectly: %v", err)
 			}
 		})
-	}
-	lease := FinalLease{request.InstallationID, request.ServerID, response.CurrentSystem, func() error { return nil }}
-	observed := ProbeResponse{1, request.InstallationID, request.ServerID, request.Challenge, "server", "final", response.CurrentSystem, response.BootedSystem, response.SystemProfile, false}
-	if !readinessSetupMatches(request, observed, lease) || readinessFinalMatches(request, observed, lease) {
-		t.Fatal("pending reboot did not preserve deployment refusal")
-	}
-	lease.InstallationID = request.ServerID
-	if readinessSetupMatches(request, observed, lease) {
-		t.Fatal("foreign setup authority admitted")
 	}
 }

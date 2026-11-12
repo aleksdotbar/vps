@@ -3,9 +3,10 @@ let
   inherit (nixpkgs) lib;
   pkgs = nixpkgs.legacyPackages.x86_64-linux;
   instance = lib.nixosSystem {
+    system = "x86_64-linux";
     modules = [
       ../modules/tunnel.nix
-      ./fixture.nix
+      ./hostinger-image.nix
       { services.vpsTunnel.enable = true; }
     ];
   };

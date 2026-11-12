@@ -3,11 +3,12 @@ package hosthelper
 import (
 	"context"
 	"os"
+	"strings"
 
 	"github.com/aleksdotbar/vps/panel/internal/deployment"
 )
 
-func deploymentEffectAuthority(identity deployment.Identity, finalSystem, challenge string, acquire FinalAcquirer) deployment.EffectAuthority {
+func deploymentEffectAuthority(identity deployment.Identity, finalSystem, challenge string, acquire HostAcquirer) deployment.EffectAuthority {
 	return func(ctx context.Context) (func() error, error) {
 		if acquire == nil {
 			return nil, ErrIdentity
@@ -17,12 +18,12 @@ func deploymentEffectAuthority(identity deployment.Identity, finalSystem, challe
 			return nil, ErrIdentity
 		}
 		fail := func() (func() error, error) { _ = lease.Release(); return nil, ErrIdentity }
-		if !deploymentLeaseMatches(identity, lease) || lease.FinalSystem != finalSystem {
+		if !deploymentLeaseMatches(identity, lease) || lease.System != finalSystem {
 			return fail()
 		}
 		request := ReadinessRequest{SchemaVersion: 1, Action: "readiness", InstallationID: identity.InstallationID, ServerID: identity.ServerID, Challenge: challenge}
 		observed, err := probe(ProbeRequest{1, "probe", identity.InstallationID, identity.ServerID, challenge})
-		if err != nil || !readinessFinalMatches(request, observed, lease) || nativeReadiness(ctx, finalSystem) != nil {
+		if err != nil || !readinessMatches(request, observed, lease) || nativeReadiness(ctx, finalSystem) != nil {
 			return fail()
 		}
 		return func() error {
@@ -39,9 +40,9 @@ func deploymentEffectAuthority(identity deployment.Identity, finalSystem, challe
 // HandleDeploymentExecution runs only fixed control actions over already-staged
 // material. Authentication and the 4 KiB canonical input bound remain Serve's
 // boundary; native effect authority is reacquired for each short mutation.
-func HandleDeploymentExecution(ctx context.Context, request deployment.ExecutionRequest, acquire FinalAcquirer) (deployment.ExecutionResponse, error) {
+func HandleDeploymentExecution(ctx context.Context, request deployment.ExecutionRequest, acquire HostAcquirer) (deployment.ExecutionResponse, error) {
 	before, err := observeSystems()
-	if err != nil || before.current != before.profile || before.current != before.booted || deploymentGeneration(request.Identity, request.Challenge, before.current) != nil {
+	if err != nil || before.current != before.profile || deploymentGeneration(request.Identity, request.Challenge, before.current) != nil {
 		return deployment.ExecutionResponse{}, ErrIdentity
 	}
 	root, err := openTunnelDirectory(deploymentDirectory, 0700)
@@ -73,7 +74,7 @@ func HandleDeploymentExecution(ctx context.Context, request deployment.Execution
 
 // RunDeployment is the root-only fixed CLI entrypoint used by the admitted
 // transient unit. deployment.Run independently verifies its unit/process proof.
-func RunDeployment(ctx context.Context, environmentID, operationID string, recovery bool, acquire FinalAcquirer) error {
+func RunDeployment(ctx context.Context, environmentID, operationID string, recovery bool, acquire HostAcquirer) error {
 	if os.Geteuid() != 0 {
 		return ErrPrivilege
 	}
@@ -82,12 +83,29 @@ func RunDeployment(ctx context.Context, environmentID, operationID string, recov
 		return ErrIdentity
 	}
 	defer func() { _ = root.Close() }()
-	request, finalSystem, err := deployment.RetainedRequest(root, environmentID, operationID)
+	request, _, err := deployment.RetainedRequest(root, environmentID, operationID)
 	if err != nil {
 		return err
 	}
-	authority := deploymentEffectAuthority(request.Identity, finalSystem, request.Challenge, acquire)
-	return deployment.Run(ctx, root, environmentID, operationID, finalSystem, recovery, authority)
+	// Effects bind to the generation running now; a rebuild after staging is normal.
+	before, err := observeSystems()
+	if err != nil || before.current != before.profile {
+		return ErrIdentity
+	}
+	// The runner's own tools come from the generation that launched its unit, which
+	// a later rebuild does not change; its process proof checks that executable.
+	launched, ok := launchedSystem(os.Args[0])
+	if !ok {
+		return ErrIdentity
+	}
+	authority := deploymentEffectAuthority(request.Identity, before.current, request.Challenge, acquire)
+	return deployment.Run(ctx, root, environmentID, operationID, launched, recovery, authority)
+}
+
+// launchedSystem returns the generation of a runner started as <system>/sw/bin/panel.
+func launchedSystem(executable string) (string, bool) {
+	system, found := strings.CutSuffix(executable, "/sw/bin/panel")
+	return system, found && systemPath.MatchString(system)
 }
 
 // RunDeploymentRegistryCleanup is the fixed root-only expiry CLI. It removes

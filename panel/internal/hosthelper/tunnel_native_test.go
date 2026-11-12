@@ -22,10 +22,10 @@ func TestTunnelActionsRequireSettledFinalAuthority(t *testing.T) {
 			t.Fatalf("action %s bypassed final authority: %v", action, err)
 		}
 	}
-	for _, lease := range []FinalLease{{}, {InstallationID: request.InstallationID, ServerID: request.ServerID, FinalSystem: "/caller/path"}} {
+	for _, lease := range []HostLease{{}, {InstallationID: request.InstallationID, ServerID: request.ServerID, System: "/caller/path"}} {
 		released := false
 		lease.Release = func() error { released = true; return nil }
-		if _, err := handleTunnel(t.Context(), request, func(_ context.Context) (FinalLease, error) { return lease, nil }); !errors.Is(err, ErrIdentity) || !released {
+		if _, err := handleTunnel(t.Context(), request, func(_ context.Context) (HostLease, error) { return lease, nil }); !errors.Is(err, ErrIdentity) || !released {
 			t.Fatal("invalid final authority accepted or leaked exclusion")
 		}
 	}

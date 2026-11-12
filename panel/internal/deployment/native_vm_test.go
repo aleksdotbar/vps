@@ -15,7 +15,7 @@ import (
 
 	"github.com/aleksdotbar/vps/panel/internal/compose"
 	"github.com/aleksdotbar/vps/panel/internal/deployment"
-	"github.com/aleksdotbar/vps/panel/internal/hostsetup"
+	"github.com/aleksdotbar/vps/panel/internal/hosthelper"
 	"github.com/aleksdotbar/vps/panel/internal/releases"
 	"github.com/aleksdotbar/vps/panel/internal/routes"
 )
@@ -41,11 +41,11 @@ func TestNativeDeploymentAndRecovery(t *testing.T) {
 	}
 	defer func() { _ = root.Close() }()
 	acquire := func(ctx context.Context) (func() error, error) {
-		lease, err := hostsetup.AcquireSettledFinal(ctx)
+		lease, err := hosthelper.AcquireHost(ctx)
 		if err != nil {
 			return nil, err
 		}
-		return lease.Close, nil
+		return lease.Release, nil
 	}
 	resolver, err := compose.New(system + "/sw/bin/docker-compose")
 	if err != nil {

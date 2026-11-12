@@ -30,10 +30,9 @@ in
       shell = pkgs.bashInteractive;
     };
 
-    services.openssh.settings = {
-      AllowUsers = [ "panel-runner" ];
-      PermitUserEnvironment = false;
-    };
+    # No global AllowUsers: the provider's own logins stay as configured. The
+    # Match block alone confines panel-runner to Tailscale and the helper.
+    services.openssh.settings.PermitUserEnvironment = false;
     services.openssh.extraConfig = lib.mkBefore ''
       Match User panel-runner
         AllowUsers panel-runner@100.64.0.0/10 panel-runner@fd7a:115c:a1e0::/48

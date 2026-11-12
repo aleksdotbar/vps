@@ -27,7 +27,7 @@ pkgs.testers.runNixOSTest {
   globalTimeout = 1800;
 
   nodes.server = { config, lib, ... }: {
-    imports = [ ../modules/base.nix ];
+    imports = [ ../modules/runtime.nix ../modules/network.nix ../modules/transport.nix ];
     system.stateVersion = "26.05";
     services.tailscale.enable = lib.mkForce false;
     services.openssh.settings.AllowUsers = [ "operator" ];
@@ -53,12 +53,17 @@ pkgs.testers.runNixOSTest {
     services.dockerRegistry = { enable = true; port = 80; };
     environment.etc."panel-fixture-image".source = image;
     environment.etc."panel-fixture-test".source = testBinary;
-    environment.etc."panel-host.json".text = builtins.toJSON {
-      schema_version = 1;
-      installation_id = "11111111-1111-4111-8111-111111111111";
-      server_id = "22222222-2222-4222-8222-222222222222";
-      role = "panel";
-      stage = "final";
+    # Host identity as `panel setup` records it.
+    systemd.tmpfiles.settings.panel-host = {
+      "/var/lib/panel-host".d = { mode = "0700"; user = "root"; group = "root"; };
+      "/var/lib/panel-host/identity.json"."f+" = {
+        mode = "0600"; user = "root"; group = "root";
+        argument = builtins.toJSON {
+          installation_id = "11111111-1111-4111-8111-111111111111";
+          server_id = "22222222-2222-4222-8222-222222222222";
+          role = "panel";
+        };
+      };
     };
   };
   testScript = builtins.readFile ./deployment-runtime.py;

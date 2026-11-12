@@ -2,11 +2,9 @@ package installation
 
 import (
 	"context"
-	"encoding/json"
 	"io"
 	"os"
 	"os/user"
-	"path/filepath"
 	"strconv"
 	"syscall"
 	"time"
@@ -18,15 +16,6 @@ import (
 const StateDirectory = "/var/lib/panel"
 const MasterKeyFile = "/var/lib/panel-key/master.key"
 const runtimeDirectory = "/run/panel/ssh"
-
-type installedIdentity struct {
-	SchemaVersion  int    `json:"schema_version"`
-	InstallationID string `json:"installation_id"`
-	ServerID       string `json:"server_id"`
-	InputSHA256    string `json:"input_sha256"`
-	Role           string `json:"role"`
-	Stage          string `json:"stage"`
-}
 
 func CheckRuntimeUser() error {
 	account, err := user.Lookup("panel")
@@ -100,12 +89,8 @@ func ReadHandoff(parent context.Context, input *os.File) (Handoff, error) {
 }
 
 func rootPublic(path string, maximum int64) ([]byte, error) {
-	// Only fixed current-system and panel-runner public metadata paths are callers.
-	flags := os.O_RDONLY | syscall.O_NONBLOCK
-	if path == "/var/lib/panel-access/panel-runner/authorized_keys" {
-		flags |= syscall.O_NOFOLLOW
-	}
-	file, err := os.OpenFile(path, flags, 0) // #nosec G304 -- fixed native public metadata paths; root ownership checked before reads.
+	// The only caller passes the fixed panel-runner authorized_keys path.
+	file, err := os.OpenFile(path, os.O_RDONLY|syscall.O_NONBLOCK|syscall.O_NOFOLLOW, 0) // #nosec G304 -- fixed native public metadata path; root ownership checked before reads.
 	if err != nil {
 		return nil, ErrIdentity
 	}
@@ -125,23 +110,9 @@ func rootPublic(path string, maximum int64) ([]byte, error) {
 	return data, nil
 }
 
+// confirmInstalled requires root to have published exactly this management key
+// for panel-runner. The host identity itself is proven by the helper probe.
 func confirmInstalled(input Handoff) error {
-	current, err := filepath.EvalSymlinks("/run/current-system")
-	if err != nil || current != input.EnrollmentSystem {
-		return ErrIdentity
-	}
-	profile, err := filepath.EvalSymlinks("/nix/var/nix/profiles/system")
-	if err != nil || profile != current {
-		return ErrIdentity
-	}
-	data, err := rootPublic(current+"/etc/panel-host.json", 256<<10)
-	if err != nil {
-		return err
-	}
-	var installed installedIdentity
-	if json.Unmarshal(data, &installed) != nil || installed.SchemaVersion != 1 || installed.InstallationID != input.InstallationID || installed.ServerID != input.ServerID || installed.InputSHA256 != input.InputSHA256 || installed.Role != "panel" || installed.Stage != "enrollment" {
-		return ErrIdentity
-	}
 	public, err := rootPublic("/var/lib/panel-access/panel-runner/authorized_keys", 1024)
 	if err != nil {
 		return err

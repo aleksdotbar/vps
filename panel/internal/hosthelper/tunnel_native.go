@@ -15,18 +15,18 @@ import (
 
 var ErrTunnelRuntime = routes.ErrTunnelRuntime
 
-// FinalLease holds setup exclusion until Release. The CLI supplies the settled
-// final-generation authority without coupling this protocol to setup storage.
-type FinalLease struct {
+// HostLease holds the host lock until Release and binds one operation to the
+// NixOS generation that was both current and the system profile when acquired.
+type HostLease struct {
 	InstallationID string
 	ServerID       string
-	FinalSystem    string
+	System         string
 	Release        func() error
 }
 
-type FinalAcquirer func(context.Context) (FinalLease, error)
+type HostAcquirer func(context.Context) (HostLease, error)
 
-func handleTunnel(ctx context.Context, request TunnelRequest, acquire FinalAcquirer) (response TunnelResponse, returnErr error) {
+func handleTunnel(ctx context.Context, request TunnelRequest, acquire HostAcquirer) (response TunnelResponse, returnErr error) {
 	if acquire == nil {
 		return TunnelResponse{}, ErrIdentity
 	}
@@ -60,7 +60,7 @@ func handleTunnel(ctx context.Context, request TunnelRequest, acquire FinalAcqui
 		return TunnelResponse{}, err
 	}
 	defer func() { _ = runtime.Close() }()
-	binding := bindTunnel(request, lease)
+	binding := bindTunnel(request)
 	var intent tunnelIntent
 	if request.Action == "tunnel_prepare" {
 		intent, err = prepareTunnelIntent(ctx, private, runtime, binding)
@@ -110,7 +110,7 @@ func handleTunnel(ctx context.Context, request TunnelRequest, acquire FinalAcqui
 	if err != nil {
 		return TunnelResponse{}, ErrTunnelState
 	}
-	tools := tunnelTools{lease.FinalSystem + "/sw/bin/systemctl", lease.FinalSystem + "/sw/bin/cloudflared"}
+	tools := tunnelTools{lease.System + "/sw/bin/systemctl", lease.System + "/sw/bin/cloudflared"}
 	if request.Action == "tunnel_finalize" {
 		if verifyTunnelLease(request, lease) != nil {
 			return TunnelResponse{}, ErrIdentity
@@ -127,14 +127,14 @@ func handleTunnel(ctx context.Context, request TunnelRequest, acquire FinalAcqui
 				return TunnelResponse{}, ErrTunnelState
 			}
 		}
-		if err := routes.VerifyTunnelUnit(ctx, lease.FinalSystem); err != nil {
+		if err := routes.VerifyTunnelUnit(ctx, lease.System); err != nil {
 			return TunnelResponse{}, ErrTunnelRuntime
 		}
-		if err := routes.StartTunnel(ctx, lease.FinalSystem); err != nil {
+		if err := routes.StartTunnel(ctx, lease.System); err != nil {
 			return response, nil
 		}
 	}
-	ready, err := observeTunnelRuntime(ctx, tools, lease.FinalSystem, runtime, credentials, configuration)
+	ready, err := observeTunnelRuntime(ctx, tools, lease.System, runtime, credentials, configuration)
 	if errors.Is(err, ErrTunnelRuntime) {
 		// An unavailable or changing process snapshot does not prove foreign
 		// ownership. Leave the durable intent for bounded caller reconciliation.
@@ -156,12 +156,12 @@ func tunnelResponse(request TunnelRequest) TunnelResponse {
 	return TunnelResponse{SchemaVersion: 1, Action: request.Action, InstallationID: request.InstallationID, ServerID: request.ServerID, OperationID: request.OperationID, Challenge: request.Challenge, AccountID: request.AccountID, Name: request.Name}
 }
 
-func verifyTunnelLease(request TunnelRequest, lease FinalLease) error {
-	if lease.InstallationID != request.InstallationID || lease.ServerID != request.ServerID || !systemPath.MatchString(lease.FinalSystem) || lease.Release == nil {
+func verifyTunnelLease(request TunnelRequest, lease HostLease) error {
+	if lease.InstallationID != request.InstallationID || lease.ServerID != request.ServerID || !systemPath.MatchString(lease.System) || lease.Release == nil {
 		return ErrIdentity
 	}
 	response, err := probe(ProbeRequest{1, "probe", request.InstallationID, request.ServerID, request.Challenge})
-	if err != nil || response.Stage != "final" || response.CurrentSystem != lease.FinalSystem || response.SystemProfile != lease.FinalSystem {
+	if err != nil || response.CurrentSystem != lease.System || response.SystemProfile != lease.System {
 		return ErrIdentity
 	}
 	return nil

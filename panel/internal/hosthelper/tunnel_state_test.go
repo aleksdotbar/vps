@@ -28,7 +28,7 @@ func tunnelStateFixture(t *testing.T) (*os.Root, *os.Root, tunnelBinding) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = private.Close(); _ = runtime.Close() })
-	return private, runtime, bindTunnel(tunnelRequestFixture(), FinalLease{FinalSystem: "/nix/store/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-nixos-system-fixture"})
+	return private, runtime, bindTunnel(tunnelRequestFixture())
 }
 
 func TestTunnelSecretPreparationReusesExactIntentAndRefusesForeignState(t *testing.T) {
@@ -43,7 +43,7 @@ func TestTunnelSecretPreparationReusesExactIntentAndRefusesForeignState(t *testi
 	if err != nil || !bytes.Equal(first.Secret, second.Secret) || len(first.Secret) != 32 {
 		t.Fatal("retry replaced its retained secret")
 	}
-	for _, change := range []func(*tunnelBinding){func(value *tunnelBinding) { value.OperationID = value.ServerID }, func(value *tunnelBinding) { value.AccountID = "cccccccccccccccccccccccccccccccc" }, func(value *tunnelBinding) { value.FinalSystem += "-changed" }} {
+	for _, change := range []func(*tunnelBinding){func(value *tunnelBinding) { value.OperationID = value.ServerID }, func(value *tunnelBinding) { value.AccountID = "cccccccccccccccccccccccccccccccc" }} {
 		foreign := binding
 		change(&foreign)
 		actual, err := prepareTunnelIntent(t.Context(), private, runtime, foreign)
@@ -209,7 +209,7 @@ func TestPinnedTunnelInterruptedFinalizationResumesOnlyBoundFiles(t *testing.T) 
 				if err := runtime.WriteFile("config.json", []byte("foreign"), 0644); err != nil {
 					t.Fatal(err)
 				}
-				if _, err := observeTunnelRuntime(t.Context(), tools, binding.FinalSystem, runtime, credentials, configuration); !errors.Is(err, ErrTunnelState) {
+				if _, err := observeTunnelRuntime(t.Context(), tools, "/nix/store/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-nixos-system-fixture", runtime, credentials, configuration); !errors.Is(err, ErrTunnelState) {
 					t.Fatal("missing credentials hid foreign config")
 				}
 				if err := finalizeTunnelFiles(t.Context(), private, runtime, final, credentials, configuration, tools); !errors.Is(err, ErrTunnelState) {
@@ -218,7 +218,7 @@ func TestPinnedTunnelInterruptedFinalizationResumesOnlyBoundFiles(t *testing.T) 
 				return
 			}
 			if stage != "complete before service start" {
-				ready, err := observeTunnelRuntime(t.Context(), tools, binding.FinalSystem, runtime, credentials, configuration)
+				ready, err := observeTunnelRuntime(t.Context(), tools, "/nix/store/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-nixos-system-fixture", runtime, credentials, configuration)
 				if err != nil || ready {
 					t.Fatal("own incomplete publication did not remain recoverable finalizing")
 				}

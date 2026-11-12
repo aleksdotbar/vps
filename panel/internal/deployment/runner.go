@@ -50,11 +50,11 @@ func executionEnvironment(root *os.Root, request ExecutionRequest, finalSystem s
 		return nil, claim{}, err
 	}
 	var active claim
-	if readRecord(environment, "active.json", &active) != nil || active != expected {
+	if readRecord(environment, "active.json", &active) != nil || !active.sameOperation(expected) {
 		_ = environment.Close()
 		return nil, claim{}, ErrState
 	}
-	return environment, expected, nil
+	return environment, active, nil
 }
 
 func Start(ctx context.Context, root *os.Root, request ExecutionRequest, finalSystem string, acquire EffectAuthority) (ExecutionResponse, error) {
@@ -152,7 +152,7 @@ func Run(ctx context.Context, root *os.Root, environmentID, operationID, finalSy
 	}
 	defer func() { _ = environment.Close() }()
 	var active claim
-	if readRecord(environment, "active.json", &active) != nil || active.Identity.OperationID != operationID || active.FinalSystem != finalSystem {
+	if readRecord(environment, "active.json", &active) != nil || active.Identity.OperationID != operationID {
 		return ErrState
 	}
 	ctx, cancel := context.WithDeadline(ctx, time.UnixMilli(active.Identity.ExecutionDeadline))
@@ -228,7 +228,7 @@ func executeRelease(ctx, recoveryContext context.Context, environment, registryR
 	var prepared routes.RuntimePreparation
 	err = withAuthority(ctx, acquire, func() error {
 		var err error
-		prepared, err = routes.PrepareRuntime(ctx, operation(stage), value.Claim.FinalSystem)
+		prepared, err = routes.PrepareRuntime(ctx, operation(stage), tools.system)
 		return err
 	})
 	if err != nil {
@@ -289,7 +289,7 @@ func executeRelease(ctx, recoveryContext context.Context, environment, registryR
 	for {
 		err = withAuthority(ctx, acquire, func() error {
 			var err error
-			receipt, err = routes.ApplyRuntime(ctx, operation(stage), prepared.Revision, prepared.ConfigSHA256, value.Claim.FinalSystem)
+			receipt, err = routes.ApplyRuntime(ctx, operation(stage), prepared.Revision, prepared.ConfigSHA256, tools.system)
 			return err
 		})
 		if !errors.Is(err, routes.ErrRuntimeConflict) && !errors.Is(err, routes.ErrRuntimeBusy) {
@@ -300,7 +300,7 @@ func executeRelease(ctx, recoveryContext context.Context, environment, registryR
 		}
 		err = withAuthority(ctx, acquire, func() error {
 			var err error
-			prepared, err = routes.PrepareRuntime(ctx, operation(stage), value.Claim.FinalSystem)
+			prepared, err = routes.PrepareRuntime(ctx, operation(stage), tools.system)
 			return err
 		})
 		if errors.Is(err, routes.ErrRuntimeBusy) {
@@ -320,7 +320,7 @@ func executeRelease(ctx, recoveryContext context.Context, environment, registryR
 		if waitObservation(ctx) != nil {
 			return scheduleRecovery(recoveryContext, environment, value, tools, candidate, previous)
 		}
-		receipt, err = routes.ObserveRuntime(ctx, operation(stage), value.Claim.FinalSystem)
+		receipt, err = routes.ObserveRuntime(ctx, operation(stage), tools.system)
 		if err != nil {
 			return scheduleRecovery(recoveryContext, environment, value, tools, candidate, previous)
 		}
@@ -346,7 +346,7 @@ func executeRelease(ctx, recoveryContext context.Context, environment, registryR
 			if _, err := observeContainers(ctx, tools, candidate, true); err != nil || awaitOrigins(ctx, candidate) != nil {
 				return scheduleRecovery(recoveryContext, environment, value, tools, candidate, previous)
 			}
-			route, err := routes.ObserveRuntime(ctx, operation(stage), value.Claim.FinalSystem)
+			route, err := routes.ObserveRuntime(ctx, operation(stage), tools.system)
 			if err != nil || !routeReceiptMatches(route, stage, previous, false) {
 				return scheduleRecovery(recoveryContext, environment, value, tools, candidate, previous)
 			}

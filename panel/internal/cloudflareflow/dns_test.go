@@ -55,7 +55,7 @@ func setupDNSDeadline(t *testing.T, deadline time.Time) *dnsFixture {
 	run(`INSERT INTO servers(id,name,tailscale_address,ssh_fingerprint,created_at) VALUES(?,'fixture','100.64.0.1','fixture',1)`, server)
 	run(`INSERT INTO encrypted_versions(kind,owner_id,version,ciphertext) VALUES('credential','fixture-ssh',1,?),('environment',?,1,?)`, []byte("fixture"), environment, []byte("fixture"))
 	run(`INSERT INTO server_management(server_id,credential_kind,credential_owner_id,credential_version,host_public_key,management_fingerprint) VALUES(?,'credential','fixture-ssh',1,'fixture','fixture')`, server)
-	run(`INSERT INTO installation(id,installation_id,panel_server_id,operation_id,input_sha256,source_system,enrollment_system,bootstrap_identity,created_at) VALUES(1,?,?,?,'fixture','fixture','fixture',?,1)`, installation, server, uuid.NewString(), bytes.Repeat([]byte{1}, 32))
+	run(`INSERT INTO installation(id,installation_id,panel_server_id,bootstrap_identity,created_at) VALUES(1,?,?,?,1)`, installation, server, bytes.Repeat([]byte{1}, 32))
 	run(`INSERT INTO cloudflare_integration(id,account_id,token_id,version,verified_at) VALUES(1,?,?,1,1)`, fixtureAccount, fixtureTokenID)
 	run(`INSERT INTO cloudflare_zones(id,name) VALUES(?,'example.com')`, fixtureZone)
 	run(`INSERT INTO server_tunnels(server_id,request_id,installation_id,account_id,credential_version,name,phase,create_attempted,create_attempted_at,tunnel_id,config_sha256,observed_at,created_at,updated_at) VALUES(?,?,?,?,1,'fixture','ready',TRUE,1,?,?,1,1,1)`, server, uuid.NewString(), installation, fixtureAccount, tunnel, strings.Repeat("a", 64))

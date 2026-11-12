@@ -10,9 +10,9 @@ import (
 	"syscall"
 )
 
-// HandleReadiness is read-only. Settled setup authority is necessary but not
-// sufficient: the imported final generation must also have booted successfully.
-func HandleReadiness(ctx context.Context, request ReadinessRequest, acquire FinalAcquirer) (response ReadinessResponse, returnErr error) {
+// HandleReadiness is read-only. The running generation must also be the system
+// profile; a pending switch reports setup_pending rather than readiness.
+func HandleReadiness(ctx context.Context, request ReadinessRequest, acquire HostAcquirer) (response ReadinessResponse, returnErr error) {
 	if !validReadinessRequest(request) {
 		return response, ErrRequest
 	}
@@ -21,7 +21,7 @@ func HandleReadiness(ctx context.Context, request ReadinessRequest, acquire Fina
 		return response, err
 	}
 	response = readinessResponse(request, observed)
-	if observed.Stage == "enrollment" {
+	if observed.CurrentSystem != observed.SystemProfile {
 		response.Status = "setup_pending"
 		return response, nil
 	}
@@ -38,18 +38,11 @@ func HandleReadiness(ctx context.Context, request ReadinessRequest, acquire Fina
 			returnErr = ErrIdentity
 		}
 	}()
-	if !readinessSetupMatches(request, observed, lease) {
-		return response, nil
-	}
-	if observed.BootedSystem != lease.FinalSystem {
-		response.Status = "setup_pending"
-		return response, nil
-	}
-	if nativeReadiness(ctx, lease.FinalSystem) != nil {
+	if !readinessMatches(request, observed, lease) || nativeReadiness(ctx, lease.System) != nil {
 		return response, nil
 	}
 	after, err := probe(ProbeRequest{1, "probe", request.InstallationID, request.ServerID, request.Challenge})
-	if err != nil || after != observed || !readinessFinalMatches(request, after, lease) {
+	if err != nil || after != observed || !readinessMatches(request, after, lease) {
 		return ReadinessResponse{}, ErrIdentity
 	}
 	response.Status = "ready"
@@ -59,15 +52,11 @@ func HandleReadiness(ctx context.Context, request ReadinessRequest, acquire Fina
 }
 
 func readinessResponse(request ReadinessRequest, observed ProbeResponse) ReadinessResponse {
-	return ReadinessResponse{SchemaVersion: 1, Action: "readiness", InstallationID: request.InstallationID, ServerID: request.ServerID, Challenge: request.Challenge, Role: observed.Role, Stage: observed.Stage, CurrentSystem: observed.CurrentSystem, BootedSystem: observed.BootedSystem, SystemProfile: observed.SystemProfile, Status: "needs_attention"}
+	return ReadinessResponse{SchemaVersion: 1, Action: "readiness", InstallationID: request.InstallationID, ServerID: request.ServerID, Challenge: request.Challenge, Role: observed.Role, CurrentSystem: observed.CurrentSystem, BootedSystem: observed.BootedSystem, SystemProfile: observed.SystemProfile, Status: "needs_attention"}
 }
 
-func readinessFinalMatches(request ReadinessRequest, observed ProbeResponse, lease FinalLease) bool {
-	return readinessSetupMatches(request, observed, lease) && observed.BootedSystem == lease.FinalSystem
-}
-
-func readinessSetupMatches(request ReadinessRequest, observed ProbeResponse, lease FinalLease) bool {
-	return systemPath.MatchString(observed.BootedSystem) && lease.Release != nil && lease.InstallationID == request.InstallationID && lease.ServerID == request.ServerID && systemPath.MatchString(lease.FinalSystem) && observed.Stage == "final" && observed.CurrentSystem == lease.FinalSystem && observed.SystemProfile == lease.FinalSystem
+func readinessMatches(request ReadinessRequest, observed ProbeResponse, lease HostLease) bool {
+	return lease.Release != nil && lease.InstallationID == request.InstallationID && lease.ServerID == request.ServerID && systemPath.MatchString(lease.System) && observed.CurrentSystem == lease.System && observed.SystemProfile == lease.System
 }
 
 type readinessDocker struct {
@@ -106,10 +95,10 @@ func supportedReadinessDocker(data []byte) bool {
 	return true
 }
 
-func nativeReadiness(ctx context.Context, finalSystem string) error {
-	tools := tunnelTools{systemctl: finalSystem + "/sw/bin/systemctl"}
+func nativeReadiness(ctx context.Context, system string) error {
+	tools := tunnelTools{systemctl: system + "/sw/bin/systemctl"}
 	before, err := readReadinessUnits(ctx, tools)
-	if err != nil || !boundReadinessUnits(before, finalSystem) {
+	if err != nil || !boundReadinessUnits(before, system) {
 		return ErrIdentity
 	}
 	info, err := os.Lstat("/run/docker.sock")
@@ -122,27 +111,27 @@ func nativeReadiness(ctx context.Context, finalSystem string) error {
 	}
 	// Explicit Unix endpoint plus tunnelCommand's clean environment prevent
 	// ambient Docker contexts, credentials or caller-controlled daemon endpoints.
-	data, err := tunnelCommand(ctx, finalSystem+"/sw/bin/docker", nil, "--host=unix:///run/docker.sock", "info", "--format", readinessInfoFormat)
+	data, err := tunnelCommand(ctx, system+"/sw/bin/docker", nil, "--host=unix:///run/docker.sock", "info", "--format", readinessInfoFormat)
 	if err != nil || !supportedReadinessDocker(data) {
 		return ErrIdentity
 	}
 	// nixpkgs' Docker wrapper supplies the pinned plugin directory. It does not
 	// put standalone docker-compose on the host PATH.
-	data, err = tunnelCommand(ctx, finalSystem+"/sw/bin/docker", nil, "compose", "version", "--short")
+	data, err = tunnelCommand(ctx, system+"/sw/bin/docker", nil, "compose", "version", "--short")
 	if err != nil || strings.TrimSpace(string(data)) != ComposeVersion {
 		return ErrIdentity
 	}
 	after, err := readReadinessUnits(ctx, tools)
-	if err != nil || after != before || !boundReadinessUnits(after, finalSystem) {
+	if err != nil || after != before || !boundReadinessUnits(after, system) {
 		return ErrIdentity
 	}
 	return nil
 }
 
-type readinessUnits struct{ docker, firewall tunnelUnit }
+type readinessUnits struct{ docker, firewall, tunnel tunnelUnit }
 
 func readReadinessUnits(ctx context.Context, tools tunnelTools) (readinessUnits, error) {
-	data, err := tunnelCommand(ctx, tools.systemctl, nil, "show", "--no-pager", "--property=Id,LoadState,ActiveState,SubState,MainPID,FragmentPath,DropInPaths,NeedDaemonReload", "--", "docker.service", "nftables.service")
+	data, err := tunnelCommand(ctx, tools.systemctl, nil, "show", "--no-pager", "--property=Id,LoadState,ActiveState,SubState,MainPID,FragmentPath,DropInPaths,NeedDaemonReload", "--", "docker.service", "nftables.service", "panel-cloudflared.service")
 	if err != nil {
 		return readinessUnits{}, err
 	}
@@ -173,26 +162,28 @@ func parseReadinessUnits(data []byte) (readinessUnits, error) {
 			result.docker = unit
 		case "nftables.service":
 			result.firewall = unit
+		case "panel-cloudflared.service":
+			result.tunnel = unit
 		default:
 			return readinessUnits{}, ErrIdentity
 		}
 	}
-	if !seen["docker.service"] || !seen["nftables.service"] {
+	if !seen["docker.service"] || !seen["nftables.service"] || !seen["panel-cloudflared.service"] {
 		return readinessUnits{}, ErrIdentity
 	}
 	return result, nil
 }
 
-func boundReadinessUnits(units readinessUnits, finalSystem string) bool {
+func boundReadinessUnits(units readinessUnits, system string) bool {
 	pid, err := strconv.ParseInt(units.docker.pid, 10, 32)
-	return err == nil && pid > 0 && units.docker.active == "active" && units.docker.sub == "running" && units.firewall.active == "active" && units.firewall.sub == "exited" && boundReadinessUnit(units.docker, finalSystem, "docker.service") && boundReadinessUnit(units.firewall, finalSystem, "nftables.service")
+	return err == nil && pid > 0 && units.docker.active == "active" && units.docker.sub == "running" && units.firewall.active == "active" && units.firewall.sub == "exited" && boundReadinessUnit(units.docker, system, "docker.service") && boundReadinessUnit(units.firewall, system, "nftables.service") && boundReadinessUnit(units.tunnel, system, "panel-cloudflared.service")
 }
 
-func boundReadinessUnit(unit tunnelUnit, finalSystem, name string) bool {
-	if unit.load != "loaded" || unit.reload != "no" || !tunnelSameFile(unit.fragment, finalSystem+"/etc/systemd/system/"+name) {
+func boundReadinessUnit(unit tunnelUnit, system, name string) bool {
+	if unit.load != "loaded" || unit.reload != "no" || !tunnelSameFile(unit.fragment, system+"/etc/systemd/system/"+name) {
 		return false
 	}
-	expected := finalSystem + "/etc/systemd/system/" + name + ".d/overrides.conf"
+	expected := system + "/etc/systemd/system/" + name + ".d/overrides.conf"
 	_, err := os.Stat(expected)
 	actual := strings.Fields(unit.dropins)
 	if os.IsNotExist(err) {

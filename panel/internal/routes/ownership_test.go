@@ -44,7 +44,7 @@ func setupOwnership(t *testing.T) *ownershipFixture {
 	run(`INSERT INTO servers(id,name,tailscale_address,ssh_fingerprint,created_at) VALUES(?,'fixture','100.64.0.1','fixture',1)`, f.server)
 	run(`INSERT INTO encrypted_versions(kind,owner_id,version,ciphertext) VALUES('credential','fixture-ssh',1,?),('credential','cloudflare-api',1,?)`, []byte("fixture"), []byte("fixture"))
 	run(`INSERT INTO server_management(server_id,credential_kind,credential_owner_id,credential_version,host_public_key,management_fingerprint) VALUES(?,'credential','fixture-ssh',1,'fixture','fixture')`, f.server)
-	run(`INSERT INTO installation(id,installation_id,panel_server_id,operation_id,input_sha256,source_system,enrollment_system,bootstrap_identity,created_at) VALUES(1,?,?,?,'fixture','fixture','fixture',?,1)`, f.installation, f.server, uuid.NewString(), bytes.Repeat([]byte{1}, 32))
+	run(`INSERT INTO installation(id,installation_id,panel_server_id,bootstrap_identity,created_at) VALUES(1,?,?,?,1)`, f.installation, f.server, bytes.Repeat([]byte{1}, 32))
 	run(`INSERT INTO cloudflare_integration(id,account_id,token_id,version,verified_at) VALUES(1,?,?,1,1)`, ownershipAccount, ownershipAccount)
 	run(`INSERT INTO cloudflare_zones(id,name) VALUES(?,'example.com'),(?,'sub.example.com')`, ownershipParentZone, ownershipChildZone)
 	run(`INSERT INTO server_tunnels(server_id,request_id,installation_id,account_id,credential_version,name,phase,create_attempted,create_attempted_at,tunnel_id,config_sha256,observed_at,created_at,updated_at) VALUES(?,?,?,?,1,'fixture','ready',TRUE,1,?,?,1,1,1)`, f.server, uuid.NewString(), f.installation, ownershipAccount, f.tunnel, strings.Repeat("a", 64))

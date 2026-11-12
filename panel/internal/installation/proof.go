@@ -8,6 +8,7 @@ import (
 	"database/sql"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"net/netip"
 	"slices"
 	"time"
@@ -43,24 +44,27 @@ func selfAddress(ctx context.Context, address string) (string, error) {
 }
 
 // VerifyProbe accepts only the canonical fixed helper response. A fresh nonce is
-// bound to the exact expected native stage/generation, never merely SSH exit zero.
-func VerifyProbe(data []byte, request hosthelper.ProbeRequest, source, enrollment string) (hosthelper.ProbeResponse, error) {
+// bound to this host's identity and running profile, never merely SSH exit zero.
+func VerifyProbe(data []byte, request hosthelper.ProbeRequest) (hosthelper.ProbeResponse, error) {
 	var response hosthelper.ProbeResponse
 	if len(data) == 0 || len(data) > 8<<10 || json.Unmarshal(data, &response) != nil {
 		return response, ErrProof
 	}
 	canonical, err := json.Marshal(response)
-	if err != nil || !bytes.Equal(canonical, bytes.TrimSpace(data)) || response.SchemaVersion != 1 || response.InstallationID != request.InstallationID || response.ServerID != request.ServerID || response.Challenge != request.Challenge || response.Role != "panel" || response.Stage != "enrollment" || response.CurrentSystem != enrollment || response.SystemProfile != enrollment || (response.BootedSystem != source && response.BootedSystem != enrollment) || response.Ready {
+	if err != nil || !bytes.Equal(canonical, bytes.TrimSpace(data)) || response.SchemaVersion != 1 || response.InstallationID != request.InstallationID || response.ServerID != request.ServerID || response.Challenge != request.Challenge || response.Role != "panel" || response.CurrentSystem != response.SystemProfile || response.Ready {
 		return hosthelper.ProbeResponse{}, ErrProof
 	}
 	return response, nil
 }
 
-func Prove(ctx context.Context, operationID string) (Result, error) {
-	if CheckRuntimeUser() != nil || !validID(operationID) {
+func Prove(ctx context.Context) (Result, error) {
+	if CheckRuntimeUser() != nil {
 		return Result{}, ErrIdentity
 	}
 	lock, err := privatefile.LockProcess(StateDirectory)
+	if errors.Is(err, privatefile.ErrProcessBusy) {
+		return Result{}, ErrRunning
+	}
 	if err != nil {
 		return Result{}, ErrIdentity
 	}
@@ -72,7 +76,7 @@ func Prove(ctx context.Context, operationID string) (Result, error) {
 	defer func() { _ = database.Close() }()
 	queries := store.New(database)
 	installed, err := queries.GetInstallation(ctx)
-	if err != nil || installed.OperationID != operationID {
+	if err != nil {
 		return Result{}, ErrIdentity
 	}
 	management, err := queries.GetServerManagement(ctx, installed.PanelServerID)
@@ -83,7 +87,7 @@ func Prove(ctx context.Context, operationID string) (Result, error) {
 	if err != nil || !server.PanelHost {
 		return Result{}, ErrIdentity
 	}
-	input := Handoff{SchemaVersion: 1, OperationID: installed.OperationID, InstallationID: installed.InstallationID, ServerID: installed.PanelServerID, InputSHA256: installed.InputSha256, SourceSystem: installed.SourceSystem, EnrollmentSystem: installed.EnrollmentSystem, TailscaleAddress: server.TailscaleAddress, HostPublicKey: management.HostPublicKey, HostFingerprint: server.SshFingerprint, ManagementFingerprint: management.ManagementFingerprint}
+	input := Handoff{SchemaVersion: 1, InstallationID: installed.InstallationID, ServerID: installed.PanelServerID, TailscaleAddress: server.TailscaleAddress, HostPublicKey: management.HostPublicKey, HostFingerprint: server.SshFingerprint, ManagementFingerprint: management.ManagementFingerprint}
 	if confirmInstalled(input) != nil {
 		return Result{}, ErrIdentity
 	}
@@ -125,7 +129,7 @@ func Prove(ctx context.Context, operationID string) (Result, error) {
 	if err != nil || result.Outcome != remote.CommandExited || result.ExitCode != 0 {
 		return Result{}, ErrProof
 	}
-	if _, err := VerifyProbe(result.Output, request, input.SourceSystem, input.EnrollmentSystem); err != nil {
+	if _, err := VerifyProbe(result.Output, request); err != nil {
 		return Result{}, err
 	}
 	after, err := selfAddress(ctx, input.TailscaleAddress)
@@ -152,7 +156,7 @@ func recordProof(ctx context.Context, database *sql.DB, expected store.Installat
 	defer func() { _ = tx.Rollback() }()
 	queries := store.New(tx)
 	current, err := queries.GetInstallation(ctx)
-	if err != nil || current.InstallationID != expected.InstallationID || current.PanelServerID != expected.PanelServerID || current.OperationID != expected.OperationID || current.InputSha256 != expected.InputSha256 || current.SourceSystem != expected.SourceSystem || current.EnrollmentSystem != expected.EnrollmentSystem || !hmac.Equal(current.BootstrapIdentity, expected.BootstrapIdentity) {
+	if err != nil || current.InstallationID != expected.InstallationID || current.PanelServerID != expected.PanelServerID || !hmac.Equal(current.BootstrapIdentity, expected.BootstrapIdentity) {
 		return ErrIdentity
 	}
 	selected, err := queries.GetServerManagement(ctx, expected.PanelServerID)

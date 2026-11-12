@@ -25,7 +25,6 @@ type ReadinessResponse struct {
 	ServerID       string `json:"server_id"`
 	Challenge      string `json:"challenge"`
 	Role           string `json:"role"`
-	Stage          string `json:"stage"`
 	CurrentSystem  string `json:"current_system"`
 	BootedSystem   string `json:"booted_system"`
 	SystemProfile  string `json:"system_profile"`
@@ -56,17 +55,17 @@ func ParseReadinessResponse(data []byte, request ReadinessRequest) (ReadinessRes
 		return ReadinessResponse{}, ErrIdentity
 	}
 	canonical, err := json.Marshal(response)
-	if err != nil || !bytes.Equal(canonical, bytes.TrimSpace(data)) || response.SchemaVersion != 1 || response.Action != request.Action || response.InstallationID != request.InstallationID || response.ServerID != request.ServerID || response.Challenge != request.Challenge || (response.Role != "panel" && response.Role != "server") || (response.Stage != "enrollment" && response.Stage != "final") || !systemPath.MatchString(response.CurrentSystem) || !systemPath.MatchString(response.BootedSystem) || !systemPath.MatchString(response.SystemProfile) {
+	if err != nil || !bytes.Equal(canonical, bytes.TrimSpace(data)) || response.SchemaVersion != 1 || response.Action != request.Action || response.InstallationID != request.InstallationID || response.ServerID != request.ServerID || response.Challenge != request.Challenge || (response.Role != "panel" && response.Role != "server") || !systemPath.MatchString(response.CurrentSystem) || !systemPath.MatchString(response.BootedSystem) || !systemPath.MatchString(response.SystemProfile) {
 		return ReadinessResponse{}, ErrIdentity
 	}
 	switch response.Status {
 	case "ready":
-		if response.Stage != "final" || response.CurrentSystem != response.SystemProfile || response.CurrentSystem != response.BootedSystem || response.DockerVersion != DockerVersion || response.ComposeVersion != ComposeVersion {
+		if response.CurrentSystem != response.SystemProfile || response.DockerVersion != DockerVersion || response.ComposeVersion != ComposeVersion {
 			return ReadinessResponse{}, ErrIdentity
 		}
 	case "setup_pending":
-		pendingReboot := response.Stage == "final" && response.CurrentSystem == response.SystemProfile && response.BootedSystem != response.CurrentSystem
-		if (response.Stage != "enrollment" && !pendingReboot) || response.DockerVersion != "" || response.ComposeVersion != "" {
+		// A system profile that is not yet running means a pending switch.
+		if response.CurrentSystem == response.SystemProfile || response.DockerVersion != "" || response.ComposeVersion != "" {
 			return ReadinessResponse{}, ErrIdentity
 		}
 	case "needs_attention":

@@ -217,11 +217,10 @@ func (r *runtimeRoots) loadConnector(operation RuntimeOperation) error {
 			OperationID    string `json:"operation_id"`
 			AccountID      string `json:"account_id"`
 			Name           string `json:"name"`
-			FinalSystem    string `json:"final_system"`
 		} `json:"binding"`
 		TunnelID string `json:"tunnel_id"`
 	}
-	if readRuntimeRecord(private, "final.json", &final) != nil || final.Binding.InstallationID != operation.InstallationID || final.Binding.ServerID != operation.Snapshot.ServerID || final.Binding.FinalSystem != r.finalSystem || !canonicalID(final.Binding.OperationID) || final.Binding.Name != "panel-"+final.Binding.ServerID+"-"+final.Binding.OperationID {
+	if readRuntimeRecord(private, "final.json", &final) != nil || final.Binding.InstallationID != operation.InstallationID || final.Binding.ServerID != operation.Snapshot.ServerID || !canonicalID(final.Binding.OperationID) || final.Binding.Name != "panel-"+final.Binding.ServerID+"-"+final.Binding.OperationID {
 		return ErrRuntimeState
 	}
 	account, tunnel := r.ledger.AccountID, r.ledger.TunnelID

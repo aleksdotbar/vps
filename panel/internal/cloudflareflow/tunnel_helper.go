@@ -68,7 +68,7 @@ func (t *Tunnels) helper(ctx context.Context, row store.ServerTunnel, action str
 	if err != nil {
 		return hosthelper.TunnelResponse{}, ErrHostSetup
 	}
-	// The concrete helper must independently require a settled final enrollment
-	// receipt under its setup lock before any prepare/finalize effect.
+	// The concrete helper independently takes the host lock and binds the
+	// running generation before any prepare/finalize effect.
 	return response, nil
 }

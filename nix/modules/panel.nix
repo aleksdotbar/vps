@@ -7,6 +7,8 @@ let
   panelUser = config.users.users.panel;
   unit = config.systemd.services.panel.serviceConfig;
   includesHttps = ranges: lib.any (range: range.from <= 443 && range.to >= 443) ranges;
+  # The origin file is written by `panel setup`; until then the unit stays inactive.
+  originFile = "/var/lib/panel-config/serve.env";
   publicHttpsClosed = !(builtins.elem 443 firewall.allowedTCPPorts)
     && !includesHttps firewall.allowedTCPPortRanges
     && lib.all (name:
@@ -23,8 +25,8 @@ in
     };
     startAtBoot = lib.mkOption {
       type = lib.types.bool;
-      default = false;
-      description = "Enable the unit at boot after enrollment has proved private HTTPS and SSH access.";
+      default = true;
+      description = "Start the panel at boot once `panel setup` has written its origin.";
     };
   };
 
@@ -37,15 +39,13 @@ in
     };
 
     services.tailscale.permitCertUid = "panel";
-    # Runtime public keys are installed after credentials exist. keyFiles would
-    # read their contents during CI evaluation/build and cannot serve this role.
-    services.openssh.authorizedKeysFiles = [ "/var/lib/panel-access/%u/authorized_keys" ];
 
     systemd.services.panel = {
       description = "Private hosting panel";
       wantedBy = lib.optional cfg.startAtBoot "multi-user.target";
       requires = [ firewallUnit "tailscaled.service" ];
       after = [ firewallUnit "tailscaled.service" ];
+      unitConfig.ConditionPathExists = originFile;
       path = [ pkgs.openssh ];
       environment.GOMEMLIMIT = "512MiB";
       serviceConfig = {
@@ -65,7 +65,7 @@ in
         RuntimeDirectoryMode = "0700";
         UMask = "0077";
         WorkingDirectory = "/var/lib/panel";
-        EnvironmentFile = "/var/lib/panel-config/serve.env";
+        EnvironmentFile = originFile;
         CapabilityBoundingSet = [ "CAP_NET_BIND_SERVICE" ];
         AmbientCapabilities = [ "CAP_NET_BIND_SERVICE" ];
         NoNewPrivileges = true;
@@ -96,12 +96,10 @@ in
       }
       {
         assertion = firewall.enable
-          && firewall.trustedInterfaces == [ "lo" ]
-          && firewall.extraInputRules == ""
+          && !(builtins.elem transport firewall.trustedInterfaces)
           && publicHttpsClosed
-          && (firewall.interfaces.${transport}.allowedTCPPorts or [ ]) == [ 22 443 ]
-          && (firewall.interfaces.${transport}.allowedTCPPortRanges or [ ]) == [ ];
-        message = "The panel role requires an enabled firewall with private SSH/HTTPS only on the Tailscale interface; public HTTPS and broad interface trust are forbidden.";
+          && builtins.elem 443 (firewall.interfaces.${transport}.allowedTCPPorts or [ ]);
+        message = "The panel role requires an enabled firewall with its HTTPS origin only on the Tailscale interface.";
       }
       {
         assertion = panelUser.name == "panel"

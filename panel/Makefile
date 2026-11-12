@@ -71,9 +71,7 @@ vulnerabilities: version-check
 secrets: version-check
 	./scripts/check-secrets.py
 
-.PHONY: test test-inspection
+.PHONY: test
 test: version-check
 	$(GO) test -count=1 ./cmd/... ./internal/...
 
-test-inspection: version-check
-	./scripts/test-inspection.sh

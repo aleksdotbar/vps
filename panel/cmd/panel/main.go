@@ -56,13 +56,13 @@ func run() (returnErr error) {
 		}
 		ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 		defer stop()
-		return hosthelper.Serve(ctx, os.Stdin, os.Stdout, finalAuthority)
+		return hosthelper.Serve(ctx, os.Stdin, os.Stdout, hosthelper.AcquireHost)
 	}
 	if len(arguments) > 0 && (arguments[0] == "deploy-runner" || arguments[0] == "deploy-registry-cleanup") {
 		return deploymentCommand(arguments[0], arguments[1:])
 	}
-	if len(arguments) > 0 && arguments[0] == "install" {
-		return install(arguments[1:], os.Stdout)
+	if len(arguments) > 0 && arguments[0] == "setup" {
+		return setup(arguments[1:], os.Stdout)
 	}
 	if len(arguments) > 0 && (arguments[0] == "bootstrap" || arguments[0] == "reset-password" || arguments[0] == "serve") {
 		command = arguments[0]

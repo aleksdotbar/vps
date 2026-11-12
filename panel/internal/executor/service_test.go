@@ -61,7 +61,7 @@ func setupNativeInput(t *testing.T, deadline ...time.Time) *fixture {
 	if err := queries.CreateServerManagement(ctx, store.CreateServerManagementParams{ServerID: f.operation.ServerID, CredentialKind: "credential", CredentialOwnerID: owner, CredentialVersion: 1, HostPublicKey: hostKey, ManagementFingerprint: fingerprint}); err != nil {
 		t.Fatal(err)
 	}
-	if err := queries.CreateInstallation(ctx, store.CreateInstallationParams{InstallationID: installation, PanelServerID: f.operation.ServerID, OperationID: uuid.NewString(), InputSha256: strings.Repeat("a", 64), SourceSystem: "fixture", EnrollmentSystem: "fixture", BootstrapIdentity: bytes.Repeat([]byte{1}, 32), CreatedAt: 1}); err != nil {
+	if err := queries.CreateInstallation(ctx, store.CreateInstallationParams{InstallationID: installation, PanelServerID: f.operation.ServerID, BootstrapIdentity: bytes.Repeat([]byte{1}, 32), CreatedAt: 1}); err != nil {
 		t.Fatal(err)
 	}
 	if err := queries.RecordPanelPrivateProof(ctx, 1); err != nil {
@@ -148,7 +148,7 @@ func TestLostStartReconcilesWithoutRestagingSecretsAndRejectsReplayedProof(t *te
 	service.remote = fixtureHelper(func(_ context.Context, _ remote.Target, _ []byte, payload []byte) (remote.Result, error) {
 		var response any
 		if request, err := hosthelper.ParseReadinessRequest(payload); err == nil {
-			response = hosthelper.ReadinessResponse{SchemaVersion: 1, Action: "readiness", InstallationID: request.InstallationID, ServerID: request.ServerID, Challenge: request.Challenge, Role: "panel", Stage: "final", CurrentSystem: finalSystem, SystemProfile: finalSystem, BootedSystem: finalSystem, Status: "ready", DockerVersion: hosthelper.DockerVersion, ComposeVersion: hosthelper.ComposeVersion}
+			response = hosthelper.ReadinessResponse{SchemaVersion: 1, Action: "readiness", InstallationID: request.InstallationID, ServerID: request.ServerID, Challenge: request.Challenge, Role: "panel", CurrentSystem: finalSystem, SystemProfile: finalSystem, BootedSystem: finalSystem, Status: "ready", DockerVersion: hosthelper.DockerVersion, ComposeVersion: hosthelper.ComposeVersion}
 		} else if request, err := deployment.ParseStage(payload); err == nil {
 			defer request.Clear()
 			stages++
@@ -247,7 +247,7 @@ func TestTerminalObservationNeverStagesOrConfirmsAfterEffectsStop(t *testing.T) 
 				}
 				var response any
 				if request, err := hosthelper.ParseReadinessRequest(payload); err == nil {
-					response = hosthelper.ReadinessResponse{SchemaVersion: 1, Action: "readiness", InstallationID: request.InstallationID, ServerID: request.ServerID, Challenge: request.Challenge, Role: "panel", Stage: "final", CurrentSystem: finalSystem, SystemProfile: finalSystem, BootedSystem: finalSystem, Status: "ready", DockerVersion: hosthelper.DockerVersion, ComposeVersion: hosthelper.ComposeVersion}
+					response = hosthelper.ReadinessResponse{SchemaVersion: 1, Action: "readiness", InstallationID: request.InstallationID, ServerID: request.ServerID, Challenge: request.Challenge, Role: "panel", CurrentSystem: finalSystem, SystemProfile: finalSystem, BootedSystem: finalSystem, Status: "ready", DockerVersion: hosthelper.DockerVersion, ComposeVersion: hosthelper.ComposeVersion}
 				} else {
 					request, err := deployment.ParseExecution(payload)
 					if err != nil || request.Action != "deploy_observe" {

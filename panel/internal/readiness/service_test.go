@@ -61,7 +61,7 @@ func setup(t *testing.T) *fixture {
 	result := &fixture{database: database, cipher: cipher, installation: uuid.NewString(), private: pem.EncodeToMemory(block)}
 	result.service = New(database, cipher, nil)
 	result.server = result.addServer(t, true)
-	if err := store.New(database).CreateInstallation(t.Context(), store.CreateInstallationParams{InstallationID: result.installation, PanelServerID: result.server, OperationID: uuid.NewString(), InputSha256: strings.Repeat("a", 64), SourceSystem: "fixture", EnrollmentSystem: "fixture", BootstrapIdentity: bytes.Repeat([]byte{1}, 32), CreatedAt: 1}); err != nil {
+	if err := store.New(database).CreateInstallation(t.Context(), store.CreateInstallationParams{InstallationID: result.installation, PanelServerID: result.server, BootstrapIdentity: bytes.Repeat([]byte{1}, 32), CreatedAt: 1}); err != nil {
 		t.Fatal(err)
 	}
 	if err := store.New(database).RecordPanelPrivateProof(t.Context(), 1); err != nil {
@@ -104,7 +104,7 @@ func (f *fixture) addServer(t *testing.T, panel bool) string {
 func readyReply(t *testing.T, request hosthelper.ReadinessRequest, role string) remote.Result {
 	t.Helper()
 	path := "/nix/store/" + strings.Repeat("a", 32) + "-nixos-system-fixture"
-	response := hosthelper.ReadinessResponse{SchemaVersion: 1, Action: "readiness", InstallationID: request.InstallationID, ServerID: request.ServerID, Challenge: request.Challenge, Role: role, Stage: "final", CurrentSystem: path, BootedSystem: path, SystemProfile: path, Status: "ready", DockerVersion: hosthelper.DockerVersion, ComposeVersion: hosthelper.ComposeVersion}
+	response := hosthelper.ReadinessResponse{SchemaVersion: 1, Action: "readiness", InstallationID: request.InstallationID, ServerID: request.ServerID, Challenge: request.Challenge, Role: role, CurrentSystem: path, BootedSystem: path, SystemProfile: path, Status: "ready", DockerVersion: hosthelper.DockerVersion, ComposeVersion: hosthelper.ComposeVersion}
 	data, err := json.Marshal(response)
 	if err != nil {
 		t.Fatal(err)

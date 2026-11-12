@@ -19,7 +19,7 @@ func TestDeploymentStagingRequiresSettledMatchingHostAuthority(t *testing.T) {
 	if _, err := dispatchHelper(t.Context(), data, nil); !errors.Is(err, ErrIdentity) {
 		t.Fatal("stage bypassed settled-final lease")
 	}
-	lease := FinalLease{InstallationID: request.Manifest.Identity.InstallationID, ServerID: request.Manifest.Identity.ServerID, FinalSystem: "/nix/store/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-nixos-system-fixture", Release: func() error { return nil }}
+	lease := HostLease{InstallationID: request.Manifest.Identity.InstallationID, ServerID: request.Manifest.Identity.ServerID, System: "/nix/store/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-nixos-system-fixture", Release: func() error { return nil }}
 	if !deploymentLeaseMatches(request.Manifest.Identity, lease) {
 		t.Fatal("matching identity rejected")
 	}

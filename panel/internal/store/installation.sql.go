@@ -10,16 +10,12 @@ import (
 )
 
 const createInstallation = `-- name: CreateInstallation :exec
-INSERT INTO installation(id,installation_id,panel_server_id,operation_id,input_sha256,source_system,enrollment_system,bootstrap_identity,created_at) VALUES(1,?,?,?,?,?,?,?,?)
+INSERT INTO installation(id,installation_id,panel_server_id,bootstrap_identity,created_at) VALUES(1,?,?,?,?)
 `
 
 type CreateInstallationParams struct {
 	InstallationID    string
 	PanelServerID     string
-	OperationID       string
-	InputSha256       string
-	SourceSystem      string
-	EnrollmentSystem  string
 	BootstrapIdentity []byte
 	CreatedAt         int64
 }
@@ -28,10 +24,6 @@ func (q *Queries) CreateInstallation(ctx context.Context, arg CreateInstallation
 	_, err := q.db.ExecContext(ctx, createInstallation,
 		arg.InstallationID,
 		arg.PanelServerID,
-		arg.OperationID,
-		arg.InputSha256,
-		arg.SourceSystem,
-		arg.EnrollmentSystem,
 		arg.BootstrapIdentity,
 		arg.CreatedAt,
 	)
@@ -64,7 +56,7 @@ func (q *Queries) CreateServerManagement(ctx context.Context, arg CreateServerMa
 }
 
 const getInstallation = `-- name: GetInstallation :one
-SELECT id, installation_id, panel_server_id, operation_id, input_sha256, source_system, enrollment_system, bootstrap_identity, private_proof_at, created_at FROM installation WHERE id=1
+SELECT id, installation_id, panel_server_id, bootstrap_identity, private_proof_at, created_at FROM installation WHERE id=1
 `
 
 func (q *Queries) GetInstallation(ctx context.Context) (Installation, error) {
@@ -74,10 +66,6 @@ func (q *Queries) GetInstallation(ctx context.Context) (Installation, error) {
 		&i.ID,
 		&i.InstallationID,
 		&i.PanelServerID,
-		&i.OperationID,
-		&i.InputSha256,
-		&i.SourceSystem,
-		&i.EnrollmentSystem,
 		&i.BootstrapIdentity,
 		&i.PrivateProofAt,
 		&i.CreatedAt,

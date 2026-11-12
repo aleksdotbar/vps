@@ -47,38 +47,23 @@ func TestProbeRejectsAmbiguousOrExecutableRequests(t *testing.T) {
 
 func TestProbeBindsRetainedAndRunningIdentityWithoutClaimingReadiness(t *testing.T) {
 	request := probeFixture()
-	retained := identity{request.InstallationID, request.ServerID, "server"}
-	installed := metadata{retained, 1, "enrollment"}
+	retained := identity{request.InstallationID, request.ServerID, "panel"}
 	observed := systems{"current", "previous-boot", "current"}
-	response, err := bindResponse(request, retained, installed, observed)
-	if err != nil || response.Ready || response.BootedSystem != observed.booted || response.Challenge != request.Challenge {
+	response, err := bindResponse(request, retained, observed)
+	if err != nil || response.Ready || response.Role != "panel" || response.BootedSystem != observed.booted || response.Challenge != request.Challenge {
 		t.Fatalf("probe misreported observation or readiness: %+v %v", response, err)
 	}
-	for _, stage := range []string{"enrollment", "final"} {
-		installed.Stage = stage
-		response, err = bindResponse(request, retained, installed, observed)
-		if err != nil || response.Ready {
-			t.Fatalf("stage %s must not establish readiness: %+v %v", stage, response, err)
-		}
-	}
-	for name, change := range map[string]func(*metadata){
-		"other installation": func(value *metadata) { value.InstallationID = request.ServerID },
-		"other server":       func(value *metadata) { value.ServerID = request.InstallationID },
-		"other role":         func(value *metadata) { value.Role = "panel" },
-		"invalid stage":      func(value *metadata) { value.Stage = "ready" },
-		"invalid schema":     func(value *metadata) { value.SchemaVersion = 2 },
+	for name, change := range map[string]func(*ProbeRequest){
+		"other installation": func(value *ProbeRequest) { value.InstallationID = request.ServerID },
+		"other server":       func(value *ProbeRequest) { value.ServerID = request.InstallationID },
 	} {
 		t.Run(name, func(t *testing.T) {
-			changed := installed
+			changed := request
 			change(&changed)
-			if _, err := bindResponse(request, retained, changed, observed); !errors.Is(err, ErrIdentity) {
-				t.Fatalf("accepted mismatched installed authority %s: %v", name, err)
+			if _, err := bindResponse(changed, retained, observed); !errors.Is(err, ErrIdentity) {
+				t.Fatalf("accepted request for another identity %s: %v", name, err)
 			}
 		})
-	}
-	request.ServerID = request.InstallationID
-	if _, err := bindResponse(request, retained, installed, observed); !errors.Is(err, ErrIdentity) {
-		t.Fatal("accepted a request for a different retained server")
 	}
 }
 

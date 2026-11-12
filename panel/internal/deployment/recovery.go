@@ -53,7 +53,7 @@ func recoverRelease(ctx context.Context, environment, registryRoot *os.Root, val
 		if _, err := observeContainers(ctx, tools, *previous, true); err != nil || awaitOrigins(ctx, *previous) != nil {
 			return writePhase(ctx, environment, value, "needs_attention", "recovery_interrupted")
 		}
-		receipt, err := routes.ObserveRuntime(ctx, operation(candidate.Stage), value.Claim.FinalSystem)
+		receipt, err := routes.ObserveRuntime(ctx, operation(candidate.Stage), tools.system)
 		if err != nil || !routeReceiptMatches(receipt, candidate.Stage, previous, true) {
 			return writePhase(ctx, environment, value, "needs_attention", "recovery_interrupted")
 		}
@@ -93,7 +93,7 @@ func recoverRelease(ctx context.Context, environment, registryRoot *os.Root, val
 	var receipt routes.RuntimeReceipt
 	err = withAuthority(ctx, acquire, func() error {
 		var err error
-		receipt, err = routes.RestoreRuntime(ctx, operation(candidate.Stage), value.Claim.FinalSystem)
+		receipt, err = routes.RestoreRuntime(ctx, operation(candidate.Stage), tools.system)
 		return err
 	})
 	if err != nil {
@@ -103,7 +103,7 @@ func recoverRelease(ctx context.Context, environment, registryRoot *os.Root, val
 		if waitObservation(ctx) != nil {
 			return ErrDeadline
 		}
-		receipt, err = routes.ObserveRuntime(ctx, operation(candidate.Stage), value.Claim.FinalSystem)
+		receipt, err = routes.ObserveRuntime(ctx, operation(candidate.Stage), tools.system)
 		if err != nil {
 			return writePhase(ctx, environment, value, "needs_attention", "recovery_routes_unknown")
 		}
@@ -277,7 +277,7 @@ func cancelPreparation(ctx context.Context, environment, registryRoot *os.Root, 
 		return err
 	}
 	for {
-		err = withAuthority(ctx, acquire, func() error { return routes.CancelRuntimePreparation(ctx, operation(stage), value.Claim.FinalSystem) })
+		err = withAuthority(ctx, acquire, func() error { return routes.CancelRuntimePreparation(ctx, operation(stage), tools.system) })
 		if !errors.Is(err, routes.ErrRuntimeBusy) {
 			break
 		}

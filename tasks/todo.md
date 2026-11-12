@@ -11,8 +11,8 @@ Contract: [MVP requirements](../docs/spec.md).
 
 ## Install and release
 
-- Verify the on-host install command (`panel install`) end to end on a disposable NixOS host.
-- Verify preserved machine settings, private access, reboot readiness and independent recovery.
+- Verify the module install (`nix run …#install`, `panel setup`) end to end on a fresh Hostinger NixOS image.
+- Verify private access, closing public SSH, reboot and native rollback.
 - Complete responsive UI, embedded assets and release packaging.
 - Run relevant repository checks and one integrated backend review.
 

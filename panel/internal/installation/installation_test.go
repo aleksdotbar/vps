@@ -48,7 +48,7 @@ func installationFixture(t *testing.T) (Handoff, *sql.DB, *securestate.Cipher) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	input := Handoff{SchemaVersion: 1, OperationID: "11111111-1111-4111-8111-111111111111", InstallationID: "22222222-2222-4222-8222-222222222222", ServerID: "33333333-3333-4333-8333-333333333333", InputSHA256: strings.Repeat("a", 64), SourceSystem: "/nix/store/" + strings.Repeat("1", 32) + "-nixos-system-original", EnrollmentSystem: "/nix/store/" + strings.Repeat("2", 32) + "-nixos-system-enrollment", TailscaleAddress: "100.64.0.10", HostPublicKey: strings.TrimSpace(string(ssh.MarshalAuthorizedKey(host))), HostFingerprint: ssh.FingerprintSHA256(host), ManagementFingerprint: ssh.FingerprintSHA256(signer.PublicKey()), AdministratorPassword: "fixture-password-only", ManagementPrivateKey: string(pem.EncodeToMemory(private))}
+	input := Handoff{SchemaVersion: 1, InstallationID: "22222222-2222-4222-8222-222222222222", ServerID: "33333333-3333-4333-8333-333333333333", TailscaleAddress: "100.64.0.10", HostPublicKey: strings.TrimSpace(string(ssh.MarshalAuthorizedKey(host))), HostFingerprint: ssh.FingerprintSHA256(host), ManagementFingerprint: ssh.FingerprintSHA256(signer.PublicKey()), AdministratorPassword: "fixture-password-only", ManagementPrivateKey: string(pem.EncodeToMemory(private))}
 	database, err := store.Open(t.Context(), filepath.Join(t.TempDir(), "state"), true)
 	if err != nil {
 		t.Fatal(err)
@@ -106,7 +106,7 @@ func TestRegistrationEncryptsAndReplaysWithoutDuplicatePanelHost(t *testing.T) {
 	}
 	clear(raw)
 	changed := input
-	changed.OperationID = "44444444-4444-4444-8444-444444444444"
+	changed.ServerID = "44444444-4444-4444-8444-444444444444"
 	if _, err := register(t.Context(), database, cipher, changed); !errors.Is(err, ErrIdentity) {
 		t.Fatal("conflicting prior installation adopted")
 	}
@@ -129,7 +129,7 @@ func TestRegistrationEncryptsAndReplaysWithoutDuplicatePanelHost(t *testing.T) {
 	if err != nil || server.Readiness != "setup_pending" {
 		t.Fatal("registration claimed deployment readiness")
 	}
-	if _, err := database.ExecContext(t.Context(), "UPDATE installation SET installation_id=? WHERE id=1", input.OperationID); err != nil {
+	if _, err := database.ExecContext(t.Context(), "UPDATE installation SET installation_id=? WHERE id=1", "44444444-4444-4444-8444-444444444444"); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := register(t.Context(), database, cipher, input); !errors.Is(err, ErrIdentity) {
@@ -159,32 +159,28 @@ func TestPrivateProbeRequiresFreshChallengeAndExactNativeIdentity(t *testing.T) 
 		t.Fatal(err)
 	}
 	request := hosthelper.ProbeRequest{SchemaVersion: 1, Action: "probe", InstallationID: input.InstallationID, ServerID: input.ServerID, Challenge: strings.Repeat("ab", 32)}
-	response := hosthelper.ProbeResponse{SchemaVersion: 1, InstallationID: input.InstallationID, ServerID: input.ServerID, Challenge: request.Challenge, Role: "panel", Stage: "enrollment", CurrentSystem: input.EnrollmentSystem, SystemProfile: input.EnrollmentSystem, BootedSystem: input.SourceSystem, Ready: false}
+	system := "/nix/store/" + strings.Repeat("2", 32) + "-nixos-system-host"
+	previous := "/nix/store/" + strings.Repeat("1", 32) + "-nixos-system-host"
+	response := hosthelper.ProbeResponse{SchemaVersion: 1, InstallationID: input.InstallationID, ServerID: input.ServerID, Challenge: request.Challenge, Role: "panel", CurrentSystem: system, SystemProfile: system, BootedSystem: previous, Ready: false}
 	encoded, err := json.Marshal(response)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := VerifyProbe(encoded, request, input.SourceSystem, input.EnrollmentSystem); err != nil {
+	if _, err := VerifyProbe(encoded, request); err != nil {
 		t.Fatal(err)
 	}
-	for _, name := range []string{"challenge", "identity", "role", "stage", "current", "profile", "booted", "ready", "duplicate", "unknown", "oversized"} {
+	for _, name := range []string{"challenge", "identity", "role", "pending switch", "ready", "duplicate", "unknown", "oversized"} {
 		t.Run(name, func(t *testing.T) {
 			changed := response
 			switch name {
 			case "challenge":
 				changed.Challenge = strings.Repeat("cd", 32)
 			case "identity":
-				changed.ServerID = input.OperationID
+				changed.ServerID = input.InstallationID
 			case "role":
 				changed.Role = "server"
-			case "stage":
-				changed.Stage = "final"
-			case "current":
-				changed.CurrentSystem = input.SourceSystem
-			case "profile":
-				changed.SystemProfile = input.SourceSystem
-			case "booted":
-				changed.BootedSystem = "/foreign"
+			case "pending switch":
+				changed.SystemProfile = previous
 			case "ready":
 				changed.Ready = true
 			}
@@ -201,7 +197,7 @@ func TestPrivateProbeRequiresFreshChallengeAndExactNativeIdentity(t *testing.T) 
 			if name == "oversized" {
 				data = make([]byte, (8<<10)+1)
 			}
-			if _, err := VerifyProbe(data, request, input.SourceSystem, input.EnrollmentSystem); !errors.Is(err, ErrProof) || strings.Contains(err.Error(), "private-sentinel") {
+			if _, err := VerifyProbe(data, request); !errors.Is(err, ErrProof) || strings.Contains(err.Error(), "private-sentinel") {
 				t.Fatal("unsafe probe evidence admitted or reflected")
 			}
 		})

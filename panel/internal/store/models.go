@@ -137,10 +137,6 @@ type Installation struct {
 	ID                int64
 	InstallationID    string
 	PanelServerID     string
-	OperationID       string
-	InputSha256       string
-	SourceSystem      string
-	EnrollmentSystem  string
 	BootstrapIdentity []byte
 	PrivateProofAt    int64
 	CreatedAt         int64

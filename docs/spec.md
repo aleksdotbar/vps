@@ -4,8 +4,7 @@
 
 - One self-hosted installation, one administrator, one server and multiple projects.
 - One repository for the panel, installer, reusable host foundation and generic examples.
-- Fresh x86_64 NixOS provider images taken over entirely; keep their disk, boot and network working and recovery access independent. Hand-made host settings are not preserved.
-- Support Hostinger's KVM NixOS image as installed: keep its guest agent and cloud-init provisioning; Nix owns the network after setup.
+- Existing x86_64 NixOS hosts, including provider images such as Hostinger's; the provider's boot, disk, network and console access stay as shipped.
 - No OS installation, provider API or automated host maintenance.
 - Panel and applications may share a host; register that host automatically and prevent its removal.
 - The panel manages its own host through restricted private SSH; no resident custom agent.
@@ -39,10 +38,9 @@
 
 ## Installation and trust
 
-- Install with one root command on an already running NixOS host; it builds the panel and host system there from a pinned repository revision.
-- Derive machine configuration from the host; show it for confirmation and verify it before activation.
-- Keep bootstrap access until fresh private human SSH/sudo and restricted management access succeed.
-- Preserve independent recovery and the previous working host generation.
+- Install with one root command: add the panel NixOS module next to the host's own configuration from a pinned revision, `nixos-rebuild switch`, then run first-time setup.
+- Rollback uses native NixOS generations; the provider console remains the independent recovery path.
+- Public SSH stays open until the operator closes it explicitly after confirming private access.
 - Keep the panel unprivileged; use a separate restricted management identity and fixed privileged helper.
 - Human operator administration is separate from machine management access.
 - Keep management, Docker API and application origins private over IPv4 and IPv6.

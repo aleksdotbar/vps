@@ -9,16 +9,7 @@ import (
 	"syscall"
 
 	"github.com/aleksdotbar/vps/panel/internal/hosthelper"
-	"github.com/aleksdotbar/vps/panel/internal/hostsetup"
 )
-
-func finalAuthority(ctx context.Context) (hosthelper.FinalLease, error) {
-	authority, err := hostsetup.AcquireSettledFinal(ctx)
-	if err != nil {
-		return hosthelper.FinalLease{}, err
-	}
-	return hosthelper.FinalLease{InstallationID: authority.InstallationID, ServerID: authority.ServerID, FinalSystem: authority.FinalSystem, Release: authority.Close}, nil
-}
 
 // These root-only commands are invoked by admitted native transient units. They
 // accept identities only; commands, paths and secret values are not arguments.
@@ -43,5 +34,5 @@ func deploymentCommand(command string, args []string) error {
 	if command != "deploy-runner" {
 		return errors.New("unknown native deployment command")
 	}
-	return hosthelper.RunDeployment(ctx, environment, *operation, recovery, finalAuthority)
+	return hosthelper.RunDeployment(ctx, environment, *operation, recovery, hosthelper.AcquireHost)
 }

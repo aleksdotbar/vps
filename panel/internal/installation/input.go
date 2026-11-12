@@ -4,11 +4,9 @@ package installation
 
 import (
 	"bytes"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"io"
-	"regexp"
 	"strings"
 	"unicode/utf8"
 
@@ -24,16 +22,13 @@ var (
 	ErrInput    = errors.New("invalid panel installation handoff")
 	ErrIdentity = errors.New("panel installation identity or credential conflicts with retained setup")
 	ErrProof    = errors.New("private management access could not be proved; server remains setup pending")
+	ErrRunning  = errors.New("panel.service is running; stop it or rerun panel setup")
 )
 
 type Handoff struct {
 	SchemaVersion         int    `json:"schema_version"`
-	OperationID           string `json:"operation_id"`
 	InstallationID        string `json:"installation_id"`
 	ServerID              string `json:"server_id"`
-	InputSHA256           string `json:"input_sha256"`
-	SourceSystem          string `json:"source_system"`
-	EnrollmentSystem      string `json:"enrollment_system"`
 	TailscaleAddress      string `json:"tailscale_address"`
 	HostPublicKey         string `json:"ssh_host_public_key"`
 	HostFingerprint       string `json:"ssh_host_key_fingerprint"`
@@ -47,7 +42,7 @@ func Parse(data []byte) (Handoff, error) {
 	if len(data) == 0 || len(data) > MaxHandoffBytes || !utf8.Valid(data) {
 		return result, ErrInput
 	}
-	allowed := map[string]bool{"schema_version": false, "operation_id": false, "installation_id": false, "server_id": false, "input_sha256": false, "source_system": false, "enrollment_system": false, "tailscale_address": false, "ssh_host_public_key": false, "ssh_host_key_fingerprint": false, "management_fingerprint": false, "administrator_password": false, "management_private_key": false}
+	allowed := map[string]bool{"schema_version": false, "installation_id": false, "server_id": false, "tailscale_address": false, "ssh_host_public_key": false, "ssh_host_key_fingerprint": false, "management_fingerprint": false, "administrator_password": false, "management_private_key": false}
 	decoder := json.NewDecoder(bytes.NewReader(data))
 	if token, err := decoder.Token(); err != nil || token != json.Delim('{') {
 		return result, ErrInput
@@ -86,20 +81,8 @@ func validID(value string) bool {
 	parsed, err := uuid.Parse(value)
 	return err == nil && parsed != uuid.Nil && parsed.String() == value
 }
-func validHash(value string) bool {
-	raw, err := hex.DecodeString(value)
-	return err == nil && len(raw) == 32 && hex.EncodeToString(raw) == value
-}
-
-// Canonical NixOS system root store paths only; validity is proven elsewhere.
-var systemPath = regexp.MustCompile(`^/nix/store/[0-9abcdfghijklmnpqrsvwxyz]{32}-nixos-system-[A-Za-z0-9+._?=-]{1,198}$`)
-
-func validSystemPath(value string) bool {
-	return systemPath.MatchString(value) && !strings.HasSuffix(value, ".drv")
-}
-
 func validate(value Handoff) (Handoff, error) {
-	if value.SchemaVersion != 1 || !validID(value.OperationID) || !validID(value.InstallationID) || !validID(value.ServerID) || !validHash(value.InputSHA256) || !validSystemPath(value.SourceSystem) || !validSystemPath(value.EnrollmentSystem) || value.SourceSystem == value.EnrollmentSystem || len(value.AdministratorPassword) < 12 || len(value.AdministratorPassword) > 1024 || !utf8.ValidString(value.AdministratorPassword) || len(value.ManagementPrivateKey) == 0 || len(value.ManagementPrivateKey) > 64<<10 {
+	if value.SchemaVersion != 1 || !validID(value.InstallationID) || !validID(value.ServerID) || len(value.AdministratorPassword) < 12 || len(value.AdministratorPassword) > 1024 || !utf8.ValidString(value.AdministratorPassword) || len(value.ManagementPrivateKey) == 0 || len(value.ManagementPrivateKey) > 64<<10 {
 		return Handoff{}, ErrInput
 	}
 	if value.HostFingerprint == value.ManagementFingerprint {

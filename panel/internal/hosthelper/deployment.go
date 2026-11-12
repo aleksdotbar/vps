@@ -11,7 +11,7 @@ import (
 
 const deploymentDirectory = "/var/lib/panel-deploy"
 
-func handleDeploymentStage(ctx context.Context, request deployment.StageRequest, acquire FinalAcquirer) (response deployment.Response, returnErr error) {
+func handleDeploymentStage(ctx context.Context, request deployment.StageRequest, acquire HostAcquirer) (response deployment.Response, returnErr error) {
 	if acquire == nil {
 		return deployment.Response{}, ErrIdentity
 	}
@@ -26,7 +26,7 @@ func handleDeploymentStage(ctx context.Context, request deployment.StageRequest,
 		}
 	}()
 	identity := request.Manifest.Identity
-	if !deploymentLeaseMatches(identity, lease) || deploymentGeneration(identity, request.Challenge, lease.FinalSystem) != nil {
+	if !deploymentLeaseMatches(identity, lease) || deploymentGeneration(identity, request.Challenge, lease.System) != nil {
 		return deployment.Response{}, ErrIdentity
 	}
 	parent, err := os.OpenRoot("/var/lib")
@@ -45,23 +45,23 @@ func handleDeploymentStage(ctx context.Context, request deployment.StageRequest,
 		return deployment.Response{}, ErrIdentity
 	}
 	defer func() { _ = root.Close() }()
-	response, err = deployment.Stage(ctx, root, request, lease.FinalSystem)
+	response, err = deployment.Stage(ctx, root, request, lease.System)
 	if err != nil {
 		return deployment.Response{}, err
 	}
-	if deploymentGeneration(identity, request.Challenge, lease.FinalSystem) != nil {
+	if deploymentGeneration(identity, request.Challenge, lease.System) != nil {
 		return deployment.Response{}, ErrIdentity
 	}
 	return response, nil
 }
 
-func deploymentLeaseMatches(identity deployment.Identity, lease FinalLease) bool {
-	return lease.Release != nil && lease.InstallationID == identity.InstallationID && lease.ServerID == identity.ServerID && systemPath.MatchString(lease.FinalSystem)
+func deploymentLeaseMatches(identity deployment.Identity, lease HostLease) bool {
+	return lease.Release != nil && lease.InstallationID == identity.InstallationID && lease.ServerID == identity.ServerID && systemPath.MatchString(lease.System)
 }
 
 func deploymentGeneration(identity deployment.Identity, challenge, expected string) error {
 	observed, err := probe(ProbeRequest{1, "probe", identity.InstallationID, identity.ServerID, challenge})
-	if err != nil || observed.Stage != "final" || observed.CurrentSystem != expected || observed.SystemProfile != expected {
+	if err != nil || observed.CurrentSystem != expected || observed.SystemProfile != expected {
 		return ErrIdentity
 	}
 	return nil

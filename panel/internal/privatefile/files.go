@@ -12,6 +12,9 @@ import (
 
 var ErrProtection = errors.New("state file protection is invalid")
 
+// ErrProcessBusy reports that another panel process, normally panel.service, holds the state lock.
+var ErrProcessBusy = errors.New("another panel process owns this state directory")
+
 func PrivateDirectory(path string) error {
 	if !filepath.IsAbs(path) {
 		return errors.New("state directory must be absolute")
@@ -135,7 +138,7 @@ func LockProcess(directory string) (*os.File, error) {
 	}
 	if err := syscall.Flock(int(file.Fd()), syscall.LOCK_EX|syscall.LOCK_NB); err != nil {
 		_ = file.Close()
-		return nil, errors.New("another panel process owns this state directory")
+		return nil, ErrProcessBusy
 	}
 	return file, nil
 }

@@ -26,7 +26,6 @@ type tunnelBinding struct {
 	OperationID    string `json:"operation_id"`
 	AccountID      string `json:"account_id"`
 	Name           string `json:"name"`
-	FinalSystem    string `json:"final_system"`
 }
 
 type tunnelIntent struct {
@@ -45,8 +44,9 @@ type tunnelCredentials struct {
 	TunnelID     string `json:"TunnelID"`
 }
 
-func bindTunnel(request TunnelRequest, lease FinalLease) tunnelBinding {
-	return tunnelBinding{request.InstallationID, request.ServerID, request.OperationID, request.AccountID, request.Name, lease.FinalSystem}
+func bindTunnel(request TunnelRequest) tunnelBinding {
+	// The tunnel outlives NixOS generations; each operation's lease supplies its tools.
+	return tunnelBinding{request.InstallationID, request.ServerID, request.OperationID, request.AccountID, request.Name}
 }
 
 func openTunnelDirectory(name string, mode os.FileMode) (*os.Root, error) {

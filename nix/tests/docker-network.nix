@@ -33,7 +33,7 @@ pkgs.testers.runNixOSTest {
   };
 
   nodes.server = { lib, ... }: {
-    imports = [ ../modules/base.nix ];
+    imports = [ ../modules/runtime.nix ../modules/network.nix ../modules/transport.nix ];
     services.tailscale.enable = lib.mkForce false;
     services.tailscale.interfaceName = "eth2";
     services.openssh.settings.AllowUsers = [ "operator" ];

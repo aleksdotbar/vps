@@ -20,8 +20,16 @@ const maxRecordBytes = MaxStageBytes + MaxApplicationBytes
 type claim struct {
 	Identity       Identity `json:"identity"`
 	ManifestSHA256 string   `json:"manifest_sha256"`
-	FinalSystem    string   `json:"final_system"`
+	// FinalSystem records the generation that staged the release. A later
+	// nixos-rebuild may replace it; operations then use the current generation.
+	FinalSystem string `json:"final_system"`
 }
+
+// sameOperation matches a retained claim regardless of the generation that staged it.
+func (c claim) sameOperation(other claim) bool {
+	return c.Identity == other.Identity && c.ManifestSHA256 == other.ManifestSHA256
+}
+
 type staged struct {
 	Claim             claim           `json:"claim"`
 	Manifest          Manifest        `json:"manifest"`
@@ -376,7 +384,7 @@ func Status(root *os.Root, request StatusRequest, finalSystem string) (Response,
 		return Response{}, ErrState
 	}
 	var active claim
-	if readRecord(environment, "active.json", &active) != nil || active != expected {
+	if readRecord(environment, "active.json", &active) != nil || !active.sameOperation(expected) {
 		return Response{}, ErrState
 	}
 	record, err := readStage(environment, expected)

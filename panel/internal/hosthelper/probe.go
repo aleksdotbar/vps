@@ -50,7 +50,6 @@ type ProbeResponse struct {
 	ServerID       string `json:"server_id"`
 	Challenge      string `json:"challenge"`
 	Role           string `json:"role"`
-	Stage          string `json:"stage"`
 	CurrentSystem  string `json:"current_system"`
 	BootedSystem   string `json:"booted_system"`
 	SystemProfile  string `json:"system_profile"`
@@ -63,19 +62,13 @@ type identity struct {
 	Role           string `json:"role"`
 }
 
-type metadata struct {
-	identity
-	SchemaVersion int    `json:"schema_version"`
-	Stage         string `json:"stage"`
-}
-
 type systems struct {
 	current, booted, profile string
 }
 
 // Serve accepts one bounded request. SSH_ORIGINAL_COMMAND and all caller paths
 // are deliberately ignored: sudo authorizes this command, not a shell executor.
-func Serve(parent context.Context, input, output *os.File, acquire ...FinalAcquirer) error {
+func Serve(parent context.Context, input, output *os.File, acquire ...HostAcquirer) error {
 	if err := authorize(); err != nil {
 		return err
 	}
@@ -103,7 +96,7 @@ func Serve(parent context.Context, input, output *os.File, acquire ...FinalAcqui
 	if err != nil {
 		return ErrIO
 	}
-	var final FinalAcquirer
+	var final HostAcquirer
 	if len(acquire) > 1 {
 		return ErrRequest
 	}
@@ -126,7 +119,7 @@ func Serve(parent context.Context, input, output *os.File, acquire ...FinalAcqui
 	return nil
 }
 
-func dispatchHelper(ctx context.Context, data []byte, acquire FinalAcquirer) ([]byte, error) {
+func dispatchHelper(ctx context.Context, data []byte, acquire HostAcquirer) ([]byte, error) {
 	if request, err := ParseReadinessRequest(data); err == nil {
 		response, err := HandleReadiness(ctx, request, acquire)
 		if err != nil {
@@ -255,47 +248,45 @@ func validID(value string) bool {
 	return err == nil && parsed != uuid.Nil && parsed.String() == value
 }
 
+// identityFile is written once by `panel setup`; the role selects the host's duties.
+const identityFile = "/var/lib/panel-host/identity.json"
+
 func probe(request ProbeRequest) (ProbeResponse, error) {
 	before, err := observeSystems()
 	if err != nil {
 		return ProbeResponse{}, err
 	}
-	file, err := privatefile.OpenPrivate("/var/lib/panel-host/identity.json", os.O_RDONLY|syscall.O_NONBLOCK)
+	retained, err := readIdentity()
 	if err != nil {
-		return ProbeResponse{}, ErrIdentity
-	}
-	defer func() { _ = file.Close() }()
-	var retained identity
-	if readJSON(file, &retained) != nil {
-		return ProbeResponse{}, ErrIdentity
-	}
-	// The system root is validated and root-controlled. This public Nix metadata
-	// may itself be a store symlink; no payload value selects a filesystem path.
-	public, err := os.OpenFile(before.current+"/etc/panel-host.json", os.O_RDONLY|syscall.O_NONBLOCK, 0) // #nosec G304 -- observed root-controlled canonical Nix system, fixed suffix.
-	if err != nil {
-		return ProbeResponse{}, ErrIdentity
-	}
-	defer func() { _ = public.Close() }()
-	var installed metadata
-	if readJSON(public, &installed) != nil {
-		return ProbeResponse{}, ErrIdentity
+		return ProbeResponse{}, err
 	}
 	after, err := observeSystems()
 	if err != nil || after != before {
 		return ProbeResponse{}, ErrIdentity
 	}
-	return bindResponse(request, retained, installed, before)
+	return bindResponse(request, retained, before)
 }
 
-func bindResponse(request ProbeRequest, retained identity, installed metadata, observed systems) (ProbeResponse, error) {
-	if installed.identity != retained || retained.InstallationID != request.InstallationID || retained.ServerID != request.ServerID ||
-		(installed.Role != "panel" && installed.Role != "server") || installed.SchemaVersion != 1 ||
-		(installed.Stage != "enrollment" && installed.Stage != "final") {
+func readIdentity() (identity, error) {
+	file, err := privatefile.OpenPrivate(identityFile, os.O_RDONLY|syscall.O_NONBLOCK)
+	if err != nil {
+		return identity{}, ErrIdentity
+	}
+	defer func() { _ = file.Close() }()
+	var retained identity
+	if readJSON(file, &retained) != nil || !validID(retained.InstallationID) || !validID(retained.ServerID) || (retained.Role != "panel" && retained.Role != "server") {
+		return identity{}, ErrIdentity
+	}
+	return retained, nil
+}
+
+func bindResponse(request ProbeRequest, retained identity, observed systems) (ProbeResponse, error) {
+	if retained.InstallationID != request.InstallationID || retained.ServerID != request.ServerID {
 		return ProbeResponse{}, ErrIdentity
 	}
 	return ProbeResponse{
 		SchemaVersion: 1, InstallationID: retained.InstallationID, ServerID: retained.ServerID,
-		Challenge: request.Challenge, Role: installed.Role, Stage: installed.Stage,
+		Challenge: request.Challenge, Role: retained.Role,
 		CurrentSystem: observed.current, BootedSystem: observed.booted, SystemProfile: observed.profile,
 		Ready: false,
 	}, nil
