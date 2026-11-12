@@ -22,3 +22,11 @@ FROM release_services r
 LEFT JOIN service_observations o ON o.environment_id=sqlc.arg(environment_id) AND o.name=r.name AND o.release_id=r.release_id
 WHERE r.release_id=sqlc.arg(release_id) AND r.name>sqlc.arg(after_name)
 ORDER BY r.name LIMIT sqlc.arg(page_limit);
+
+-- name: RecordOperationDiagnostics :exec
+INSERT INTO operation_diagnostics(operation_id,diagnostics_json,recorded_at) VALUES(?,?,?)
+ON CONFLICT(operation_id) DO UPDATE SET diagnostics_json=excluded.diagnostics_json, recorded_at=excluded.recorded_at
+WHERE operation_diagnostics.diagnostics_json!=excluded.diagnostics_json;
+
+-- name: GetOperationDiagnostics :one
+SELECT diagnostics_json FROM operation_diagnostics WHERE operation_id=?;

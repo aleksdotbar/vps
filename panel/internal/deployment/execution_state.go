@@ -29,6 +29,7 @@ type execution struct {
 	Previous        *releaseReference         `json:"previous,omitempty"`
 	Preparation     routes.RuntimePreparation `json:"preparation"`
 	RouteReceipt    routes.RuntimeReceipt     `json:"route_receipt"`
+	Diagnostics     []ServiceDiagnostic       `json:"diagnostics,omitempty"`
 }
 
 type releaseReference struct {
@@ -115,7 +116,7 @@ func readExecution(environment *os.Root, expected claim) (execution, error) {
 		return value, err
 	}
 	invocationAdmitted := validNativeInvocation(value.InvocationID) || value.InvocationID == "" && (value.Phase == "starting" || value.Phase == "failed" || value.Phase == "needs_attention")
-	if value.Claim != expected || !validID(value.LaunchID) || !validID(value.BootID) || !executionPhase(value.Phase) || !safeExecutionReason(value.Reason) || len(value.Preparation.Origins) > 32 || !invocationAdmitted {
+	if value.Claim != expected || !validID(value.LaunchID) || !validID(value.BootID) || !executionPhase(value.Phase) || !safeExecutionReason(value.Reason) || len(value.Preparation.Origins) > 32 || !invocationAdmitted || !validDiagnostics(value.Diagnostics) {
 		return value, ErrState
 	}
 	if (value.Previous == nil) != (expected.Identity.ExpectedCurrentReleaseID == "") {

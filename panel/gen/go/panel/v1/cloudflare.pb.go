@@ -160,6 +160,196 @@ func (x *ConnectAccountRequest) GetZoneIds() []string {
 	return nil
 }
 
+type ListCandidateZonesRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	AccountId     string                 `protobuf:"bytes,1,opt,name=account_id,json=accountId,proto3" json:"account_id,omitempty"`
+	Token         string                 `protobuf:"bytes,2,opt,name=token,proto3" json:"token,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListCandidateZonesRequest) Reset() {
+	*x = ListCandidateZonesRequest{}
+	mi := &file_panel_v1_cloudflare_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListCandidateZonesRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListCandidateZonesRequest) ProtoMessage() {}
+
+func (x *ListCandidateZonesRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_panel_v1_cloudflare_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListCandidateZonesRequest.ProtoReflect.Descriptor instead.
+func (*ListCandidateZonesRequest) Descriptor() ([]byte, []int) {
+	return file_panel_v1_cloudflare_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *ListCandidateZonesRequest) GetAccountId() string {
+	if x != nil {
+		return x.AccountId
+	}
+	return ""
+}
+
+func (x *ListCandidateZonesRequest) GetToken() string {
+	if x != nil {
+		return x.Token
+	}
+	return ""
+}
+
+type ListCandidateZonesResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	Zones []*CandidateZone       `protobuf:"bytes,1,rep,name=zones,proto3" json:"zones,omitempty"`
+	// More zones exist than one selection can hold.
+	Truncated     bool `protobuf:"varint,2,opt,name=truncated,proto3" json:"truncated,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListCandidateZonesResponse) Reset() {
+	*x = ListCandidateZonesResponse{}
+	mi := &file_panel_v1_cloudflare_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListCandidateZonesResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListCandidateZonesResponse) ProtoMessage() {}
+
+func (x *ListCandidateZonesResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_panel_v1_cloudflare_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListCandidateZonesResponse.ProtoReflect.Descriptor instead.
+func (*ListCandidateZonesResponse) Descriptor() ([]byte, []int) {
+	return file_panel_v1_cloudflare_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *ListCandidateZonesResponse) GetZones() []*CandidateZone {
+	if x != nil {
+		return x.Zones
+	}
+	return nil
+}
+
+func (x *ListCandidateZonesResponse) GetTruncated() bool {
+	if x != nil {
+		return x.Truncated
+	}
+	return false
+}
+
+type CandidateZone struct {
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	Id     string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Name   string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	Status string                 `protobuf:"bytes,3,opt,name=status,proto3" json:"status,omitempty"`
+	Type   string                 `protobuf:"bytes,4,opt,name=type,proto3" json:"type,omitempty"`
+	Paused bool                   `protobuf:"varint,5,opt,name=paused,proto3" json:"paused,omitempty"`
+	// Active, full and not paused: selectable for routes.
+	Eligible      bool `protobuf:"varint,6,opt,name=eligible,proto3" json:"eligible,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CandidateZone) Reset() {
+	*x = CandidateZone{}
+	mi := &file_panel_v1_cloudflare_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CandidateZone) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CandidateZone) ProtoMessage() {}
+
+func (x *CandidateZone) ProtoReflect() protoreflect.Message {
+	mi := &file_panel_v1_cloudflare_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CandidateZone.ProtoReflect.Descriptor instead.
+func (*CandidateZone) Descriptor() ([]byte, []int) {
+	return file_panel_v1_cloudflare_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *CandidateZone) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *CandidateZone) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *CandidateZone) GetStatus() string {
+	if x != nil {
+		return x.Status
+	}
+	return ""
+}
+
+func (x *CandidateZone) GetType() string {
+	if x != nil {
+		return x.Type
+	}
+	return ""
+}
+
+func (x *CandidateZone) GetPaused() bool {
+	if x != nil {
+		return x.Paused
+	}
+	return false
+}
+
+func (x *CandidateZone) GetEligible() bool {
+	if x != nil {
+		return x.Eligible
+	}
+	return false
+}
+
 type ConnectAccountResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Integration   *CloudflareIntegration `protobuf:"bytes,1,opt,name=integration,proto3" json:"integration,omitempty"`
@@ -169,7 +359,7 @@ type ConnectAccountResponse struct {
 
 func (x *ConnectAccountResponse) Reset() {
 	*x = ConnectAccountResponse{}
-	mi := &file_panel_v1_cloudflare_proto_msgTypes[1]
+	mi := &file_panel_v1_cloudflare_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -181,7 +371,7 @@ func (x *ConnectAccountResponse) String() string {
 func (*ConnectAccountResponse) ProtoMessage() {}
 
 func (x *ConnectAccountResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_panel_v1_cloudflare_proto_msgTypes[1]
+	mi := &file_panel_v1_cloudflare_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -194,7 +384,7 @@ func (x *ConnectAccountResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ConnectAccountResponse.ProtoReflect.Descriptor instead.
 func (*ConnectAccountResponse) Descriptor() ([]byte, []int) {
-	return file_panel_v1_cloudflare_proto_rawDescGZIP(), []int{1}
+	return file_panel_v1_cloudflare_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *ConnectAccountResponse) GetIntegration() *CloudflareIntegration {
@@ -212,7 +402,7 @@ type GetCloudflareIntegrationRequest struct {
 
 func (x *GetCloudflareIntegrationRequest) Reset() {
 	*x = GetCloudflareIntegrationRequest{}
-	mi := &file_panel_v1_cloudflare_proto_msgTypes[2]
+	mi := &file_panel_v1_cloudflare_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -224,7 +414,7 @@ func (x *GetCloudflareIntegrationRequest) String() string {
 func (*GetCloudflareIntegrationRequest) ProtoMessage() {}
 
 func (x *GetCloudflareIntegrationRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_panel_v1_cloudflare_proto_msgTypes[2]
+	mi := &file_panel_v1_cloudflare_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -237,7 +427,7 @@ func (x *GetCloudflareIntegrationRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetCloudflareIntegrationRequest.ProtoReflect.Descriptor instead.
 func (*GetCloudflareIntegrationRequest) Descriptor() ([]byte, []int) {
-	return file_panel_v1_cloudflare_proto_rawDescGZIP(), []int{2}
+	return file_panel_v1_cloudflare_proto_rawDescGZIP(), []int{5}
 }
 
 type GetCloudflareIntegrationResponse struct {
@@ -249,7 +439,7 @@ type GetCloudflareIntegrationResponse struct {
 
 func (x *GetCloudflareIntegrationResponse) Reset() {
 	*x = GetCloudflareIntegrationResponse{}
-	mi := &file_panel_v1_cloudflare_proto_msgTypes[3]
+	mi := &file_panel_v1_cloudflare_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -261,7 +451,7 @@ func (x *GetCloudflareIntegrationResponse) String() string {
 func (*GetCloudflareIntegrationResponse) ProtoMessage() {}
 
 func (x *GetCloudflareIntegrationResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_panel_v1_cloudflare_proto_msgTypes[3]
+	mi := &file_panel_v1_cloudflare_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -274,7 +464,7 @@ func (x *GetCloudflareIntegrationResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetCloudflareIntegrationResponse.ProtoReflect.Descriptor instead.
 func (*GetCloudflareIntegrationResponse) Descriptor() ([]byte, []int) {
-	return file_panel_v1_cloudflare_proto_rawDescGZIP(), []int{3}
+	return file_panel_v1_cloudflare_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *GetCloudflareIntegrationResponse) GetIntegration() *CloudflareIntegration {
@@ -299,7 +489,7 @@ type CloudflareIntegration struct {
 
 func (x *CloudflareIntegration) Reset() {
 	*x = CloudflareIntegration{}
-	mi := &file_panel_v1_cloudflare_proto_msgTypes[4]
+	mi := &file_panel_v1_cloudflare_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -311,7 +501,7 @@ func (x *CloudflareIntegration) String() string {
 func (*CloudflareIntegration) ProtoMessage() {}
 
 func (x *CloudflareIntegration) ProtoReflect() protoreflect.Message {
-	mi := &file_panel_v1_cloudflare_proto_msgTypes[4]
+	mi := &file_panel_v1_cloudflare_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -324,7 +514,7 @@ func (x *CloudflareIntegration) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CloudflareIntegration.ProtoReflect.Descriptor instead.
 func (*CloudflareIntegration) Descriptor() ([]byte, []int) {
-	return file_panel_v1_cloudflare_proto_rawDescGZIP(), []int{4}
+	return file_panel_v1_cloudflare_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *CloudflareIntegration) GetConfigured() bool {
@@ -386,7 +576,7 @@ type CloudflareZone struct {
 
 func (x *CloudflareZone) Reset() {
 	*x = CloudflareZone{}
-	mi := &file_panel_v1_cloudflare_proto_msgTypes[5]
+	mi := &file_panel_v1_cloudflare_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -398,7 +588,7 @@ func (x *CloudflareZone) String() string {
 func (*CloudflareZone) ProtoMessage() {}
 
 func (x *CloudflareZone) ProtoReflect() protoreflect.Message {
-	mi := &file_panel_v1_cloudflare_proto_msgTypes[5]
+	mi := &file_panel_v1_cloudflare_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -411,7 +601,7 @@ func (x *CloudflareZone) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CloudflareZone.ProtoReflect.Descriptor instead.
 func (*CloudflareZone) Descriptor() ([]byte, []int) {
-	return file_panel_v1_cloudflare_proto_rawDescGZIP(), []int{5}
+	return file_panel_v1_cloudflare_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *CloudflareZone) GetId() string {
@@ -439,7 +629,7 @@ type ProvisionServerTunnelRequest struct {
 
 func (x *ProvisionServerTunnelRequest) Reset() {
 	*x = ProvisionServerTunnelRequest{}
-	mi := &file_panel_v1_cloudflare_proto_msgTypes[6]
+	mi := &file_panel_v1_cloudflare_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -451,7 +641,7 @@ func (x *ProvisionServerTunnelRequest) String() string {
 func (*ProvisionServerTunnelRequest) ProtoMessage() {}
 
 func (x *ProvisionServerTunnelRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_panel_v1_cloudflare_proto_msgTypes[6]
+	mi := &file_panel_v1_cloudflare_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -464,7 +654,7 @@ func (x *ProvisionServerTunnelRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ProvisionServerTunnelRequest.ProtoReflect.Descriptor instead.
 func (*ProvisionServerTunnelRequest) Descriptor() ([]byte, []int) {
-	return file_panel_v1_cloudflare_proto_rawDescGZIP(), []int{6}
+	return file_panel_v1_cloudflare_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *ProvisionServerTunnelRequest) GetMutation() *Mutation {
@@ -497,7 +687,7 @@ type ProvisionServerTunnelResponse struct {
 
 func (x *ProvisionServerTunnelResponse) Reset() {
 	*x = ProvisionServerTunnelResponse{}
-	mi := &file_panel_v1_cloudflare_proto_msgTypes[7]
+	mi := &file_panel_v1_cloudflare_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -509,7 +699,7 @@ func (x *ProvisionServerTunnelResponse) String() string {
 func (*ProvisionServerTunnelResponse) ProtoMessage() {}
 
 func (x *ProvisionServerTunnelResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_panel_v1_cloudflare_proto_msgTypes[7]
+	mi := &file_panel_v1_cloudflare_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -522,7 +712,7 @@ func (x *ProvisionServerTunnelResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ProvisionServerTunnelResponse.ProtoReflect.Descriptor instead.
 func (*ProvisionServerTunnelResponse) Descriptor() ([]byte, []int) {
-	return file_panel_v1_cloudflare_proto_rawDescGZIP(), []int{7}
+	return file_panel_v1_cloudflare_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *ProvisionServerTunnelResponse) GetTunnel() *ServerTunnel {
@@ -541,7 +731,7 @@ type GetServerTunnelRequest struct {
 
 func (x *GetServerTunnelRequest) Reset() {
 	*x = GetServerTunnelRequest{}
-	mi := &file_panel_v1_cloudflare_proto_msgTypes[8]
+	mi := &file_panel_v1_cloudflare_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -553,7 +743,7 @@ func (x *GetServerTunnelRequest) String() string {
 func (*GetServerTunnelRequest) ProtoMessage() {}
 
 func (x *GetServerTunnelRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_panel_v1_cloudflare_proto_msgTypes[8]
+	mi := &file_panel_v1_cloudflare_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -566,7 +756,7 @@ func (x *GetServerTunnelRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetServerTunnelRequest.ProtoReflect.Descriptor instead.
 func (*GetServerTunnelRequest) Descriptor() ([]byte, []int) {
-	return file_panel_v1_cloudflare_proto_rawDescGZIP(), []int{8}
+	return file_panel_v1_cloudflare_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *GetServerTunnelRequest) GetServerId() string {
@@ -585,7 +775,7 @@ type GetServerTunnelResponse struct {
 
 func (x *GetServerTunnelResponse) Reset() {
 	*x = GetServerTunnelResponse{}
-	mi := &file_panel_v1_cloudflare_proto_msgTypes[9]
+	mi := &file_panel_v1_cloudflare_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -597,7 +787,7 @@ func (x *GetServerTunnelResponse) String() string {
 func (*GetServerTunnelResponse) ProtoMessage() {}
 
 func (x *GetServerTunnelResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_panel_v1_cloudflare_proto_msgTypes[9]
+	mi := &file_panel_v1_cloudflare_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -610,7 +800,7 @@ func (x *GetServerTunnelResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetServerTunnelResponse.ProtoReflect.Descriptor instead.
 func (*GetServerTunnelResponse) Descriptor() ([]byte, []int) {
-	return file_panel_v1_cloudflare_proto_rawDescGZIP(), []int{9}
+	return file_panel_v1_cloudflare_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *GetServerTunnelResponse) GetTunnel() *ServerTunnel {
@@ -641,7 +831,7 @@ type ServerTunnel struct {
 
 func (x *ServerTunnel) Reset() {
 	*x = ServerTunnel{}
-	mi := &file_panel_v1_cloudflare_proto_msgTypes[10]
+	mi := &file_panel_v1_cloudflare_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -653,7 +843,7 @@ func (x *ServerTunnel) String() string {
 func (*ServerTunnel) ProtoMessage() {}
 
 func (x *ServerTunnel) ProtoReflect() protoreflect.Message {
-	mi := &file_panel_v1_cloudflare_proto_msgTypes[10]
+	mi := &file_panel_v1_cloudflare_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -666,7 +856,7 @@ func (x *ServerTunnel) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ServerTunnel.ProtoReflect.Descriptor instead.
 func (*ServerTunnel) Descriptor() ([]byte, []int) {
-	return file_panel_v1_cloudflare_proto_rawDescGZIP(), []int{10}
+	return file_panel_v1_cloudflare_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *ServerTunnel) GetServerId() string {
@@ -743,7 +933,21 @@ const file_panel_v1_cloudflare_proto_rawDesc = "" +
 	"\n" +
 	"account_id\x18\x03 \x01(\tB\x15\xbaH\x12r\x102\x0e^[0-9a-f]{32}$R\taccountId\x128\n" +
 	"\x05token\x18\x04 \x01(\tB\"\xbaH\x1fr\x1d \x01(\x80 2\x16^[A-Za-z0-9._~+/-]+=*$R\x05token\x12;\n" +
-	"\bzone_ids\x18\x05 \x03(\tB \xbaH\x1d\x92\x01\x1a\b\x01\x10 \x18\x01\"\x12r\x102\x0e^[0-9a-f]{32}$R\azoneIds\"[\n" +
+	"\bzone_ids\x18\x05 \x03(\tB \xbaH\x1d\x92\x01\x1a\b\x01\x10 \x18\x01\"\x12r\x102\x0e^[0-9a-f]{32}$R\azoneIds\"\x8b\x01\n" +
+	"\x19ListCandidateZonesRequest\x124\n" +
+	"\n" +
+	"account_id\x18\x01 \x01(\tB\x15\xbaH\x12r\x102\x0e^[0-9a-f]{32}$R\taccountId\x128\n" +
+	"\x05token\x18\x02 \x01(\tB\"\xbaH\x1fr\x1d \x01(\x80 2\x16^[A-Za-z0-9._~+/-]+=*$R\x05token\"i\n" +
+	"\x1aListCandidateZonesResponse\x12-\n" +
+	"\x05zones\x18\x01 \x03(\v2\x17.panel.v1.CandidateZoneR\x05zones\x12\x1c\n" +
+	"\ttruncated\x18\x02 \x01(\bR\ttruncated\"\x93\x01\n" +
+	"\rCandidateZone\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
+	"\x04name\x18\x02 \x01(\tR\x04name\x12\x16\n" +
+	"\x06status\x18\x03 \x01(\tR\x06status\x12\x12\n" +
+	"\x04type\x18\x04 \x01(\tR\x04type\x12\x16\n" +
+	"\x06paused\x18\x05 \x01(\bR\x06paused\x12\x1a\n" +
+	"\beligible\x18\x06 \x01(\bR\beligible\"[\n" +
 	"\x16ConnectAccountResponse\x12A\n" +
 	"\vintegration\x18\x01 \x01(\v2\x1f.panel.v1.CloudflareIntegrationR\vintegration\"!\n" +
 	"\x1fGetCloudflareIntegrationRequest\"e\n" +
@@ -795,11 +999,12 @@ const file_panel_v1_cloudflare_proto_rawDesc = "" +
 	"\x1cSERVER_TUNNEL_PHASE_CREATING\x10\x03\x12\"\n" +
 	"\x1eSERVER_TUNNEL_PHASE_FINALIZING\x10\x04\x12\x1d\n" +
 	"\x19SERVER_TUNNEL_PHASE_READY\x10\x05\x12'\n" +
-	"#SERVER_TUNNEL_PHASE_NEEDS_ATTENTION\x10\x062\xa7\x03\n" +
+	"#SERVER_TUNNEL_PHASE_NEEDS_ATTENTION\x10\x062\x88\x04\n" +
 	"\x11CloudflareService\x12h\n" +
 	"\x15ProvisionServerTunnel\x12&.panel.v1.ProvisionServerTunnelRequest\x1a'.panel.v1.ProvisionServerTunnelResponse\x12[\n" +
 	"\x0fGetServerTunnel\x12 .panel.v1.GetServerTunnelRequest\x1a!.panel.v1.GetServerTunnelResponse\"\x03\x90\x02\x01\x12S\n" +
-	"\x0eConnectAccount\x12\x1f.panel.v1.ConnectAccountRequest\x1a .panel.v1.ConnectAccountResponse\x12v\n" +
+	"\x0eConnectAccount\x12\x1f.panel.v1.ConnectAccountRequest\x1a .panel.v1.ConnectAccountResponse\x12_\n" +
+	"\x12ListCandidateZones\x12#.panel.v1.ListCandidateZonesRequest\x1a$.panel.v1.ListCandidateZonesResponse\x12v\n" +
 	"\x18GetCloudflareIntegration\x12).panel.v1.GetCloudflareIntegrationRequest\x1a*.panel.v1.GetCloudflareIntegrationResponse\"\x03\x90\x02\x01B:Z8github.com/aleksdotbar/vps/panel/gen/go/panel/v1;panelv1b\x06proto3"
 
 var (
@@ -815,48 +1020,54 @@ func file_panel_v1_cloudflare_proto_rawDescGZIP() []byte {
 }
 
 var file_panel_v1_cloudflare_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_panel_v1_cloudflare_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
+var file_panel_v1_cloudflare_proto_msgTypes = make([]protoimpl.MessageInfo, 14)
 var file_panel_v1_cloudflare_proto_goTypes = []any{
 	(ServerTunnelPhase)(0),                   // 0: panel.v1.ServerTunnelPhase
 	(*ConnectAccountRequest)(nil),            // 1: panel.v1.ConnectAccountRequest
-	(*ConnectAccountResponse)(nil),           // 2: panel.v1.ConnectAccountResponse
-	(*GetCloudflareIntegrationRequest)(nil),  // 3: panel.v1.GetCloudflareIntegrationRequest
-	(*GetCloudflareIntegrationResponse)(nil), // 4: panel.v1.GetCloudflareIntegrationResponse
-	(*CloudflareIntegration)(nil),            // 5: panel.v1.CloudflareIntegration
-	(*CloudflareZone)(nil),                   // 6: panel.v1.CloudflareZone
-	(*ProvisionServerTunnelRequest)(nil),     // 7: panel.v1.ProvisionServerTunnelRequest
-	(*ProvisionServerTunnelResponse)(nil),    // 8: panel.v1.ProvisionServerTunnelResponse
-	(*GetServerTunnelRequest)(nil),           // 9: panel.v1.GetServerTunnelRequest
-	(*GetServerTunnelResponse)(nil),          // 10: panel.v1.GetServerTunnelResponse
-	(*ServerTunnel)(nil),                     // 11: panel.v1.ServerTunnel
-	(*Mutation)(nil),                         // 12: panel.v1.Mutation
-	(*timestamppb.Timestamp)(nil),            // 13: google.protobuf.Timestamp
+	(*ListCandidateZonesRequest)(nil),        // 2: panel.v1.ListCandidateZonesRequest
+	(*ListCandidateZonesResponse)(nil),       // 3: panel.v1.ListCandidateZonesResponse
+	(*CandidateZone)(nil),                    // 4: panel.v1.CandidateZone
+	(*ConnectAccountResponse)(nil),           // 5: panel.v1.ConnectAccountResponse
+	(*GetCloudflareIntegrationRequest)(nil),  // 6: panel.v1.GetCloudflareIntegrationRequest
+	(*GetCloudflareIntegrationResponse)(nil), // 7: panel.v1.GetCloudflareIntegrationResponse
+	(*CloudflareIntegration)(nil),            // 8: panel.v1.CloudflareIntegration
+	(*CloudflareZone)(nil),                   // 9: panel.v1.CloudflareZone
+	(*ProvisionServerTunnelRequest)(nil),     // 10: panel.v1.ProvisionServerTunnelRequest
+	(*ProvisionServerTunnelResponse)(nil),    // 11: panel.v1.ProvisionServerTunnelResponse
+	(*GetServerTunnelRequest)(nil),           // 12: panel.v1.GetServerTunnelRequest
+	(*GetServerTunnelResponse)(nil),          // 13: panel.v1.GetServerTunnelResponse
+	(*ServerTunnel)(nil),                     // 14: panel.v1.ServerTunnel
+	(*Mutation)(nil),                         // 15: panel.v1.Mutation
+	(*timestamppb.Timestamp)(nil),            // 16: google.protobuf.Timestamp
 }
 var file_panel_v1_cloudflare_proto_depIdxs = []int32{
-	12, // 0: panel.v1.ConnectAccountRequest.mutation:type_name -> panel.v1.Mutation
-	5,  // 1: panel.v1.ConnectAccountResponse.integration:type_name -> panel.v1.CloudflareIntegration
-	5,  // 2: panel.v1.GetCloudflareIntegrationResponse.integration:type_name -> panel.v1.CloudflareIntegration
-	13, // 3: panel.v1.CloudflareIntegration.expires_at:type_name -> google.protobuf.Timestamp
-	13, // 4: panel.v1.CloudflareIntegration.verified_at:type_name -> google.protobuf.Timestamp
-	6,  // 5: panel.v1.CloudflareIntegration.zones:type_name -> panel.v1.CloudflareZone
-	12, // 6: panel.v1.ProvisionServerTunnelRequest.mutation:type_name -> panel.v1.Mutation
-	11, // 7: panel.v1.ProvisionServerTunnelResponse.tunnel:type_name -> panel.v1.ServerTunnel
-	11, // 8: panel.v1.GetServerTunnelResponse.tunnel:type_name -> panel.v1.ServerTunnel
-	0,  // 9: panel.v1.ServerTunnel.phase:type_name -> panel.v1.ServerTunnelPhase
-	13, // 10: panel.v1.ServerTunnel.observed_at:type_name -> google.protobuf.Timestamp
-	7,  // 11: panel.v1.CloudflareService.ProvisionServerTunnel:input_type -> panel.v1.ProvisionServerTunnelRequest
-	9,  // 12: panel.v1.CloudflareService.GetServerTunnel:input_type -> panel.v1.GetServerTunnelRequest
-	1,  // 13: panel.v1.CloudflareService.ConnectAccount:input_type -> panel.v1.ConnectAccountRequest
-	3,  // 14: panel.v1.CloudflareService.GetCloudflareIntegration:input_type -> panel.v1.GetCloudflareIntegrationRequest
-	8,  // 15: panel.v1.CloudflareService.ProvisionServerTunnel:output_type -> panel.v1.ProvisionServerTunnelResponse
-	10, // 16: panel.v1.CloudflareService.GetServerTunnel:output_type -> panel.v1.GetServerTunnelResponse
-	2,  // 17: panel.v1.CloudflareService.ConnectAccount:output_type -> panel.v1.ConnectAccountResponse
-	4,  // 18: panel.v1.CloudflareService.GetCloudflareIntegration:output_type -> panel.v1.GetCloudflareIntegrationResponse
-	15, // [15:19] is the sub-list for method output_type
-	11, // [11:15] is the sub-list for method input_type
-	11, // [11:11] is the sub-list for extension type_name
-	11, // [11:11] is the sub-list for extension extendee
-	0,  // [0:11] is the sub-list for field type_name
+	15, // 0: panel.v1.ConnectAccountRequest.mutation:type_name -> panel.v1.Mutation
+	4,  // 1: panel.v1.ListCandidateZonesResponse.zones:type_name -> panel.v1.CandidateZone
+	8,  // 2: panel.v1.ConnectAccountResponse.integration:type_name -> panel.v1.CloudflareIntegration
+	8,  // 3: panel.v1.GetCloudflareIntegrationResponse.integration:type_name -> panel.v1.CloudflareIntegration
+	16, // 4: panel.v1.CloudflareIntegration.expires_at:type_name -> google.protobuf.Timestamp
+	16, // 5: panel.v1.CloudflareIntegration.verified_at:type_name -> google.protobuf.Timestamp
+	9,  // 6: panel.v1.CloudflareIntegration.zones:type_name -> panel.v1.CloudflareZone
+	15, // 7: panel.v1.ProvisionServerTunnelRequest.mutation:type_name -> panel.v1.Mutation
+	14, // 8: panel.v1.ProvisionServerTunnelResponse.tunnel:type_name -> panel.v1.ServerTunnel
+	14, // 9: panel.v1.GetServerTunnelResponse.tunnel:type_name -> panel.v1.ServerTunnel
+	0,  // 10: panel.v1.ServerTunnel.phase:type_name -> panel.v1.ServerTunnelPhase
+	16, // 11: panel.v1.ServerTunnel.observed_at:type_name -> google.protobuf.Timestamp
+	10, // 12: panel.v1.CloudflareService.ProvisionServerTunnel:input_type -> panel.v1.ProvisionServerTunnelRequest
+	12, // 13: panel.v1.CloudflareService.GetServerTunnel:input_type -> panel.v1.GetServerTunnelRequest
+	1,  // 14: panel.v1.CloudflareService.ConnectAccount:input_type -> panel.v1.ConnectAccountRequest
+	2,  // 15: panel.v1.CloudflareService.ListCandidateZones:input_type -> panel.v1.ListCandidateZonesRequest
+	6,  // 16: panel.v1.CloudflareService.GetCloudflareIntegration:input_type -> panel.v1.GetCloudflareIntegrationRequest
+	11, // 17: panel.v1.CloudflareService.ProvisionServerTunnel:output_type -> panel.v1.ProvisionServerTunnelResponse
+	13, // 18: panel.v1.CloudflareService.GetServerTunnel:output_type -> panel.v1.GetServerTunnelResponse
+	5,  // 19: panel.v1.CloudflareService.ConnectAccount:output_type -> panel.v1.ConnectAccountResponse
+	3,  // 20: panel.v1.CloudflareService.ListCandidateZones:output_type -> panel.v1.ListCandidateZonesResponse
+	7,  // 21: panel.v1.CloudflareService.GetCloudflareIntegration:output_type -> panel.v1.GetCloudflareIntegrationResponse
+	17, // [17:22] is the sub-list for method output_type
+	12, // [12:17] is the sub-list for method input_type
+	12, // [12:12] is the sub-list for extension type_name
+	12, // [12:12] is the sub-list for extension extendee
+	0,  // [0:12] is the sub-list for field type_name
 }
 
 func init() { file_panel_v1_cloudflare_proto_init() }
@@ -871,7 +1082,7 @@ func file_panel_v1_cloudflare_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_panel_v1_cloudflare_proto_rawDesc), len(file_panel_v1_cloudflare_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   11,
+			NumMessages:   14,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

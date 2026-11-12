@@ -30,6 +30,7 @@ type ExecutionResponse struct {
 	RouteRevision     uint64               `json:"route_revision,omitempty"`
 	RouteConfigSHA256 string               `json:"route_config_sha256,omitempty"`
 	Services          []ServiceObservation `json:"services,omitempty"`
+	Diagnostics       []ServiceDiagnostic  `json:"diagnostics,omitempty"`
 }
 
 type ServiceObservation struct {
@@ -79,7 +80,7 @@ func ParseExecutionResponse(data []byte, expected ExecutionRequest) (ExecutionRe
 	if err != nil || !bytes.Equal(canonical, bytes.TrimSpace(data)) || result.SchemaVersion != 1 || result.Action != expected.Action || result.Challenge != expected.Challenge || result.Identity != expected.Identity || result.ManifestSHA256 != expected.ManifestSHA256 || !finalSystemPath.MatchString(result.FinalSystem) || !executionPhase(result.Phase) || len(result.Services) > 64 || result.ActiveReleaseID != "" && !validID(result.ActiveReleaseID) || result.RouteConfigSHA256 != "" && !validHash(result.RouteConfigSHA256) {
 		return ExecutionResponse{}, ErrInvalid
 	}
-	if !safeExecutionReason(result.Reason) {
+	if !safeExecutionReason(result.Reason) || !validDiagnostics(result.Diagnostics) {
 		return ExecutionResponse{}, ErrInvalid
 	}
 	seen := make(map[string]bool, len(result.Services))

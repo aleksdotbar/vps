@@ -163,6 +163,12 @@ export function CloudflareForm({
               "The connection changed and refresh failed. Refresh before saving again.",
             );
         }
+      } else if (
+        error instanceof ConnectError &&
+        error.code === Code.PermissionDenied
+      ) {
+        // The server returns fixed, actionable Cloudflare guidance here.
+        setFailure(`${error.rawMessage} Then enter the token again.`);
       } else if (mutationRejected(error)) {
         setFailure(
           "Connection was refused. Check the account token, its permissions and the selected active zones, then enter the token again.",

@@ -262,6 +262,11 @@ func (s *Service) control(ctx context.Context, connection connection, input exec
 }
 
 func (s *Service) accept(ctx context.Context, connection connection, input executionInput, system string, observed deployment.ExecutionResponse) (operations.Result, error) {
+	if len(observed.Diagnostics) > 0 {
+		if err := recordDiagnostics(ctx, s.database, input.operation.ID, observed.Diagnostics); err != nil {
+			return operations.Unknown, err
+		}
+	}
 	switch observed.Phase {
 	case "awaiting_dns":
 		if err := s.verifyServices(ctx, input, observed, input.operation.ReleaseID); err != nil {
@@ -361,4 +366,13 @@ func (s *Service) staged(ctx context.Context, connection connection, input execu
 		return false, errObservation
 	}
 	return true, nil
+}
+
+// recordDiagnostics keeps the host's latest failure detail for the operation page.
+func recordDiagnostics(ctx context.Context, database *sql.DB, operationID string, diagnostics []deployment.ServiceDiagnostic) error {
+	data, err := json.Marshal(diagnostics)
+	if err != nil {
+		return errObservation
+	}
+	return store.New(database).RecordOperationDiagnostics(ctx, store.RecordOperationDiagnosticsParams{OperationID: operationID, DiagnosticsJson: data, RecordedAt: time.Now().UnixMilli()})
 }

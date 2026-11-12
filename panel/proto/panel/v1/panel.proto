@@ -384,6 +384,20 @@ message Operation {
   string message = 10 [(buf.validate.field).string.max_bytes = 1024];
   // Unknown remote outcome blocks conflicting work until reconciliation.
   OperationOutcome outcome = 11;
+  // Failed services' last observed state, filled only by GetOperation after a
+  // failed or recovered candidate.
+  repeated ServiceDiagnostic diagnostics = 12;
+}
+
+// log_tail is the application's own recent output, shown to the operator. It is
+// bounded and stripped of control sequences; the panel never adds secret values,
+// but applications can print their own.
+message ServiceDiagnostic {
+  string service = 1;
+  string state = 2;
+  int32 exit_code = 3;
+  string health = 4;
+  string log_tail = 5;
 }
 
 enum OperationKind {

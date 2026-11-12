@@ -13,6 +13,7 @@ import (
 )
 
 func cloudflareError(err error) error {
+	var rejected cloudflareflow.RejectedError
 	switch {
 	case errors.Is(err, operations.ErrCapacity):
 		return safeError(connect.CodeResourceExhausted, "Tunnel provisioning capacity reached", panelv1.ErrorReason_ERROR_REASON_RESOURCE_IN_USE)
@@ -24,6 +25,8 @@ func cloudflareError(err error) error {
 		return safeError(connect.CodeFailedPrecondition, "verified final host management is required", panelv1.ErrorReason_ERROR_REASON_SERVER_NOT_READY)
 	case errors.Is(err, cloudflareflow.ErrInvalid):
 		return safeError(connect.CodeInvalidArgument, "invalid Cloudflare connection input", panelv1.ErrorReason_ERROR_REASON_INVALID_INPUT)
+	case errors.As(err, &rejected):
+		return safeError(connect.CodePermissionDenied, rejected.Guidance, panelv1.ErrorReason_ERROR_REASON_AUTHENTICATION_REQUIRED)
 	case errors.Is(err, cloudflareflow.ErrScope):
 		return safeError(connect.CodePermissionDenied, "Cloudflare token or selected zone rejected", panelv1.ErrorReason_ERROR_REASON_AUTHENTICATION_REQUIRED)
 	case errors.Is(err, cloudflareflow.ErrProvider):
@@ -35,6 +38,14 @@ func cloudflareError(err error) error {
 	default:
 		return metadataError(err)
 	}
+}
+
+func (h *handler) ListCandidateZones(ctx context.Context, request *connect.Request[panelv1.ListCandidateZonesRequest]) (*connect.Response[panelv1.ListCandidateZonesResponse], error) {
+	value, err := h.cloudflare.ListCandidateZones(ctx, request.Msg)
+	if err != nil {
+		return nil, cloudflareError(err)
+	}
+	return connect.NewResponse(value), nil
 }
 
 func (h *handler) ConnectAccount(ctx context.Context, request *connect.Request[panelv1.ConnectAccountRequest]) (*connect.Response[panelv1.ConnectAccountResponse], error) {

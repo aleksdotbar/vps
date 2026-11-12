@@ -179,6 +179,12 @@ type Operation struct {
 	BuildRequestID    sql.NullString
 }
 
+type OperationDiagnostic struct {
+	OperationID     string
+	DiagnosticsJson []byte
+	RecordedAt      int64
+}
+
 type OperationHistory struct {
 	ID            string
 	Kind          string

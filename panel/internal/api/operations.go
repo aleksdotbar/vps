@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"time"
 
@@ -11,6 +12,7 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	panelv1 "github.com/aleksdotbar/vps/panel/gen/go/panel/v1"
+	"github.com/aleksdotbar/vps/panel/internal/deployment"
 	"github.com/aleksdotbar/vps/panel/internal/store"
 )
 
@@ -26,7 +28,34 @@ func (h *handler) GetOperation(ctx context.Context, request *connect.Request[pan
 	if err != nil {
 		return nil, metadataError(err)
 	}
-	return connect.NewResponse(&panelv1.GetOperationResponse{Operation: historyOperation(value)}), nil
+	operation := historyOperation(value)
+	if value.IsWaiting == 0 {
+		diagnostics, err := operationDiagnostics(ctx, store.New(h.database), operation.Id)
+		if err != nil {
+			return nil, metadataError(err)
+		}
+		operation.Diagnostics = diagnostics
+	}
+	return connect.NewResponse(&panelv1.GetOperationResponse{Operation: operation}), nil
+}
+
+func operationDiagnostics(ctx context.Context, queries *store.Queries, id string) ([]*panelv1.ServiceDiagnostic, error) {
+	data, err := queries.GetOperationDiagnostics(ctx, id)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	var values []deployment.ServiceDiagnostic
+	if json.Unmarshal(data, &values) != nil {
+		return nil, nil
+	}
+	result := make([]*panelv1.ServiceDiagnostic, 0, len(values))
+	for _, value := range values {
+		result = append(result, &panelv1.ServiceDiagnostic{Service: value.Service, State: value.State, ExitCode: int32(min(max(value.ExitCode, -1<<31), 1<<31-1)), Health: value.Health, LogTail: value.LogTail})
+	}
+	return result, nil
 }
 
 func operationMessage(operation store.Operation) *panelv1.Operation {

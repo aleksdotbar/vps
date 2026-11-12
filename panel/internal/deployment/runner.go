@@ -378,9 +378,15 @@ func scheduleRecovery(ctx context.Context, environment *os.Root, value *executio
 	if verifyProjectOwnership(ctx, tools, candidate, previous) != nil {
 		return writePhase(ctx, environment, value, "needs_attention", "runtime_ownership_unknown")
 	}
-	if writePhase(ctx, environment, value, "recovering", "candidate_failed") != nil {
+	// Diagnose before recovery removes or replaces the failed candidate.
+	next := *value
+	next.Phase, next.Reason = "recovering", "candidate_failed"
+	next.Diagnostics = captureDiagnostics(ctx, tools, candidate.Stage.Claim.Identity)
+	if replaceExecution(ctx, environment, *value, next) != nil {
 		return ErrState
 	}
+	*value = next
+	slog.Info("deployment phase", "operation", value.Claim.Identity.OperationID, "phase", next.Phase, "reason", next.Reason, "diagnosed_services", len(next.Diagnostics))
 	bounded, cancel := context.WithTimeout(ctx, 3*time.Second)
 	defer cancel()
 	// The recovery service already exists under its armed absolute timer. This
@@ -390,7 +396,7 @@ func scheduleRecovery(ctx context.Context, environment *os.Root, value *executio
 }
 
 func executionResponse(request ExecutionRequest, value execution) ExecutionResponse {
-	result := ExecutionResponse{SchemaVersion: 1, Action: request.Action, Challenge: request.Challenge, Identity: value.Claim.Identity, ManifestSHA256: value.Claim.ManifestSHA256, FinalSystem: value.Claim.FinalSystem, Phase: value.Phase, Reason: value.Reason}
+	result := ExecutionResponse{SchemaVersion: 1, Action: request.Action, Challenge: request.Challenge, Identity: value.Claim.Identity, ManifestSHA256: value.Claim.ManifestSHA256, FinalSystem: value.Claim.FinalSystem, Phase: value.Phase, Reason: value.Reason, Diagnostics: value.Diagnostics}
 	if value.Phase == "succeeded" {
 		result.ActiveReleaseID = value.Claim.Identity.ReleaseID
 	}

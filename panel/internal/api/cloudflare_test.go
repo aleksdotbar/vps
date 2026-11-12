@@ -47,7 +47,8 @@ func TestCloudflareRPCProtectsCredentialsAndRequiresAuthenticatedOrigin(t *testi
 	}
 	_, err = client.ConnectAccount(ctx, request)
 	var failure *connect.Error
-	if !errors.As(err, &failure) || failure.Code() != connect.CodeUnavailable || strings.Contains(err.Error(), input.Token) || calls != 1 {
+	// A definite 401 is actionable guidance, never the provider's own text.
+	if !errors.As(err, &failure) || failure.Code() != connect.CodePermissionDenied || !strings.Contains(failure.Message(), "account-owned API token") || strings.Contains(err.Error(), input.Token) || calls != 1 {
 		t.Fatalf("provider error leaked credentials or retried: calls=%d error=%v", calls, err)
 	}
 	input.ZoneIds = append(input.ZoneIds, input.ZoneIds[0])

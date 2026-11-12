@@ -41,14 +41,49 @@ func (output *limitedOutput) Write(data []byte) (int, error) {
 func runnerCommand(ctx context.Context, executable string, arguments []string, input []byte, environment []string, maximum int) ([]byte, error) {
 	bounded, cancel := context.WithCancel(ctx)
 	defer cancel()
+	output := limitedOutput{maximum: maximum, cancel: cancel}
+	command := boundedProcess(bounded, executable, arguments, input, environment, &output, io.Discard)
+	if command.Run() != nil {
+		clear(output.data.Bytes())
+		return nil, ErrState
+	}
+	return output.data.Bytes(), nil
+}
+
+// tailOutput keeps only the last maximum bytes written and never fails.
+type tailOutput struct {
+	data    []byte
+	maximum int
+}
+
+func (output *tailOutput) Write(data []byte) (int, error) {
+	output.data = append(output.data, data...)
+	if excess := len(output.data) - output.maximum; excess > 0 {
+		output.data = append(output.data[:0], output.data[excess:]...)
+	}
+	return len(data), nil
+}
+
+// dockerLogs returns the container's recent stdout and stderr interleaved.
+func dockerLogs(ctx context.Context, tools runnerTools, id string) ([]byte, error) {
+	bounded, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+	output := tailOutput{maximum: 4 * maxLogTailBytes}
+	command := boundedProcess(bounded, tools.docker, []string{"container", "logs", "--tail", diagnosticLogLines, "--", id}, nil, dockerEnvironment("/var/empty"), &output, &output)
+	if command.Run() != nil {
+		return output.data, ErrState
+	}
+	return output.data, nil
+}
+
+func boundedProcess(ctx context.Context, executable string, arguments []string, input []byte, environment []string, stdout, stderr io.Writer) *exec.Cmd {
 	// #nosec G204,G702 -- Private production callers choose only verified final-generation native tools and fixed argument arrays; no shell or caller-selected executable.
-	command := exec.CommandContext(bounded, executable, arguments...)
+	command := exec.CommandContext(ctx, executable, arguments...)
 	command.Dir = "/"
 	command.Env = append([]string{"HOME=/var/empty", "PATH=/nonexistent", "LANG=C", "LC_ALL=C", "GOMEMLIMIT=256MiB"}, environment...)
 	command.Stdin = bytes.NewReader(input)
-	command.Stderr = io.Discard
-	output := limitedOutput{maximum: maximum, cancel: cancel}
-	command.Stdout = &output
+	command.Stderr = stderr
+	command.Stdout = stdout
 	command.WaitDelay = time.Second
 	command.SysProcAttr = &syscall.SysProcAttr{Setpgid: true, Pdeathsig: syscall.SIGKILL}
 	command.Cancel = func() error {
@@ -61,11 +96,7 @@ func runnerCommand(ctx context.Context, executable string, arguments []string, i
 		}
 		return err
 	}
-	if command.Run() != nil {
-		clear(output.data.Bytes())
-		return nil, ErrState
-	}
-	return output.data.Bytes(), nil
+	return command
 }
 
 func runnerUnitName(value execution, recovery bool) string {

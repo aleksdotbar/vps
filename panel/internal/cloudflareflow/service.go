@@ -236,3 +236,28 @@ func checkConnectionChange(ctx context.Context, queries *store.Queries, version 
 	}
 	return nil
 }
+
+// ListCandidateZones lists zones an unsaved token can read so the operator can
+// pick by name. The token is used for this request only and never retained.
+func (s *Service) ListCandidateZones(ctx context.Context, request *panelv1.ListCandidateZonesRequest) (*panelv1.ListCandidateZonesResponse, error) {
+	if request == nil || protovalidate.Validate(request) != nil {
+		return nil, ErrInvalid
+	}
+	select {
+	case s.permits <- struct{}{}:
+		defer func() { <-s.permits }()
+	default:
+		return nil, ErrBusy
+	}
+	ctx, cancel := context.WithTimeout(ctx, 12*time.Second)
+	defer cancel()
+	listed, truncated, err := s.listCandidateZones(ctx, request.GetAccountId(), request.GetToken())
+	if err != nil {
+		return nil, err
+	}
+	response := &panelv1.ListCandidateZonesResponse{Truncated: truncated}
+	for _, zone := range listed {
+		response.Zones = append(response.Zones, &panelv1.CandidateZone{Id: zone.ID, Name: zone.Name, Status: zone.Status, Type: zone.Type, Paused: zone.Paused, Eligible: zone.Eligible})
+	}
+	return response, nil
+}

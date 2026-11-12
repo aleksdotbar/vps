@@ -15,7 +15,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file panel/v1/cloudflare.proto.
  */
 export const file_panel_v1_cloudflare: GenFile = /*@__PURE__*/
-  fileDesc("ChlwYW5lbC92MS9jbG91ZGZsYXJlLnByb3RvEghwYW5lbC52MSLxAQoVQ29ubmVjdEFjY291bnRSZXF1ZXN0EiwKCG11dGF0aW9uGAEgASgLMhIucGFuZWwudjEuTXV0YXRpb25CBrpIA8gBARIYChBleHBlY3RlZF92ZXJzaW9uGAIgASgEEikKCmFjY291bnRfaWQYAyABKAlCFbpIEnIQMg5eWzAtOWEtZl17MzJ9JBIxCgV0b2tlbhgEIAEoCUIiukgfch0gASiAIDIWXltBLVphLXowLTkuX34rLy1dKz0qJBIyCgh6b25lX2lkcxgFIAMoCUIgukgdkgEaCAEQIBgBIhJyEDIOXlswLTlhLWZdezMyfSQiTgoWQ29ubmVjdEFjY291bnRSZXNwb25zZRI0CgtpbnRlZ3JhdGlvbhgBIAEoCzIfLnBhbmVsLnYxLkNsb3VkZmxhcmVJbnRlZ3JhdGlvbiIhCh9HZXRDbG91ZGZsYXJlSW50ZWdyYXRpb25SZXF1ZXN0IlgKIEdldENsb3VkZmxhcmVJbnRlZ3JhdGlvblJlc3BvbnNlEjQKC2ludGVncmF0aW9uGAEgASgLMh8ucGFuZWwudjEuQ2xvdWRmbGFyZUludGVncmF0aW9uIuwBChVDbG91ZGZsYXJlSW50ZWdyYXRpb24SEgoKY29uZmlndXJlZBgBIAEoCBIPCgd2ZXJzaW9uGAIgASgEEhIKCmFjY291bnRfaWQYAyABKAkSEAoIdG9rZW5faWQYBCABKAkSLgoKZXhwaXJlc19hdBgFIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASLwoLdmVyaWZpZWRfYXQYBiABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEicKBXpvbmVzGAcgAygLMhgucGFuZWwudjEuQ2xvdWRmbGFyZVpvbmUiKgoOQ2xvdWRmbGFyZVpvbmUSCgoCaWQYASABKAkSDAoEbmFtZRgCIAEoCSKXAQocUHJvdmlzaW9uU2VydmVyVHVubmVsUmVxdWVzdBIsCghtdXRhdGlvbhgBIAEoCzISLnBhbmVsLnYxLk11dGF0aW9uQga6SAPIAQESGwoJc2VydmVyX2lkGAIgASgJQgi6SAVyA7ABARIsChtleHBlY3RlZF9jb25uZWN0aW9uX3ZlcnNpb24YAyABKARCB7pIBDICIAAiRwodUHJvdmlzaW9uU2VydmVyVHVubmVsUmVzcG9uc2USJgoGdHVubmVsGAEgASgLMhYucGFuZWwudjEuU2VydmVyVHVubmVsIjUKFkdldFNlcnZlclR1bm5lbFJlcXVlc3QSGwoJc2VydmVyX2lkGAEgASgJQgi6SAVyA7ABASJBChdHZXRTZXJ2ZXJUdW5uZWxSZXNwb25zZRImCgZ0dW5uZWwYASABKAsyFi5wYW5lbC52MS5TZXJ2ZXJUdW5uZWwihgIKDFNlcnZlclR1bm5lbBIRCglzZXJ2ZXJfaWQYASABKAkSEgoKcmVxdWVzdF9pZBgCIAEoCRISCgphY2NvdW50X2lkGAMgASgJEhEKCXR1bm5lbF9pZBgEIAEoCRIqCgVwaGFzZRgFIAEoDjIbLnBhbmVsLnYxLlNlcnZlclR1bm5lbFBoYXNlEi8KC29ic2VydmVkX2F0GAYgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIVCg1jb25maWdfc2hhMjU2GAcgASgJEg8KB21lc3NhZ2UYCCABKAkSIwobZXhwZWN0ZWRfY29ubmVjdGlvbl92ZXJzaW9uGAkgASgEKogCChFTZXJ2ZXJUdW5uZWxQaGFzZRIjCh9TRVJWRVJfVFVOTkVMX1BIQVNFX1VOU1BFQ0lGSUVEEAASHgoaU0VSVkVSX1RVTk5FTF9QSEFTRV9RVUVVRUQQARIgChxTRVJWRVJfVFVOTkVMX1BIQVNFX1BSRVBBUkVEEAISIAocU0VSVkVSX1RVTk5FTF9QSEFTRV9DUkVBVElORxADEiIKHlNFUlZFUl9UVU5ORUxfUEhBU0VfRklOQUxJWklORxAEEh0KGVNFUlZFUl9UVU5ORUxfUEhBU0VfUkVBRFkQBRInCiNTRVJWRVJfVFVOTkVMX1BIQVNFX05FRURTX0FUVEVOVElPThAGMqcDChFDbG91ZGZsYXJlU2VydmljZRJoChVQcm92aXNpb25TZXJ2ZXJUdW5uZWwSJi5wYW5lbC52MS5Qcm92aXNpb25TZXJ2ZXJUdW5uZWxSZXF1ZXN0GicucGFuZWwudjEuUHJvdmlzaW9uU2VydmVyVHVubmVsUmVzcG9uc2USWwoPR2V0U2VydmVyVHVubmVsEiAucGFuZWwudjEuR2V0U2VydmVyVHVubmVsUmVxdWVzdBohLnBhbmVsLnYxLkdldFNlcnZlclR1bm5lbFJlc3BvbnNlIgOQAgESUwoOQ29ubmVjdEFjY291bnQSHy5wYW5lbC52MS5Db25uZWN0QWNjb3VudFJlcXVlc3QaIC5wYW5lbC52MS5Db25uZWN0QWNjb3VudFJlc3BvbnNlEnYKGEdldENsb3VkZmxhcmVJbnRlZ3JhdGlvbhIpLnBhbmVsLnYxLkdldENsb3VkZmxhcmVJbnRlZ3JhdGlvblJlcXVlc3QaKi5wYW5lbC52MS5HZXRDbG91ZGZsYXJlSW50ZWdyYXRpb25SZXNwb25zZSIDkAIBQjpaOGdpdGh1Yi5jb20vYWxla3Nkb3RiYXIvdnBzL3BhbmVsL2dlbi9nby9wYW5lbC92MTtwYW5lbHYxYgZwcm90bzM", [file_buf_validate_validate, file_google_protobuf_timestamp, file_panel_v1_panel]);
+  fileDesc("ChlwYW5lbC92MS9jbG91ZGZsYXJlLnByb3RvEghwYW5lbC52MSLxAQoVQ29ubmVjdEFjY291bnRSZXF1ZXN0EiwKCG11dGF0aW9uGAEgASgLMhIucGFuZWwudjEuTXV0YXRpb25CBrpIA8gBARIYChBleHBlY3RlZF92ZXJzaW9uGAIgASgEEikKCmFjY291bnRfaWQYAyABKAlCFbpIEnIQMg5eWzAtOWEtZl17MzJ9JBIxCgV0b2tlbhgEIAEoCUIiukgfch0gASiAIDIWXltBLVphLXowLTkuX34rLy1dKz0qJBIyCgh6b25lX2lkcxgFIAMoCUIgukgdkgEaCAEQIBgBIhJyEDIOXlswLTlhLWZdezMyfSQieQoZTGlzdENhbmRpZGF0ZVpvbmVzUmVxdWVzdBIpCgphY2NvdW50X2lkGAEgASgJQhW6SBJyEDIOXlswLTlhLWZdezMyfSQSMQoFdG9rZW4YAiABKAlCIrpIH3IdIAEogCAyFl5bQS1aYS16MC05Ll9+Ky8tXSs9KiQiVwoaTGlzdENhbmRpZGF0ZVpvbmVzUmVzcG9uc2USJgoFem9uZXMYASADKAsyFy5wYW5lbC52MS5DYW5kaWRhdGVab25lEhEKCXRydW5jYXRlZBgCIAEoCCJpCg1DYW5kaWRhdGVab25lEgoKAmlkGAEgASgJEgwKBG5hbWUYAiABKAkSDgoGc3RhdHVzGAMgASgJEgwKBHR5cGUYBCABKAkSDgoGcGF1c2VkGAUgASgIEhAKCGVsaWdpYmxlGAYgASgIIk4KFkNvbm5lY3RBY2NvdW50UmVzcG9uc2USNAoLaW50ZWdyYXRpb24YASABKAsyHy5wYW5lbC52MS5DbG91ZGZsYXJlSW50ZWdyYXRpb24iIQofR2V0Q2xvdWRmbGFyZUludGVncmF0aW9uUmVxdWVzdCJYCiBHZXRDbG91ZGZsYXJlSW50ZWdyYXRpb25SZXNwb25zZRI0CgtpbnRlZ3JhdGlvbhgBIAEoCzIfLnBhbmVsLnYxLkNsb3VkZmxhcmVJbnRlZ3JhdGlvbiLsAQoVQ2xvdWRmbGFyZUludGVncmF0aW9uEhIKCmNvbmZpZ3VyZWQYASABKAgSDwoHdmVyc2lvbhgCIAEoBBISCgphY2NvdW50X2lkGAMgASgJEhAKCHRva2VuX2lkGAQgASgJEi4KCmV4cGlyZXNfYXQYBSABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEi8KC3ZlcmlmaWVkX2F0GAYgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBInCgV6b25lcxgHIAMoCzIYLnBhbmVsLnYxLkNsb3VkZmxhcmVab25lIioKDkNsb3VkZmxhcmVab25lEgoKAmlkGAEgASgJEgwKBG5hbWUYAiABKAkilwEKHFByb3Zpc2lvblNlcnZlclR1bm5lbFJlcXVlc3QSLAoIbXV0YXRpb24YASABKAsyEi5wYW5lbC52MS5NdXRhdGlvbkIGukgDyAEBEhsKCXNlcnZlcl9pZBgCIAEoCUIIukgFcgOwAQESLAobZXhwZWN0ZWRfY29ubmVjdGlvbl92ZXJzaW9uGAMgASgEQge6SAQyAiAAIkcKHVByb3Zpc2lvblNlcnZlclR1bm5lbFJlc3BvbnNlEiYKBnR1bm5lbBgBIAEoCzIWLnBhbmVsLnYxLlNlcnZlclR1bm5lbCI1ChZHZXRTZXJ2ZXJUdW5uZWxSZXF1ZXN0EhsKCXNlcnZlcl9pZBgBIAEoCUIIukgFcgOwAQEiQQoXR2V0U2VydmVyVHVubmVsUmVzcG9uc2USJgoGdHVubmVsGAEgASgLMhYucGFuZWwudjEuU2VydmVyVHVubmVsIoYCCgxTZXJ2ZXJUdW5uZWwSEQoJc2VydmVyX2lkGAEgASgJEhIKCnJlcXVlc3RfaWQYAiABKAkSEgoKYWNjb3VudF9pZBgDIAEoCRIRCgl0dW5uZWxfaWQYBCABKAkSKgoFcGhhc2UYBSABKA4yGy5wYW5lbC52MS5TZXJ2ZXJUdW5uZWxQaGFzZRIvCgtvYnNlcnZlZF9hdBgGIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASFQoNY29uZmlnX3NoYTI1NhgHIAEoCRIPCgdtZXNzYWdlGAggASgJEiMKG2V4cGVjdGVkX2Nvbm5lY3Rpb25fdmVyc2lvbhgJIAEoBCqIAgoRU2VydmVyVHVubmVsUGhhc2USIwofU0VSVkVSX1RVTk5FTF9QSEFTRV9VTlNQRUNJRklFRBAAEh4KGlNFUlZFUl9UVU5ORUxfUEhBU0VfUVVFVUVEEAESIAocU0VSVkVSX1RVTk5FTF9QSEFTRV9QUkVQQVJFRBACEiAKHFNFUlZFUl9UVU5ORUxfUEhBU0VfQ1JFQVRJTkcQAxIiCh5TRVJWRVJfVFVOTkVMX1BIQVNFX0ZJTkFMSVpJTkcQBBIdChlTRVJWRVJfVFVOTkVMX1BIQVNFX1JFQURZEAUSJwojU0VSVkVSX1RVTk5FTF9QSEFTRV9ORUVEU19BVFRFTlRJT04QBjKIBAoRQ2xvdWRmbGFyZVNlcnZpY2USaAoVUHJvdmlzaW9uU2VydmVyVHVubmVsEiYucGFuZWwudjEuUHJvdmlzaW9uU2VydmVyVHVubmVsUmVxdWVzdBonLnBhbmVsLnYxLlByb3Zpc2lvblNlcnZlclR1bm5lbFJlc3BvbnNlElsKD0dldFNlcnZlclR1bm5lbBIgLnBhbmVsLnYxLkdldFNlcnZlclR1bm5lbFJlcXVlc3QaIS5wYW5lbC52MS5HZXRTZXJ2ZXJUdW5uZWxSZXNwb25zZSIDkAIBElMKDkNvbm5lY3RBY2NvdW50Eh8ucGFuZWwudjEuQ29ubmVjdEFjY291bnRSZXF1ZXN0GiAucGFuZWwudjEuQ29ubmVjdEFjY291bnRSZXNwb25zZRJfChJMaXN0Q2FuZGlkYXRlWm9uZXMSIy5wYW5lbC52MS5MaXN0Q2FuZGlkYXRlWm9uZXNSZXF1ZXN0GiQucGFuZWwudjEuTGlzdENhbmRpZGF0ZVpvbmVzUmVzcG9uc2USdgoYR2V0Q2xvdWRmbGFyZUludGVncmF0aW9uEikucGFuZWwudjEuR2V0Q2xvdWRmbGFyZUludGVncmF0aW9uUmVxdWVzdBoqLnBhbmVsLnYxLkdldENsb3VkZmxhcmVJbnRlZ3JhdGlvblJlc3BvbnNlIgOQAgFCOlo4Z2l0aHViLmNvbS9hbGVrc2RvdGJhci92cHMvcGFuZWwvZ2VuL2dvL3BhbmVsL3YxO3BhbmVsdjFiBnByb3RvMw", [file_buf_validate_validate, file_google_protobuf_timestamp, file_panel_v1_panel]);
 
 /**
  * @generated from message panel.v1.ConnectAccountRequest
@@ -55,6 +55,96 @@ export const ConnectAccountRequestSchema: GenMessage<ConnectAccountRequest> = /*
   messageDesc(file_panel_v1_cloudflare, 0);
 
 /**
+ * @generated from message panel.v1.ListCandidateZonesRequest
+ */
+export type ListCandidateZonesRequest = Message<"panel.v1.ListCandidateZonesRequest"> & {
+  /**
+   * @generated from field: string account_id = 1;
+   */
+  accountId: string;
+
+  /**
+   * @generated from field: string token = 2;
+   */
+  token: string;
+};
+
+/**
+ * Describes the message panel.v1.ListCandidateZonesRequest.
+ * Use `create(ListCandidateZonesRequestSchema)` to create a new message.
+ */
+export const ListCandidateZonesRequestSchema: GenMessage<ListCandidateZonesRequest> = /*@__PURE__*/
+  messageDesc(file_panel_v1_cloudflare, 1);
+
+/**
+ * @generated from message panel.v1.ListCandidateZonesResponse
+ */
+export type ListCandidateZonesResponse = Message<"panel.v1.ListCandidateZonesResponse"> & {
+  /**
+   * @generated from field: repeated panel.v1.CandidateZone zones = 1;
+   */
+  zones: CandidateZone[];
+
+  /**
+   * More zones exist than one selection can hold.
+   *
+   * @generated from field: bool truncated = 2;
+   */
+  truncated: boolean;
+};
+
+/**
+ * Describes the message panel.v1.ListCandidateZonesResponse.
+ * Use `create(ListCandidateZonesResponseSchema)` to create a new message.
+ */
+export const ListCandidateZonesResponseSchema: GenMessage<ListCandidateZonesResponse> = /*@__PURE__*/
+  messageDesc(file_panel_v1_cloudflare, 2);
+
+/**
+ * @generated from message panel.v1.CandidateZone
+ */
+export type CandidateZone = Message<"panel.v1.CandidateZone"> & {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id: string;
+
+  /**
+   * @generated from field: string name = 2;
+   */
+  name: string;
+
+  /**
+   * @generated from field: string status = 3;
+   */
+  status: string;
+
+  /**
+   * @generated from field: string type = 4;
+   */
+  type: string;
+
+  /**
+   * @generated from field: bool paused = 5;
+   */
+  paused: boolean;
+
+  /**
+   * Active, full and not paused: selectable for routes.
+   *
+   * @generated from field: bool eligible = 6;
+   */
+  eligible: boolean;
+};
+
+/**
+ * Describes the message panel.v1.CandidateZone.
+ * Use `create(CandidateZoneSchema)` to create a new message.
+ */
+export const CandidateZoneSchema: GenMessage<CandidateZone> = /*@__PURE__*/
+  messageDesc(file_panel_v1_cloudflare, 3);
+
+/**
  * @generated from message panel.v1.ConnectAccountResponse
  */
 export type ConnectAccountResponse = Message<"panel.v1.ConnectAccountResponse"> & {
@@ -69,7 +159,7 @@ export type ConnectAccountResponse = Message<"panel.v1.ConnectAccountResponse"> 
  * Use `create(ConnectAccountResponseSchema)` to create a new message.
  */
 export const ConnectAccountResponseSchema: GenMessage<ConnectAccountResponse> = /*@__PURE__*/
-  messageDesc(file_panel_v1_cloudflare, 1);
+  messageDesc(file_panel_v1_cloudflare, 4);
 
 /**
  * @generated from message panel.v1.GetCloudflareIntegrationRequest
@@ -82,7 +172,7 @@ export type GetCloudflareIntegrationRequest = Message<"panel.v1.GetCloudflareInt
  * Use `create(GetCloudflareIntegrationRequestSchema)` to create a new message.
  */
 export const GetCloudflareIntegrationRequestSchema: GenMessage<GetCloudflareIntegrationRequest> = /*@__PURE__*/
-  messageDesc(file_panel_v1_cloudflare, 2);
+  messageDesc(file_panel_v1_cloudflare, 5);
 
 /**
  * @generated from message panel.v1.GetCloudflareIntegrationResponse
@@ -99,7 +189,7 @@ export type GetCloudflareIntegrationResponse = Message<"panel.v1.GetCloudflareIn
  * Use `create(GetCloudflareIntegrationResponseSchema)` to create a new message.
  */
 export const GetCloudflareIntegrationResponseSchema: GenMessage<GetCloudflareIntegrationResponse> = /*@__PURE__*/
-  messageDesc(file_panel_v1_cloudflare, 3);
+  messageDesc(file_panel_v1_cloudflare, 6);
 
 /**
  * @generated from message panel.v1.CloudflareIntegration
@@ -146,7 +236,7 @@ export type CloudflareIntegration = Message<"panel.v1.CloudflareIntegration"> & 
  * Use `create(CloudflareIntegrationSchema)` to create a new message.
  */
 export const CloudflareIntegrationSchema: GenMessage<CloudflareIntegration> = /*@__PURE__*/
-  messageDesc(file_panel_v1_cloudflare, 4);
+  messageDesc(file_panel_v1_cloudflare, 7);
 
 /**
  * @generated from message panel.v1.CloudflareZone
@@ -168,7 +258,7 @@ export type CloudflareZone = Message<"panel.v1.CloudflareZone"> & {
  * Use `create(CloudflareZoneSchema)` to create a new message.
  */
 export const CloudflareZoneSchema: GenMessage<CloudflareZone> = /*@__PURE__*/
-  messageDesc(file_panel_v1_cloudflare, 5);
+  messageDesc(file_panel_v1_cloudflare, 8);
 
 /**
  * @generated from message panel.v1.ProvisionServerTunnelRequest
@@ -195,7 +285,7 @@ export type ProvisionServerTunnelRequest = Message<"panel.v1.ProvisionServerTunn
  * Use `create(ProvisionServerTunnelRequestSchema)` to create a new message.
  */
 export const ProvisionServerTunnelRequestSchema: GenMessage<ProvisionServerTunnelRequest> = /*@__PURE__*/
-  messageDesc(file_panel_v1_cloudflare, 6);
+  messageDesc(file_panel_v1_cloudflare, 9);
 
 /**
  * @generated from message panel.v1.ProvisionServerTunnelResponse
@@ -212,7 +302,7 @@ export type ProvisionServerTunnelResponse = Message<"panel.v1.ProvisionServerTun
  * Use `create(ProvisionServerTunnelResponseSchema)` to create a new message.
  */
 export const ProvisionServerTunnelResponseSchema: GenMessage<ProvisionServerTunnelResponse> = /*@__PURE__*/
-  messageDesc(file_panel_v1_cloudflare, 7);
+  messageDesc(file_panel_v1_cloudflare, 10);
 
 /**
  * @generated from message panel.v1.GetServerTunnelRequest
@@ -229,7 +319,7 @@ export type GetServerTunnelRequest = Message<"panel.v1.GetServerTunnelRequest"> 
  * Use `create(GetServerTunnelRequestSchema)` to create a new message.
  */
 export const GetServerTunnelRequestSchema: GenMessage<GetServerTunnelRequest> = /*@__PURE__*/
-  messageDesc(file_panel_v1_cloudflare, 8);
+  messageDesc(file_panel_v1_cloudflare, 11);
 
 /**
  * @generated from message panel.v1.GetServerTunnelResponse
@@ -246,7 +336,7 @@ export type GetServerTunnelResponse = Message<"panel.v1.GetServerTunnelResponse"
  * Use `create(GetServerTunnelResponseSchema)` to create a new message.
  */
 export const GetServerTunnelResponseSchema: GenMessage<GetServerTunnelResponse> = /*@__PURE__*/
-  messageDesc(file_panel_v1_cloudflare, 9);
+  messageDesc(file_panel_v1_cloudflare, 12);
 
 /**
  * Phase and observed_at describe the last verified provisioning observation,
@@ -309,7 +399,7 @@ export type ServerTunnel = Message<"panel.v1.ServerTunnel"> & {
  * Use `create(ServerTunnelSchema)` to create a new message.
  */
 export const ServerTunnelSchema: GenMessage<ServerTunnel> = /*@__PURE__*/
-  messageDesc(file_panel_v1_cloudflare, 10);
+  messageDesc(file_panel_v1_cloudflare, 13);
 
 /**
  * @generated from enum panel.v1.ServerTunnelPhase
@@ -386,6 +476,17 @@ export const CloudflareService: GenService<{
     methodKind: "unary";
     input: typeof ConnectAccountRequestSchema;
     output: typeof ConnectAccountResponseSchema;
+  },
+  /**
+   * Lists zones a candidate token can read, before saving it. The token travels
+   * only in the request body and is never stored or logged.
+   *
+   * @generated from rpc panel.v1.CloudflareService.ListCandidateZones
+   */
+  listCandidateZones: {
+    methodKind: "unary";
+    input: typeof ListCandidateZonesRequestSchema;
+    output: typeof ListCandidateZonesResponseSchema;
   },
   /**
    * @generated from rpc panel.v1.CloudflareService.GetCloudflareIntegration

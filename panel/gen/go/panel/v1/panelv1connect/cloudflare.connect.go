@@ -42,6 +42,9 @@ const (
 	// CloudflareServiceConnectAccountProcedure is the fully-qualified name of the CloudflareService's
 	// ConnectAccount RPC.
 	CloudflareServiceConnectAccountProcedure = "/panel.v1.CloudflareService/ConnectAccount"
+	// CloudflareServiceListCandidateZonesProcedure is the fully-qualified name of the
+	// CloudflareService's ListCandidateZones RPC.
+	CloudflareServiceListCandidateZonesProcedure = "/panel.v1.CloudflareService/ListCandidateZones"
 	// CloudflareServiceGetCloudflareIntegrationProcedure is the fully-qualified name of the
 	// CloudflareService's GetCloudflareIntegration RPC.
 	CloudflareServiceGetCloudflareIntegrationProcedure = "/panel.v1.CloudflareService/GetCloudflareIntegration"
@@ -52,6 +55,9 @@ type CloudflareServiceClient interface {
 	ProvisionServerTunnel(context.Context, *connect.Request[v1.ProvisionServerTunnelRequest]) (*connect.Response[v1.ProvisionServerTunnelResponse], error)
 	GetServerTunnel(context.Context, *connect.Request[v1.GetServerTunnelRequest]) (*connect.Response[v1.GetServerTunnelResponse], error)
 	ConnectAccount(context.Context, *connect.Request[v1.ConnectAccountRequest]) (*connect.Response[v1.ConnectAccountResponse], error)
+	// Lists zones a candidate token can read, before saving it. The token travels
+	// only in the request body and is never stored or logged.
+	ListCandidateZones(context.Context, *connect.Request[v1.ListCandidateZonesRequest]) (*connect.Response[v1.ListCandidateZonesResponse], error)
 	GetCloudflareIntegration(context.Context, *connect.Request[v1.GetCloudflareIntegrationRequest]) (*connect.Response[v1.GetCloudflareIntegrationResponse], error)
 }
 
@@ -85,6 +91,12 @@ func NewCloudflareServiceClient(httpClient connect.HTTPClient, baseURL string, o
 			connect.WithSchema(cloudflareServiceMethods.ByName("ConnectAccount")),
 			connect.WithClientOptions(opts...),
 		),
+		listCandidateZones: connect.NewClient[v1.ListCandidateZonesRequest, v1.ListCandidateZonesResponse](
+			httpClient,
+			baseURL+CloudflareServiceListCandidateZonesProcedure,
+			connect.WithSchema(cloudflareServiceMethods.ByName("ListCandidateZones")),
+			connect.WithClientOptions(opts...),
+		),
 		getCloudflareIntegration: connect.NewClient[v1.GetCloudflareIntegrationRequest, v1.GetCloudflareIntegrationResponse](
 			httpClient,
 			baseURL+CloudflareServiceGetCloudflareIntegrationProcedure,
@@ -100,6 +112,7 @@ type cloudflareServiceClient struct {
 	provisionServerTunnel    *connect.Client[v1.ProvisionServerTunnelRequest, v1.ProvisionServerTunnelResponse]
 	getServerTunnel          *connect.Client[v1.GetServerTunnelRequest, v1.GetServerTunnelResponse]
 	connectAccount           *connect.Client[v1.ConnectAccountRequest, v1.ConnectAccountResponse]
+	listCandidateZones       *connect.Client[v1.ListCandidateZonesRequest, v1.ListCandidateZonesResponse]
 	getCloudflareIntegration *connect.Client[v1.GetCloudflareIntegrationRequest, v1.GetCloudflareIntegrationResponse]
 }
 
@@ -118,6 +131,11 @@ func (c *cloudflareServiceClient) ConnectAccount(ctx context.Context, req *conne
 	return c.connectAccount.CallUnary(ctx, req)
 }
 
+// ListCandidateZones calls panel.v1.CloudflareService.ListCandidateZones.
+func (c *cloudflareServiceClient) ListCandidateZones(ctx context.Context, req *connect.Request[v1.ListCandidateZonesRequest]) (*connect.Response[v1.ListCandidateZonesResponse], error) {
+	return c.listCandidateZones.CallUnary(ctx, req)
+}
+
 // GetCloudflareIntegration calls panel.v1.CloudflareService.GetCloudflareIntegration.
 func (c *cloudflareServiceClient) GetCloudflareIntegration(ctx context.Context, req *connect.Request[v1.GetCloudflareIntegrationRequest]) (*connect.Response[v1.GetCloudflareIntegrationResponse], error) {
 	return c.getCloudflareIntegration.CallUnary(ctx, req)
@@ -128,6 +146,9 @@ type CloudflareServiceHandler interface {
 	ProvisionServerTunnel(context.Context, *connect.Request[v1.ProvisionServerTunnelRequest]) (*connect.Response[v1.ProvisionServerTunnelResponse], error)
 	GetServerTunnel(context.Context, *connect.Request[v1.GetServerTunnelRequest]) (*connect.Response[v1.GetServerTunnelResponse], error)
 	ConnectAccount(context.Context, *connect.Request[v1.ConnectAccountRequest]) (*connect.Response[v1.ConnectAccountResponse], error)
+	// Lists zones a candidate token can read, before saving it. The token travels
+	// only in the request body and is never stored or logged.
+	ListCandidateZones(context.Context, *connect.Request[v1.ListCandidateZonesRequest]) (*connect.Response[v1.ListCandidateZonesResponse], error)
 	GetCloudflareIntegration(context.Context, *connect.Request[v1.GetCloudflareIntegrationRequest]) (*connect.Response[v1.GetCloudflareIntegrationResponse], error)
 }
 
@@ -157,6 +178,12 @@ func NewCloudflareServiceHandler(svc CloudflareServiceHandler, opts ...connect.H
 		connect.WithSchema(cloudflareServiceMethods.ByName("ConnectAccount")),
 		connect.WithHandlerOptions(opts...),
 	)
+	cloudflareServiceListCandidateZonesHandler := connect.NewUnaryHandler(
+		CloudflareServiceListCandidateZonesProcedure,
+		svc.ListCandidateZones,
+		connect.WithSchema(cloudflareServiceMethods.ByName("ListCandidateZones")),
+		connect.WithHandlerOptions(opts...),
+	)
 	cloudflareServiceGetCloudflareIntegrationHandler := connect.NewUnaryHandler(
 		CloudflareServiceGetCloudflareIntegrationProcedure,
 		svc.GetCloudflareIntegration,
@@ -172,6 +199,8 @@ func NewCloudflareServiceHandler(svc CloudflareServiceHandler, opts ...connect.H
 			cloudflareServiceGetServerTunnelHandler.ServeHTTP(w, r)
 		case CloudflareServiceConnectAccountProcedure:
 			cloudflareServiceConnectAccountHandler.ServeHTTP(w, r)
+		case CloudflareServiceListCandidateZonesProcedure:
+			cloudflareServiceListCandidateZonesHandler.ServeHTTP(w, r)
 		case CloudflareServiceGetCloudflareIntegrationProcedure:
 			cloudflareServiceGetCloudflareIntegrationHandler.ServeHTTP(w, r)
 		default:
@@ -193,6 +222,10 @@ func (UnimplementedCloudflareServiceHandler) GetServerTunnel(context.Context, *c
 
 func (UnimplementedCloudflareServiceHandler) ConnectAccount(context.Context, *connect.Request[v1.ConnectAccountRequest]) (*connect.Response[v1.ConnectAccountResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("panel.v1.CloudflareService.ConnectAccount is not implemented"))
+}
+
+func (UnimplementedCloudflareServiceHandler) ListCandidateZones(context.Context, *connect.Request[v1.ListCandidateZonesRequest]) (*connect.Response[v1.ListCandidateZonesResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("panel.v1.CloudflareService.ListCandidateZones is not implemented"))
 }
 
 func (UnimplementedCloudflareServiceHandler) GetCloudflareIntegration(context.Context, *connect.Request[v1.GetCloudflareIntegrationRequest]) (*connect.Response[v1.GetCloudflareIntegrationResponse], error) {

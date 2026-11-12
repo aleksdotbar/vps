@@ -15,6 +15,9 @@ service CloudflareService {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
   rpc ConnectAccount(ConnectAccountRequest) returns (ConnectAccountResponse);
+  // Lists zones a candidate token can read, before saving it. The token travels
+  // only in the request body and is never stored or logged.
+  rpc ListCandidateZones(ListCandidateZonesRequest) returns (ListCandidateZonesResponse);
   rpc GetCloudflareIntegration(GetCloudflareIntegrationRequest) returns (GetCloudflareIntegrationResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
@@ -37,6 +40,28 @@ message ConnectAccountRequest {
       string: {pattern: "^[0-9a-f]{32}$"}
     }
   }];
+}
+message ListCandidateZonesRequest {
+  string account_id = 1 [(buf.validate.field).string.pattern = "^[0-9a-f]{32}$"];
+  string token = 2 [(buf.validate.field).string = {
+    min_bytes: 1
+    max_bytes: 4096
+    pattern: "^[A-Za-z0-9._~+/-]+=*$"
+  }];
+}
+message ListCandidateZonesResponse {
+  repeated CandidateZone zones = 1;
+  // More zones exist than one selection can hold.
+  bool truncated = 2;
+}
+message CandidateZone {
+  string id = 1;
+  string name = 2;
+  string status = 3;
+  string type = 4;
+  bool paused = 5;
+  // Active, full and not paused: selectable for routes.
+  bool eligible = 6;
 }
 message ConnectAccountResponse {
   CloudflareIntegration integration = 1;

@@ -62,6 +62,17 @@ func (q *Queries) GetDeploymentExecution(ctx context.Context, operationID string
 	return i, err
 }
 
+const getOperationDiagnostics = `-- name: GetOperationDiagnostics :one
+SELECT diagnostics_json FROM operation_diagnostics WHERE operation_id=?
+`
+
+func (q *Queries) GetOperationDiagnostics(ctx context.Context, operationID string) ([]byte, error) {
+	row := q.db.QueryRowContext(ctx, getOperationDiagnostics, operationID)
+	var diagnostics_json []byte
+	err := row.Scan(&diagnostics_json)
+	return diagnostics_json, err
+}
+
 const listObservedReleaseServices = `-- name: ListObservedReleaseServices :many
 SELECT r.name,r.image_digest,o.release_id AS observed_release_id,o.image_digest AS observed_image_digest,o.state,o.health,o.observed_at,
     CAST(EXISTS(SELECT 1 FROM operations active WHERE active.environment_id=?1 AND active.started AND active.state IN ('running','recovering','needs_attention')) AS INTEGER) AS execution_pending
@@ -144,6 +155,23 @@ func (q *Queries) PromoteEnvironmentRelease(ctx context.Context, arg PromoteEnvi
 		arg.AppliedVersion,
 		arg.ID,
 	)
+	return err
+}
+
+const recordOperationDiagnostics = `-- name: RecordOperationDiagnostics :exec
+INSERT INTO operation_diagnostics(operation_id,diagnostics_json,recorded_at) VALUES(?,?,?)
+ON CONFLICT(operation_id) DO UPDATE SET diagnostics_json=excluded.diagnostics_json, recorded_at=excluded.recorded_at
+WHERE operation_diagnostics.diagnostics_json!=excluded.diagnostics_json
+`
+
+type RecordOperationDiagnosticsParams struct {
+	OperationID     string
+	DiagnosticsJson []byte
+	RecordedAt      int64
+}
+
+func (q *Queries) RecordOperationDiagnostics(ctx context.Context, arg RecordOperationDiagnosticsParams) error {
+	_, err := q.db.ExecContext(ctx, recordOperationDiagnostics, arg.OperationID, arg.DiagnosticsJson, arg.RecordedAt)
 	return err
 }
 
