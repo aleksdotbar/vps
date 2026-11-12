@@ -46,7 +46,8 @@ export function Shell() {
       >
         Skip to content
       </a>
-      <Sidebar>
+      {/* Full height and pinned while the page scrolls; below md kumo renders a sheet instead. */}
+      <Sidebar className="md:sticky md:top-0 md:h-svh">
         <Sidebar.Header>
           <Brand />
         </Sidebar.Header>
