@@ -3,6 +3,7 @@ package deployment
 import (
 	"context"
 	"encoding/json"
+	"slices"
 	"strings"
 	"time"
 	"unicode"
@@ -31,7 +32,11 @@ const (
 const diagnosticTemplate = `{"service":{{json (index .Config.Labels "com.docker.compose.service")}},"state":{{json .State.Status}},"exit_code":{{json .State.ExitCode}},"health":{{if (index .State "Health")}}{{json (index (index .State "Health") "Status")}}{{else}}""{{end}}}`
 
 // captureDiagnostics is best effort: a failure to observe never blocks recovery.
-func captureDiagnostics(ctx context.Context, tools runnerTools, identity Identity) []ServiceDiagnostic {
+// Applications may print their own credentials, so known secret values are
+// redacted; without them, log tails are dropped.
+func captureDiagnostics(ctx context.Context, tools runnerTools, candidate releaseMaterial) []ServiceDiagnostic {
+	identity := candidate.Stage.Claim.Identity
+	secrets, redactable := secretValues(candidate)
 	bounded, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 	ids, err := containerIDs(bounded, tools, identity)
@@ -52,11 +57,52 @@ func captureDiagnostics(ctx context.Context, tools runnerTools, identity Identit
 			continue
 		}
 		value.State, value.Health = safeWord(value.State), safeWord(value.Health)
-		logs, _ := dockerLogs(bounded, tools, id)
-		value.LogTail = sanitizeLog(logs, maxLogTailBytes)
+		if redactable {
+			logs, _ := dockerLogs(bounded, tools, id)
+			value.LogTail = sanitizeLog(redactSecrets(logs, secrets), maxLogTailBytes)
+		}
 		result = append(result, value)
 	}
 	return boundDiagnostics(result)
+}
+
+const minRedactedSecretBytes = 8
+
+// secretValues returns the materialized values of the candidate's declared
+// secret bindings. Shorter values would redact ordinary words.
+func secretValues(candidate releaseMaterial) ([]string, bool) {
+	var config struct {
+		Services map[string]struct {
+			Environment map[string]string `json:"environment"`
+		} `json:"services"`
+	}
+	if json.Unmarshal(candidate.RuntimeConfig, &config) != nil {
+		return nil, false
+	}
+	values := []string{}
+	for _, binding := range candidate.Stage.Manifest.Bindings {
+		service, exists := config.Services[binding.Service]
+		value, bound := service.Environment[binding.Variable]
+		if !exists || !bound {
+			return nil, false
+		}
+		// Materialization escapes inserted dollars for Compose interpolation.
+		value = strings.ReplaceAll(value, "$$", "$")
+		if len(value) >= minRedactedSecretBytes {
+			values = append(values, value)
+		}
+	}
+	// Longer values first, so a secret containing another is replaced whole.
+	slices.SortFunc(values, func(left, right string) int { return len(right) - len(left) })
+	return values, true
+}
+
+func redactSecrets(logs []byte, secrets []string) []byte {
+	text := string(logs)
+	for _, secret := range secrets {
+		text = strings.ReplaceAll(text, secret, "[redacted]")
+	}
+	return []byte(text)
 }
 
 // sanitizeLog keeps the last maximum bytes of valid text, dropping terminal

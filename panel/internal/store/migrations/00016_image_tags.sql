@@ -18,6 +18,12 @@ CREATE TABLE github_branch_progress (
     handled_sha TEXT NOT NULL DEFAULT '' CHECK (handled_sha='' OR length(handled_sha)=40),
     next_poll_at INTEGER NOT NULL DEFAULT 0
 );
+-- The running release's commit is already handled; upgrading must not
+-- redeploy the current branch head.
+INSERT INTO github_branch_progress(environment_id,binding_version,handled_sha)
+SELECT e.id,e.binding_version,r.source_sha FROM environments e
+JOIN releases r ON r.environment_id=e.id AND r.id=e.current_release_id
+WHERE length(r.source_sha)=40;
 ALTER TABLE projects DROP COLUMN workflow_id;
 ALTER TABLE releases DROP COLUMN workflow_id;
 ALTER TABLE releases DROP COLUMN run_id;

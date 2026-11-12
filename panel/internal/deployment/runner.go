@@ -381,7 +381,7 @@ func scheduleRecovery(ctx context.Context, environment *os.Root, value *executio
 	// Diagnose before recovery removes or replaces the failed candidate.
 	next := *value
 	next.Phase, next.Reason = "recovering", "candidate_failed"
-	next.Diagnostics = captureDiagnostics(ctx, tools, candidate.Stage.Claim.Identity)
+	next.Diagnostics = captureDiagnostics(ctx, tools, candidate)
 	if replaceExecution(ctx, environment, *value, next) != nil {
 		return ErrState
 	}

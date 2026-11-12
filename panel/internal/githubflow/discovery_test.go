@@ -157,3 +157,24 @@ func TestAutomaticDisableSupersedesCapturedRequestAcrossReenable(t *testing.T) {
 		t.Fatal("superseded request read source or images")
 	}
 }
+
+func TestSeededHandledHeadIsNotRedeployed(t *testing.T) {
+	f := buildSetup(t)
+	enableAutomatic(t, f)
+	// Matches migration 00016: the running release's commit counts as handled.
+	if _, err := f.service.database.ExecContext(context.Background(),
+		"INSERT INTO github_branch_progress(environment_id,binding_version,handled_sha) SELECT id,binding_version,? FROM environments WHERE id=?",
+		fixtureSHA, f.environment.Id); err != nil {
+		t.Fatal(err)
+	}
+	discover(t, f)
+	if waiting, _ := activeSHA(t, f); waiting.ID != "" {
+		t.Fatal("handled branch head was admitted again")
+	}
+	next := strings.Repeat("b", 40)
+	f.head.Store(next)
+	discover(t, f)
+	if _, sha := activeSHA(t, f); sha != next {
+		t.Fatalf("newer head was not admitted: %q", sha)
+	}
+}

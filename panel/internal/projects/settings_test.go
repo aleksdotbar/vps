@@ -273,3 +273,13 @@ func TestSettingsCannotTransferAdmittedHostnameOrMoveItsEnvironment(t *testing.T
 		t.Fatalf("failed ownership edit mutated binding: %v", err)
 	}
 }
+
+func TestSourceVariableCannotBeSavedAsSecret(t *testing.T) {
+	ctx := context.Background()
+	service, _, serverID := setup(t)
+	_, environment := projectAndEnvironment(t, service, serverID)
+	request := &panelv1.SaveEnvironmentSecretsRequest{Mutation: &panelv1.Mutation{RequestId: uuid.NewString()}, EnvironmentId: environment.Id, ExpectedVersion: environment.Version, Upserts: []*panelv1.SecretValue{{Name: "GIT_SHA", Value: "0123456789"}}}
+	if _, err := service.SaveSecrets(ctx, request); !errors.Is(err, ErrInvalid) {
+		t.Fatalf("GIT_SHA secret accepted: %v", err)
+	}
+}

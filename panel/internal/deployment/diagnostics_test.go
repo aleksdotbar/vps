@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"strings"
 	"testing"
+
+	"github.com/aleksdotbar/vps/panel/internal/compose"
 )
 
 func TestSanitizeLogStripsControlSequencesAndKeepsTail(t *testing.T) {
@@ -41,5 +43,28 @@ func TestDiagnosticsFitStatusBudgetAndValidate(t *testing.T) {
 		if validDiagnostics(invalid) {
 			t.Fatalf("accepted %#v", invalid)
 		}
+	}
+}
+
+func TestDiagnosticLogsRedactBoundSecretValues(t *testing.T) {
+	token := "123456:telegram-secret-token"
+	var candidate releaseMaterial
+	candidate.Stage.Manifest.Bindings = []compose.SecretBinding{
+		{Service: "bot", Variable: "BOT_TOKEN", Secret: "BOT_TOKEN"},
+		{Service: "bot", Variable: "SHORT", Secret: "SHORT"},
+	}
+	candidate.RuntimeConfig = json.RawMessage(`{"services":{"bot":{"environment":{"BOT_TOKEN":"` + token + `","SHORT":"abc","PORT":"3000"}}}}`)
+	secrets, ok := secretValues(candidate)
+	if !ok || len(secrets) != 1 {
+		t.Fatalf("secret values not resolved: %v %d", ok, len(secrets))
+	}
+	line := "INFO HTTP Request: POST https://api.telegram.org/bot" + token + "/getMe \"HTTP/1.1 401\"\n"
+	tail := sanitizeLog(redactSecrets([]byte(line), secrets), maxLogTailBytes)
+	if strings.Contains(tail, token) || !strings.Contains(tail, "bot[redacted]/getMe") {
+		t.Fatalf("token survived redaction: %q", tail)
+	}
+	candidate.RuntimeConfig = json.RawMessage(`{"services":{}}`)
+	if _, ok := secretValues(candidate); ok {
+		t.Fatal("unresolvable bindings must drop log tails")
 	}
 }

@@ -19,6 +19,7 @@ import (
 	sqlite3 "modernc.org/sqlite/lib"
 
 	panelv1 "github.com/aleksdotbar/vps/panel/gen/go/panel/v1"
+	"github.com/aleksdotbar/vps/panel/internal/compose"
 	"github.com/aleksdotbar/vps/panel/internal/routes"
 	"github.com/aleksdotbar/vps/panel/internal/securestate"
 	"github.com/aleksdotbar/vps/panel/internal/store"
@@ -266,7 +267,9 @@ func (s *Service) SaveSecrets(ctx context.Context, request *panelv1.SaveEnvironm
 	sort.Strings(canonical.RemoveNames)
 	upserts := make(map[string]string, len(canonical.Upserts))
 	for _, item := range canonical.Upserts {
-		if _, exists := upserts[item.GetName()]; exists {
+		// The panel supplies GIT_SHA to Compose; a secret of that name would
+		// make every release unresolvable.
+		if _, exists := upserts[item.GetName()]; exists || item.GetName() == compose.SourceVariable {
 			return nil, ErrInvalid
 		}
 		upserts[item.GetName()] = item.GetValue()

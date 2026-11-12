@@ -100,7 +100,11 @@ func parseArtifactService(data []byte) (ArtifactService, error) {
 	}
 	variableData, hasVariable := fields["image_variable"]
 	imageData, hasImage := fields["image"]
-	if !hasImage || (len(fields) == 2 && !hasVariable) {
+	expected := 1
+	if hasVariable {
+		expected = 2
+	}
+	if !hasImage || len(fields) != expected {
 		return ArtifactService{}, invalidArtifact("service fields must match schema")
 	}
 	var service ArtifactService

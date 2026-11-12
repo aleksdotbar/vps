@@ -113,3 +113,15 @@ func TestParseArtifactAcceptsResolvedSetWithoutImageVariables(t *testing.T) {
 		t.Fatalf("resolved digest set rejected: %v", err)
 	}
 }
+
+func TestParseArtifactServiceRejectsExtraFields(t *testing.T) {
+	image := `"ghcr.io/example/app@sha256:` + strings.Repeat("1", 64) + `"`
+	for _, data := range []string{`{"image":` + image + `,"x":1}`, `{"image":` + image + `,"x":1,"y":2}`} {
+		if _, err := parseArtifactService([]byte(data)); err == nil {
+			t.Fatalf("extra fields accepted: %s", data)
+		}
+	}
+	if _, err := parseArtifactService([]byte(`{"image":` + image + `,"image_variable":"APP_IMAGE"}`)); err != nil {
+		t.Fatal(err)
+	}
+}
