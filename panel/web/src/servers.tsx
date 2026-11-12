@@ -5,7 +5,7 @@ import {
   Grid,
   LayerCard,
   Pagination,
-  Table,
+  Text,
 } from "@cloudflare/kumo";
 import { HardDrivesIcon, PulseIcon, WarningIcon } from "@phosphor-icons/react";
 import { useSuspenseQuery } from "@tanstack/react-query";
@@ -14,6 +14,8 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import { serverQuery, serversQuery } from "./api";
 import {
   ButtonLink,
+  cardLink,
+  cardTitleLink,
   Detail,
   Details,
   Id,
@@ -40,49 +42,38 @@ export function Servers({ cursor }: { cursor: string }) {
         />
       )}
       {data.servers.length ? (
-        <LayerCard>
-          <LayerCard.Primary className="p-0">
-            <Table aria-label="Servers">
-              <Table.Header>
-                <Table.Row>
-                  <Table.Head>Name</Table.Head>
-                  <Table.Head>Tailscale address</Table.Head>
-                  <Table.Head>Last checked</Table.Head>
-                  <Table.Head>Status</Table.Head>
-                </Table.Row>
-              </Table.Header>
-              <Table.Body>
-                {data.servers.map((server) => (
-                  <Table.Row key={server.id}>
-                    <Table.Cell>
-                      <span className="flex items-center gap-2">
-                        <Link
-                          to="/servers/$serverId"
-                          params={{ serverId: server.id }}
-                          className="font-medium"
-                        >
-                          {server.name}
-                        </Link>
-                        {server.panelHost && (
-                          <Badge variant="info">Panel host</Badge>
-                        )}
-                      </span>
-                    </Table.Cell>
-                    <Table.Cell>
-                      <Id value={server.tailscaleAddress} />
-                    </Table.Cell>
-                    <Table.Cell>
-                      <ObservedTime value={server.observedAt} />
-                    </Table.Cell>
-                    <Table.Cell>
-                      <Readiness value={server.readiness} />
-                    </Table.Cell>
-                  </Table.Row>
-                ))}
-              </Table.Body>
-            </Table>
-          </LayerCard.Primary>
-        </LayerCard>
+        <Grid variant="3up" gap="base">
+          {data.servers.map((server) => (
+            <LayerCard key={server.id} className={cardLink}>
+              <LayerCard.Secondary className="flex items-center justify-between gap-2">
+                <span className="flex min-w-0 items-center gap-2">
+                  <HardDrivesIcon size={18} aria-hidden="true" />
+                  <Text variant="heading" truncate>
+                    <Link
+                      className={cardTitleLink}
+                      to="/servers/$serverId"
+                      params={{ serverId: server.id }}
+                    >
+                      {server.name}
+                    </Link>
+                  </Text>
+                </span>
+                <Readiness value={server.readiness} />
+              </LayerCard.Secondary>
+              <LayerCard.Primary className="flex-1 flex flex-col gap-2">
+                <Text variant="mono-secondary">{server.tailscaleAddress}</Text>
+                <Text variant="secondary" size="sm">
+                  <ObservedTime value={server.observedAt} prefix="Checked" />
+                </Text>
+                {server.panelHost && (
+                  <span>
+                    <Badge variant="info">Panel host</Badge>
+                  </span>
+                )}
+              </LayerCard.Primary>
+            </LayerCard>
+          ))}
+        </Grid>
       ) : (
         <Empty
           icon={<HardDrivesIcon size={48} />}

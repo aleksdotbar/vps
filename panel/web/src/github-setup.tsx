@@ -6,6 +6,7 @@ import {
   LinkButton,
   Select,
   Text,
+  useKumoToastManager,
 } from "@cloudflare/kumo";
 import { InfoIcon } from "@phosphor-icons/react";
 import { useMutation } from "@tanstack/react-query";
@@ -45,7 +46,8 @@ export function GitHubSetup({
   const expireSession = useSessionExpiry();
   const [intent, setIntent] = useState<Intent>();
   const [destination, setDestination] = useState<Destination>();
-  const [failure, setFailure] = useState("");
+  const toast = useKumoToastManager();
+  const fail = (title: string) => toast.add({ title, variant: "error" });
   const [ownerKind, setOwnerKind] = useState("user");
   const preparation = useMutation({ mutationFn: prepare });
   const refreshing = useMutation({ mutationFn: refresh });
@@ -53,7 +55,6 @@ export function GitHubSetup({
 
   async function prepare(next: Intent) {
     setIntent(next);
-    setFailure("");
     try {
       if (next.kind === "registration") {
         const result = await github.beginSetup(next.request);
@@ -77,9 +78,9 @@ export function GitHubSetup({
       if (await expireSession(error)) return;
       if (mutationRejected(error)) {
         setIntent(undefined);
-        setFailure("GitHub setup was refused. Check the owner and App name.");
+        fail("GitHub setup was refused. Check the owner and App name.");
       } else {
-        setFailure(
+        fail(
           "We couldn’t confirm this step. Retry — it won’t create anything twice.",
         );
       }
@@ -102,7 +103,6 @@ export function GitHubSetup({
   }
 
   async function refresh() {
-    setFailure("");
     try {
       await queryClient.cancelQueries({
         queryKey: integrationQuery().queryKey,
@@ -111,7 +111,7 @@ export function GitHubSetup({
       setIntent(undefined);
       setDestination(undefined);
     } catch (error) {
-      if (!(await expireSession(error))) setFailure(errorMessage(error));
+      if (!(await expireSession(error))) fail(errorMessage(error));
     }
   }
 
@@ -220,11 +220,6 @@ export function GitHubSetup({
             </LinkButton>
           }
         />
-      )}
-      {failure && (
-        <Text variant="error" role="alert">
-          {failure}
-        </Text>
       )}
       {(intent || destination) && (
         <div className="flex flex-wrap items-center gap-2">

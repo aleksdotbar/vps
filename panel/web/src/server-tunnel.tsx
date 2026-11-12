@@ -5,6 +5,7 @@ import {
   LayerCard,
   RefreshButton,
   Text,
+  useKumoToastManager,
 } from "@cloudflare/kumo";
 import { Code, ConnectError } from "@connectrpc/connect";
 import { InfoIcon, WarningIcon } from "@phosphor-icons/react";
@@ -60,8 +61,8 @@ export function ServerTunnel({ server }: { server: Server }) {
     request: TunnelIntent;
     admitted: boolean;
   }>();
-  const [failure, setFailure] = useState("");
-  const [notice, setNotice] = useState("");
+  const toast = useKumoToastManager();
+  const fail = (title: string) => toast.add({ title, variant: "error" });
   const tunnelQuery = useSuspenseQuery({
     ...serverTunnelQuery(server.id),
     refetchInterval: (query) =>
@@ -114,13 +115,11 @@ export function ServerTunnel({ server }: { server: Server }) {
   const refresh = useMutation({
     mutationFn: async () => {
       const isCurrent = capturePage();
-      setFailure("");
-      setNotice("");
       try {
         await refreshData();
       } catch (error) {
         if (isCurrent() && !(await expireSession(error)) && isCurrent())
-          setFailure(
+          fail(
             "Couldn’t refresh the tunnel status. Try again before continuing.",
           );
       }
@@ -132,16 +131,11 @@ export function ServerTunnel({ server }: { server: Server }) {
       const isCurrent = capturePage();
       const admitted = !!recordedIntent || intent?.admitted === true;
       setIntent({ request, admitted });
-      setFailure("");
-      setNotice("");
       try {
         const result = await cloudflare.provisionServerTunnel(request);
         if (!result.tunnel?.requestId)
           throw new Error("Tunnel intent unavailable");
-        if (isCurrent()) {
-          setIntent({ request, admitted: true });
-          setNotice("Tunnel requested. Status updates here automatically.");
-        }
+        if (isCurrent()) setIntent({ request, admitted: true });
         // Shared observations remain stale even when the operator leaves this page.
         await queryClient.invalidateQueries({
           queryKey: serverTunnelQuery(server.id).queryKey,
@@ -151,7 +145,7 @@ export function ServerTunnel({ server }: { server: Server }) {
           return;
         if (mutationRejected(error)) {
           if (!admitted) setIntent(undefined);
-          setFailure(
+          fail(
             error instanceof ConnectError && error.code === Code.Aborted
               ? "The Cloudflare connection changed. Review it in Settings, then try again."
               : "The tunnel couldn’t be created. Check that the server is ready and Cloudflare is connected.",
@@ -163,7 +157,7 @@ export function ServerTunnel({ server }: { server: Server }) {
             queryKey: serverTunnelQuery(server.id).queryKey,
           });
         } else {
-          setFailure(
+          fail(
             "We couldn’t confirm the request. Check its status — no second tunnel will be created.",
           );
         }
@@ -280,16 +274,6 @@ export function ServerTunnel({ server }: { server: Server }) {
               <Id value={tunnel.accountId || integration?.accountId || ""} />
             </Detail>
           </Details>
-        )}
-        {failure && (
-          <Text variant="error" size="sm">
-            <span role="alert">{failure}</span>
-          </Text>
-        )}
-        {notice && (
-          <Text variant="secondary" size="sm">
-            <span role="status">{notice}</span>
-          </Text>
         )}
         {action && <div className="flex gap-2">{action}</div>}
       </LayerCard.Primary>

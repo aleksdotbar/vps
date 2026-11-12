@@ -1,6 +1,11 @@
 import { create } from "@bufbuild/protobuf";
 import { Code, ConnectError } from "@connectrpc/connect";
-import { Banner, Button, Pagination, Text } from "@cloudflare/kumo";
+import {
+  Banner,
+  Button,
+  Pagination,
+  useKumoToastManager,
+} from "@cloudflare/kumo";
 import { useMutation, useSuspenseQuery } from "@tanstack/react-query";
 import { Link, useNavigate, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
@@ -60,8 +65,8 @@ export function EnvironmentForm({
   const [selectedServer, setSelectedServer] = useState(initialServer);
   const [intent, setIntent] = useState<Intent>();
   const [needsRefresh, setNeedsRefresh] = useState(false);
-  const [failure, setFailure] = useState("");
-  const [notice, setNotice] = useState("");
+  const toast = useKumoToastManager();
+  const fail = (title: string) => toast.add({ title, variant: "error" });
   const [createdId, setCreatedId] = useState("");
   const stale = !!environment && environment.version !== baseVersion;
   const refreshing = useMutation({ mutationFn: refresh });
@@ -94,16 +99,12 @@ export function EnvironmentForm({
   async function refresh() {
     if (intent || router.state.status === "pending") return;
     const isCurrent = capturePage();
-    setFailure("");
-    setNotice("");
     try {
       await reload(isCurrent);
-      if (!isCurrent()) return;
-      setNotice("Unsaved changes discarded.");
     } catch (error) {
       if (!isCurrent()) return;
       if (!(await expireSession(error)) && isCurrent())
-        setFailure("Couldn’t reload the settings. Try again.");
+        fail("Couldn’t reload the settings. Try again.");
     }
   }
 
@@ -112,8 +113,6 @@ export function EnvironmentForm({
     const isCurrent = capturePage();
     onLockChange?.(true);
     setIntent(next);
-    setFailure("");
-    setNotice("");
     try {
       const result =
         next.kind === "create"
@@ -124,9 +123,14 @@ export function EnvironmentForm({
       const savedId = z.uuid().parse(result.environment.id);
       if (isCurrent()) {
         setIntent(undefined);
-        setNotice("Saved. Deploy to apply the changes.");
         if (next.kind === "create") setCreatedId(savedId);
-        else setNeedsRefresh(true);
+        else {
+          setNeedsRefresh(true);
+          toast.add({
+            title: "Saved. Deploy to apply the changes.",
+            variant: "success",
+          });
+        }
       }
       try {
         await queryClient.invalidateQueries({
@@ -143,7 +147,7 @@ export function EnvironmentForm({
       } catch (refreshError) {
         if (!isCurrent()) return;
         if (!(await expireSession(refreshError)) && isCurrent())
-          setFailure(
+          fail(
             "Saved, but the page couldn’t reload. Refresh it before editing again.",
           );
       }
@@ -159,7 +163,7 @@ export function EnvironmentForm({
         setIntent(undefined);
         onLockChange?.(false);
         setNeedsRefresh(true);
-        setFailure(
+        fail(
           "These settings were changed elsewhere. Showing the latest version — review and save again.",
         );
         try {
@@ -167,20 +171,18 @@ export function EnvironmentForm({
         } catch (refreshError) {
           if (!isCurrent()) return;
           if (!(await expireSession(refreshError)) && isCurrent())
-            setFailure(
-              "These settings were changed elsewhere. Reload the page.",
-            );
+            fail("These settings were changed elsewhere. Reload the page.");
         }
       } else if (mutationRejected(error)) {
         setIntent(undefined);
         onLockChange?.(false);
-        setFailure(
+        fail(
           error instanceof ConnectError && error.code === Code.AlreadyExists
             ? "That name or one of the domains is already in use."
             : "These settings were refused. Check the server, branch, override path and domains.",
         );
       } else {
-        setFailure(
+        fail(
           "We couldn’t confirm the save. Check again — it won’t apply twice.",
         );
       }
@@ -191,14 +193,14 @@ export function EnvironmentForm({
     event.preventDefault();
     if (blocked) return;
     if (new TextEncoder().encode(settings.composeOverridePath).length > 512) {
-      setFailure("The override path is too long.");
+      fail("The override path is too long.");
       return;
     }
     if (
       new Set(settings.domains.map((domain) => domain.hostname)).size !==
       settings.domains.length
     ) {
-      setFailure("Each domain can only be used once.");
+      fail("Each domain can only be used once.");
       return;
     }
     const mutation = { requestId: crypto.randomUUID() };
@@ -288,16 +290,6 @@ export function EnvironmentForm({
             }
           />
         </fieldset>
-        {failure && (
-          <Text variant="error" role="alert">
-            {failure}
-          </Text>
-        )}
-        {notice && (
-          <Text variant="secondary" role="status">
-            {notice}
-          </Text>
-        )}
         <div className="flex flex-wrap items-center gap-2">
           {intent ? (
             <Button

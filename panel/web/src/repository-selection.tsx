@@ -4,7 +4,7 @@ import {
   Checkbox,
   Empty,
   LayerCard,
-  Text,
+  useKumoToastManager,
 } from "@cloudflare/kumo";
 import { WarningIcon } from "@phosphor-icons/react";
 import { useMutation, useSuspenseQuery } from "@tanstack/react-query";
@@ -53,8 +53,9 @@ function SelectionForm() {
   const expireSession = useSessionExpiry();
   const [intent, setIntent] =
     useState<Parameters<typeof github.selectRepositories>[0]>();
-  const [failure, setFailure] = useState("");
-  const [notice, setNotice] = useState("");
+  const [selectionError, setSelectionError] = useState("");
+  const toast = useKumoToastManager();
+  const fail = (title: string) => toast.add({ title, variant: "error" });
   const selectedIds = Array.from(
     intent?.repositoryIds ?? data.selectedRepositoryIds,
     String,
@@ -71,12 +72,9 @@ function SelectionForm() {
     request: Parameters<typeof github.selectRepositories>[0],
   ) {
     setIntent(request);
-    setFailure("");
-    setNotice("");
     try {
       await github.selectRepositories(request);
       setIntent(undefined);
-      setNotice("Saved.");
       try {
         await queryClient.cancelQueries({
           queryKey: repositoriesQuery().queryKey,
@@ -84,19 +82,15 @@ function SelectionForm() {
         await queryClient.fetchQuery({ ...repositoriesQuery(), staleTime: 0 });
       } catch (refreshError) {
         if (!(await expireSession(refreshError)))
-          setFailure("Saved, but the list couldn’t reload. Refresh the page.");
+          fail("Saved, but the list couldn’t reload. Refresh the page.");
       }
     } catch (saveError) {
       if (await expireSession(saveError)) return;
       if (mutationRejected(saveError)) {
         setIntent(undefined);
-        setFailure(
-          "The selection was refused. Choose at least one repository.",
-        );
+        fail("The selection was refused. Choose at least one repository.");
       } else {
-        setFailure(
-          "We couldn’t confirm the save. Retry — it won’t apply twice.",
-        );
+        fail("We couldn’t confirm the save. Retry — it won’t apply twice.");
       }
     }
   }
@@ -110,9 +104,10 @@ function SelectionForm() {
       )
       .map((repository) => repository.githubRepositoryId);
     if (!repositoryIds.length) {
-      setFailure("Select at least one repository.");
+      setSelectionError("Select at least one repository.");
       return;
     }
+    setSelectionError("");
     saving.mutate({
       mutation: { requestId: crypto.randomUUID() },
       repositoryIds,
@@ -154,6 +149,7 @@ function SelectionForm() {
             <Checkbox.Group
               legend="Unchecking one stops deployments of its project."
               value={chosen.ids}
+              error={selectionError || undefined}
               onValueChange={(ids) => setChosen({ key: selectionKey, ids })}
               disabled={pending || !!intent || !!error}
             >
@@ -167,16 +163,6 @@ function SelectionForm() {
             </Checkbox.Group>
           </LayerCard.Primary>
         </LayerCard>
-        {failure && (
-          <Text variant="error" role="alert">
-            {failure}
-          </Text>
-        )}
-        {notice && (
-          <Text variant="secondary" role="status">
-            {notice}
-          </Text>
-        )}
         <div className="flex items-center gap-2">
           {intent ? (
             <Button

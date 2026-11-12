@@ -4,10 +4,10 @@ import {
   Empty,
   Grid,
   LayerCard,
-  Table,
+  Link,
   Text,
 } from "@cloudflare/kumo";
-import { WarningIcon } from "@phosphor-icons/react";
+import { CubeIcon, GlobeIcon, WarningIcon } from "@phosphor-icons/react";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 
@@ -97,24 +97,26 @@ function ReleaseSnapshot({
             <LayerCard.Secondary>Images</LayerCard.Secondary>
             <LayerCard.Primary>
               {release.images.length ? (
-                <Table>
-                  <Table.Header>
-                    <Table.Row>
-                      <Table.Head>Service</Table.Head>
-                      <Table.Head>Image</Table.Head>
-                    </Table.Row>
-                  </Table.Header>
-                  <Table.Body>
-                    {release.images.map((image) => (
-                      <Table.Row key={image.service}>
-                        <Table.Cell>{image.service}</Table.Cell>
-                        <Table.Cell>
-                          <Id value={image.imageDigest} />
-                        </Table.Cell>
-                      </Table.Row>
-                    ))}
-                  </Table.Body>
-                </Table>
+                <ul className="divide-y divide-kumo-line">
+                  {release.images.map((image) => (
+                    <li
+                      key={image.service}
+                      className="flex flex-wrap items-center justify-between gap-2 py-3 first:pt-0 last:pb-0"
+                    >
+                      <span className="flex items-center gap-2">
+                        <CubeIcon
+                          size={16}
+                          className="text-kumo-subtle"
+                          aria-hidden="true"
+                        />
+                        <Text as="span" bold>
+                          {image.service}
+                        </Text>
+                      </span>
+                      <Id value={image.imageDigest} short />
+                    </li>
+                  ))}
+                </ul>
               ) : (
                 <Empty size="sm" title="No images recorded" />
               )}
@@ -124,26 +126,33 @@ function ReleaseSnapshot({
             <LayerCard.Secondary>Domains</LayerCard.Secondary>
             <LayerCard.Primary>
               {release.domains.length ? (
-                <Table>
-                  <Table.Header>
-                    <Table.Row>
-                      <Table.Head>Hostname</Table.Head>
-                      <Table.Head>Service</Table.Head>
-                    </Table.Row>
-                  </Table.Header>
-                  <Table.Body>
-                    {release.domains.map((domain) => (
-                      <Table.Row key={domain.hostname}>
-                        <Table.Cell>{domain.hostname}</Table.Cell>
-                        <Table.Cell>
-                          <Badge variant="outline">
-                            {domain.service}:{domain.port}
-                          </Badge>
-                        </Table.Cell>
-                      </Table.Row>
-                    ))}
-                  </Table.Body>
-                </Table>
+                <ul className="divide-y divide-kumo-line">
+                  {release.domains.map((domain) => (
+                    <li
+                      key={domain.hostname}
+                      className="flex flex-wrap items-center justify-between gap-2 py-3 first:pt-0 last:pb-0"
+                    >
+                      <span className="flex min-w-0 items-center gap-2">
+                        <GlobeIcon
+                          size={16}
+                          className="shrink-0 text-kumo-subtle"
+                          aria-hidden="true"
+                        />
+                        <Link
+                          href={`https://${domain.hostname}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="truncate"
+                        >
+                          {domain.hostname}
+                        </Link>
+                      </span>
+                      <Text as="span" variant="secondary" size="sm">
+                        {domain.service}:{domain.port}
+                      </Text>
+                    </li>
+                  ))}
+                </ul>
               ) : (
                 <Empty size="sm" title="No public domains" />
               )}

@@ -1,10 +1,12 @@
-import { Banner, Button, LayerCard, Text } from "@cloudflare/kumo";
-import { Code, ConnectError } from "@connectrpc/connect";
 import {
-  InfoIcon,
-  WarningCircleIcon,
-  WarningIcon,
-} from "@phosphor-icons/react";
+  Banner,
+  Button,
+  LayerCard,
+  Text,
+  useKumoToastManager,
+} from "@cloudflare/kumo";
+import { Code, ConnectError } from "@connectrpc/connect";
+import { InfoIcon, WarningIcon } from "@phosphor-icons/react";
 import { useMutation } from "@tanstack/react-query";
 import { Link, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
@@ -82,7 +84,8 @@ export function DeploymentAction({
   const [selection, setSelection] = useState<Selection>();
   const [unknown, setUnknown] = useState(false);
   const [acceptedId, setAcceptedId] = useState("");
-  const [failure, setFailure] = useState("");
+  const toast = useKumoToastManager();
+  const fail = (title: string) => toast.add({ title, variant: "error" });
   const stale =
     !!selection && environment.version !== selection.environment.version;
   const requestId = selection?.intent.request.mutation?.requestId;
@@ -103,7 +106,7 @@ export function DeploymentAction({
         });
     } catch (error) {
       if (isCurrent() && !(await expireSession(error)) && isCurrent())
-        setFailure(
+        fail(
           "Deployment started, but its status page didn’t open. Use the link below.",
         );
     }
@@ -112,7 +115,6 @@ export function DeploymentAction({
   const prepare = useMutation({
     mutationFn: async () => {
       const isCurrent = capturePage();
-      setFailure("");
       setSelection(undefined);
       try {
         const current = await refreshEnvironment(environment.id);
@@ -158,7 +160,7 @@ export function DeploymentAction({
         if (isCurrent()) setSelection({ intent, environment: current, source });
       } catch (error) {
         if (isCurrent() && !(await expireSession(error)) && isCurrent())
-          setFailure(deploymentError(error));
+          fail(deploymentError(error));
       }
     },
   });
@@ -167,7 +169,6 @@ export function DeploymentAction({
     mutationFn: async (selected: Selection) => {
       const wasUnknown = unknown;
       const isCurrent = capturePage();
-      setFailure("");
       try {
         const result =
           selected.intent.kind === "deploy"
@@ -181,10 +182,10 @@ export function DeploymentAction({
         if (isCurrent() && (await expireSession(error))) return;
         if (mutationRejected(error) && !wasUnknown) {
           setSelection(undefined);
-          setFailure(deploymentError(error));
+          fail(deploymentError(error));
         } else {
           setUnknown(true);
-          setFailure(
+          fail(
             wasUnknown && mutationRejected(error)
               ? `Retry refused — the first request may still have started. ${deploymentError(error)}`
               : "We couldn’t confirm whether this started. Check its status or retry the same request — it won’t run twice.",
@@ -203,7 +204,6 @@ export function DeploymentAction({
       id: string;
     }) => {
       const isCurrent = capturePage();
-      setFailure("");
       try {
         const result = await panel.getOperation({ id });
         if (result.operation?.id !== id)
@@ -211,7 +211,7 @@ export function DeploymentAction({
         await accepted(id, selected, isCurrent);
       } catch (error) {
         if (isCurrent() && !(await expireSession(error)) && isCurrent())
-          setFailure(
+          fail(
             error instanceof ConnectError && error.code === Code.NotFound
               ? "Not visible yet — it may still be processing. Check again or retry the same request."
               : `Couldn’t check the status. ${deploymentError(error)}`,
@@ -327,11 +327,6 @@ export function DeploymentAction({
                 }
               />
             )}
-            {failure && (
-              <Text variant="error" role="alert">
-                {failure}
-              </Text>
-            )}
             <div className="flex flex-wrap gap-2">
               {unknown ? (
                 <>
@@ -364,10 +359,7 @@ export function DeploymentAction({
                   <Button
                     variant="ghost"
                     disabled={pending}
-                    onClick={() => {
-                      setSelection(undefined);
-                      setFailure("");
-                    }}
+                    onClick={() => setSelection(undefined)}
                   >
                     Cancel
                   </Button>
@@ -376,13 +368,6 @@ export function DeploymentAction({
             </div>
           </LayerCard.Primary>
         </LayerCard>
-      )}
-      {!selection && failure && (
-        <Banner
-          variant="error"
-          icon={<WarningCircleIcon weight="fill" />}
-          description={failure}
-        />
       )}
       {acceptedId && (
         <div role="status">

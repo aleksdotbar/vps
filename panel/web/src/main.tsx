@@ -1,6 +1,10 @@
 import "./styles.css";
 
-import { LinkProvider, type LinkComponentProps } from "@cloudflare/kumo";
+import {
+  LinkProvider,
+  type LinkComponentProps,
+  Toasty,
+} from "@cloudflare/kumo";
 import { TransportProvider } from "@connectrpc/connect-query";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { RouterProvider } from "@tanstack/react-router";
@@ -12,7 +16,9 @@ import { router } from "./router";
 
 // kumo links take a plain href; route same-origin clicks through the router.
 const RouterLink = forwardRef<HTMLAnchorElement, LinkComponentProps>(
-  function RouterLink({ href = "", onClick, ...props }, ref) {
+  // Some kumo parts (Breadcrumbs) still pass the deprecated `to` instead of `href`.
+  function RouterLink({ href: anchor, to, onClick, ...props }, ref) {
+    const href = anchor ?? to ?? "";
     return (
       <a
         ref={ref}
@@ -47,7 +53,9 @@ createRoot(root).render(
     <TransportProvider transport={transport}>
       <QueryClientProvider client={queryClient}>
         <LinkProvider component={RouterLink}>
-          <RouterProvider router={router} />
+          <Toasty>
+            <RouterProvider router={router} />
+          </Toasty>
         </LinkProvider>
       </QueryClientProvider>
     </TransportProvider>

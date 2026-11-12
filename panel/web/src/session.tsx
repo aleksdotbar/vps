@@ -1,4 +1,10 @@
-import { Button, Input, LayerCard, Text } from "@cloudflare/kumo";
+import {
+  Button,
+  Input,
+  LayerCard,
+  Text,
+  useKumoToastManager,
+} from "@cloudflare/kumo";
 import { Code, ConnectError } from "@connectrpc/connect";
 import { CubeIcon, SignOutIcon } from "@phosphor-icons/react";
 import { useMutation } from "@tanstack/react-query";
@@ -104,6 +110,7 @@ export function Login() {
 
 export function Logout() {
   const router = useRouter();
+  const toast = useKumoToastManager();
   const logout = useMutation({
     mutationFn: async () => {
       await queryClient.cancelQueries();
@@ -115,24 +122,19 @@ export function Logout() {
       queryClient.clear();
       await router.navigate({ to: "/login", replace: true });
     },
+    onError: (error) =>
+      toast.add({ title: errorMessage(error), variant: "error" }),
   });
 
   return (
-    <div className="flex flex-col gap-1">
-      <Button
-        size="sm"
-        variant="ghost"
-        loading={logout.isPending}
-        onClick={() => logout.mutate()}
-        icon={<SignOutIcon size={16} />}
-      >
-        Sign out
-      </Button>
-      {logout.error && (
-        <Text variant="error" size="sm">
-          <span role="alert">{errorMessage(logout.error)}</span>
-        </Text>
-      )}
-    </div>
+    <Button
+      size="sm"
+      variant="ghost"
+      loading={logout.isPending}
+      onClick={() => logout.mutate()}
+      icon={<SignOutIcon size={16} />}
+    >
+      Sign out
+    </Button>
   );
 }

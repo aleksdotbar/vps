@@ -8,7 +8,6 @@ import {
   Pagination,
   RefreshButton,
   SkeletonLine,
-  Table,
   Text,
 } from "@cloudflare/kumo";
 import {
@@ -38,6 +37,7 @@ import {
   Id,
   ObservedTime,
   Page,
+  cardTitleLink,
 } from "./components";
 import {
   operationActive,
@@ -152,48 +152,46 @@ export function Operations({
       )}
       {list.error && <RefreshFailed what="activity" error={list.error} />}
       {list.data.operations.length ? (
-        <Table aria-label="Activity">
-          <Table.Header>
-            <Table.Row>
-              <Table.Head>Operation</Table.Head>
-              <Table.Head>Target</Table.Head>
-              <Table.Head>Status</Table.Head>
-              <Table.Head>Updated</Table.Head>
-            </Table.Row>
-          </Table.Header>
-          <Table.Body>
-            {list.data.operations.map((operation) => (
-              <Table.Row key={operation.id}>
-                <Table.Cell>
-                  <Link
-                    to="/operations/$operationId"
-                    params={{ operationId: operation.id }}
-                  >
-                    {operationKind(operation.kind)}
-                  </Link>
-                  {operation.message &&
-                    operation.message !== "Operation failed." && (
-                      <Text variant="secondary" size="sm">
-                        {operation.message}
+        <LayerCard>
+          <LayerCard.Primary className="p-0">
+            <ul aria-label="Activity" className="divide-y divide-kumo-line">
+              {list.data.operations.map((operation) => (
+                <li
+                  key={operation.id}
+                  className="relative flex flex-wrap items-center gap-x-4 gap-y-1 px-4 py-3 transition-colors hover:bg-kumo-tint has-[a:focus-visible]:bg-kumo-tint"
+                >
+                  <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+                    <Text as="span" bold>
+                      <Link
+                        className={cardTitleLink}
+                        to="/operations/$operationId"
+                        params={{ operationId: operation.id }}
+                      >
+                        {operationKind(operation.kind)}
+                      </Link>{" "}
+                      <Text as="span" variant="secondary">
+                        · <Target operation={operation} />
                       </Text>
-                    )}
-                </Table.Cell>
-                <Table.Cell>
-                  <Target operation={operation} />
-                </Table.Cell>
-                <Table.Cell>
+                    </Text>
+                    {operation.message &&
+                      operation.message !== "Operation failed." && (
+                        <Text as="span" variant="secondary" size="sm" truncate>
+                          {operation.message}
+                        </Text>
+                      )}
+                  </span>
                   <OperationStatus
                     value={operation.state}
                     active={operationActive(operation)}
                   />
-                </Table.Cell>
-                <Table.Cell>
-                  <ObservedTime value={operation.updatedAt} />
-                </Table.Cell>
-              </Table.Row>
-            ))}
-          </Table.Body>
-        </Table>
+                  <span className="w-24 text-right text-sm text-kumo-subtle">
+                    <ObservedTime value={operation.updatedAt} />
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </LayerCard.Primary>
+        </LayerCard>
       ) : (
         <Empty
           icon={<PulseIcon size={48} />}

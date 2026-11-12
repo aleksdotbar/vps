@@ -4,22 +4,28 @@ import {
   Empty,
   LayerCard,
   Link,
+  Grid,
   Pagination,
-  Table,
   Text,
 } from "@cloudflare/kumo";
 import {
   CheckCircleIcon,
   CircleIcon,
   FolderSimpleIcon,
+  GitBranchIcon,
   GithubLogoIcon,
+  GlobeIcon,
   PlusIcon,
   WarningIcon,
 } from "@phosphor-icons/react";
-import { useSuspenseQuery } from "@tanstack/react-query";
-import { useNavigate } from "@tanstack/react-router";
+import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
+import { Link as RouterLink, useNavigate } from "@tanstack/react-router";
 
 import { ServerTunnelPhase } from "../../gen/ts/panel/v1/cloudflare_pb";
+import type {
+  Environment as EnvironmentRecord,
+  Project as ProjectRecord,
+} from "../../gen/ts/panel/v1/panel_pb";
 import {
   cloudflareIntegrationQuery,
   environmentsQuery,
@@ -33,6 +39,8 @@ import {
   ButtonLink,
   EnvironmentStatus,
   ObservedTime,
+  cardLink,
+  cardTitleLink,
   Page,
 } from "./components";
 
@@ -63,34 +71,11 @@ export function Projects({ cursor }: { cursor: string }) {
         />
       )}
       {data.projects.length ? (
-        <LayerCard className="p-0">
-          <Table>
-            <Table.Header>
-              <Table.Row>
-                <Table.Head>Name</Table.Head>
-                <Table.Head>Repository</Table.Head>
-                <Table.Head>Created</Table.Head>
-              </Table.Row>
-            </Table.Header>
-            <Table.Body>
-              {data.projects.map((project) => (
-                <Table.Row key={project.id}>
-                  <Table.Cell>
-                    <Link href={`/projects/${project.id}`}>{project.name}</Link>
-                  </Table.Cell>
-                  <Table.Cell>
-                    {project.repository
-                      ? `${project.repository.owner}/${project.repository.name}`
-                      : "Repository unavailable"}
-                  </Table.Cell>
-                  <Table.Cell>
-                    <ObservedTime value={project.createdAt} />
-                  </Table.Cell>
-                </Table.Row>
-              ))}
-            </Table.Body>
-          </Table>
-        </LayerCard>
+        <Grid variant="3up" gap="base">
+          {data.projects.map((project) => (
+            <ProjectCard key={project.id} project={project} />
+          ))}
+        </Grid>
       ) : (
         <Empty
           icon={<FolderSimpleIcon size={48} />}
@@ -126,6 +111,106 @@ export function Projects({ cursor }: { cursor: string }) {
         />
       )}
     </Page>
+  );
+}
+
+function ProjectCard({ project }: { project: ProjectRecord }) {
+  // shortcut: one environments request per card; fine for a handful of projects.
+  const environments = useQuery(environmentsQuery(project.id)).data
+    ?.environments;
+  return (
+    <LayerCard className={cardLink}>
+      <LayerCard.Secondary className="flex items-center gap-2">
+        <FolderSimpleIcon size={18} aria-hidden="true" />
+        <Text variant="heading" truncate>
+          <RouterLink
+            className={cardTitleLink}
+            to="/projects/$projectId"
+            params={{ projectId: project.id }}
+            search={{ cursor: "" }}
+          >
+            {project.name}
+          </RouterLink>
+        </Text>
+      </LayerCard.Secondary>
+      <LayerCard.Primary className="flex-1 flex flex-col gap-2">
+        <Text variant="secondary" size="sm" truncate>
+          <span className="flex items-center gap-1.5">
+            <GithubLogoIcon aria-hidden="true" />
+            {project.repository
+              ? `${project.repository.owner}/${project.repository.name}`
+              : "Repository unavailable"}
+          </span>
+        </Text>
+        {!!environments?.length && (
+          <div className="flex flex-wrap gap-1">
+            {environments.map((environment) => (
+              <Badge
+                key={environment.id}
+                variant={
+                  environment.pendingChanges
+                    ? "warning"
+                    : environment.currentReleaseId
+                      ? "success"
+                      : "neutral"
+                }
+                appearance="dot"
+              >
+                {environment.settings?.name ?? "Environment"}
+              </Badge>
+            ))}
+          </div>
+        )}
+        <Text variant="secondary" size="sm">
+          <ObservedTime value={project.createdAt} prefix="Created" />
+        </Text>
+      </LayerCard.Primary>
+    </LayerCard>
+  );
+}
+
+function EnvironmentCard({
+  environment,
+  serverName,
+}: {
+  environment: EnvironmentRecord;
+  serverName: string;
+}) {
+  const settings = environment.settings;
+  const domains = settings?.domains ?? [];
+  return (
+    <LayerCard className={cardLink}>
+      <LayerCard.Secondary className="flex items-center justify-between gap-2">
+        <Text variant="heading" truncate>
+          <RouterLink
+            className={cardTitleLink}
+            to="/environments/$environmentId"
+            params={{ environmentId: environment.id }}
+            search={{ services: "", releases: "" }}
+          >
+            {settings?.name ?? "Environment"}
+          </RouterLink>
+        </Text>
+        <EnvironmentStatus environment={environment} />
+      </LayerCard.Secondary>
+      <LayerCard.Primary className="flex-1 flex flex-col gap-2">
+        <Text variant="secondary" size="sm" truncate>
+          <span className="flex items-center gap-1.5">
+            <GitBranchIcon aria-hidden="true" />
+            {settings?.branch} · {serverName}
+            {settings?.autoDeploy && " · Auto-deploy"}
+          </span>
+        </Text>
+        <Text variant="secondary" size="sm" truncate>
+          <span className="flex items-center gap-1.5">
+            <GlobeIcon aria-hidden="true" />
+            {domains[0]
+              ? `${domains[0].hostname}${domains.length > 1 ? ` +${domains.length - 1}` : ""}`
+              : "No domain"}
+          </span>
+        </Text>
+      </LayerCard.Primary>
+    </LayerCard>
   );
 }
 
@@ -307,54 +392,15 @@ export function Project({ id, cursor }: { id: string; cursor: string }) {
         />
       )}
       {environments.data.environments.length ? (
-        <LayerCard className="p-0">
-          <Table>
-            <Table.Header>
-              <Table.Row>
-                <Table.Head>Environment</Table.Head>
-                <Table.Head>Status</Table.Head>
-                <Table.Head>Branch</Table.Head>
-                <Table.Head>Server</Table.Head>
-                <Table.Head>Domain</Table.Head>
-              </Table.Row>
-            </Table.Header>
-            <Table.Body>
-              {environments.data.environments.map((environment) => {
-                const settings = environment.settings;
-                return (
-                  <Table.Row key={environment.id}>
-                    <Table.Cell>
-                      <Link href={`/environments/${environment.id}`}>
-                        {settings?.name ?? "Environment"}
-                      </Link>
-                    </Table.Cell>
-                    <Table.Cell>
-                      <div className="flex flex-wrap gap-1">
-                        <EnvironmentStatus environment={environment} />
-                        {settings?.autoDeploy && (
-                          <Badge variant="outline">Auto-deploy</Badge>
-                        )}
-                      </div>
-                    </Table.Cell>
-                    <Table.Cell>{settings?.branch}</Table.Cell>
-                    <Table.Cell>
-                      {serverName(settings?.serverId ?? "")}
-                    </Table.Cell>
-                    <Table.Cell>
-                      {settings?.domains[0]
-                        ? `${settings.domains[0].hostname}${
-                            settings.domains.length > 1
-                              ? ` +${settings.domains.length - 1}`
-                              : ""
-                          }`
-                        : "—"}
-                    </Table.Cell>
-                  </Table.Row>
-                );
-              })}
-            </Table.Body>
-          </Table>
-        </LayerCard>
+        <Grid variant="3up" gap="base">
+          {environments.data.environments.map((environment) => (
+            <EnvironmentCard
+              key={environment.id}
+              environment={environment}
+              serverName={serverName(environment.settings?.serverId ?? "")}
+            />
+          ))}
+        </Grid>
       ) : (
         <Empty
           title="No environments yet"

@@ -7,6 +7,7 @@ import {
   LayerCard,
   SensitiveInput,
   Text,
+  useKumoToastManager,
 } from "@cloudflare/kumo";
 import { KeyIcon, PlusIcon, TrashIcon } from "@phosphor-icons/react";
 import { Code, ConnectError } from "@connectrpc/connect";
@@ -87,8 +88,8 @@ function SecretForm({
   // Bumping this remounts every value input, which drops its typed value.
   const [valueEpoch, setValueEpoch] = useState(0);
   const [needsRefresh, setNeedsRefresh] = useState(false);
-  const [failure, setFailure] = useState("");
-  const [notice, setNotice] = useState("");
+  const toast = useKumoToastManager();
+  const fail = (title: string) => toast.add({ title, variant: "error" });
   const refreshing = useMutation({ mutationFn: refresh });
   const saving = useMutation({ mutationFn: save });
   const pending = refreshing.isPending || saving.isPending;
@@ -110,14 +111,11 @@ function SecretForm({
   }
 
   async function refresh() {
-    setFailure("");
-    setNotice("");
     try {
       await reload();
-      setNotice("Unsaved changes discarded.");
     } catch (error) {
       if (!(await expireSession(error)))
-        setFailure("Couldn’t reload secrets. Try again.");
+        fail("Couldn’t reload secrets. Try again.");
     }
   }
 
@@ -143,7 +141,10 @@ function SecretForm({
         for (const item of upserts) item.value = "";
       }
       if (!result.environment) throw new Error("Missing saved environment");
-      setNotice("Saved. Deploy to apply the new values.");
+      toast.add({
+        title: "Saved. Deploy to apply the new values.",
+        variant: "success",
+      });
       setNeedsRefresh(true);
       try {
         await queryClient.invalidateQueries({
@@ -152,28 +153,28 @@ function SecretForm({
         await reload();
       } catch (refreshError) {
         if (!(await expireSession(refreshError)))
-          setFailure("Saved, but the page couldn’t reload. Refresh it.");
+          fail("Saved, but the page couldn’t reload. Refresh it.");
       }
     } catch (error) {
       if (await expireSession(error)) return;
       if (error instanceof ConnectError && error.code === Code.Aborted) {
         setNeedsRefresh(true);
-        setFailure(
+        fail(
           "Secrets were changed elsewhere. Showing the latest — enter your values again.",
         );
         try {
           await reload();
         } catch (refreshError) {
           if (!(await expireSession(refreshError)))
-            setFailure("Secrets were changed elsewhere. Reload the page.");
+            fail("Secrets were changed elsewhere. Reload the page.");
         }
       } else if (mutationRejected(error)) {
-        setFailure(
+        fail(
           "The change was refused. Check the names and sizes, then enter the values again.",
         );
       } else {
         setNeedsRefresh(true);
-        setFailure(
+        fail(
           "We couldn’t confirm the save. Reload to check, then re-enter any values still needed.",
         );
       }
@@ -193,20 +194,16 @@ function SecretForm({
         !(value instanceof HTMLInputElement)
       ) {
         clearValues();
-        setFailure("The form couldn’t be read. Enter the values again.");
+        fail("The form couldn’t be read. Enter the values again.");
         return;
       }
       upserts.push({ name: name.value, value: value.value });
     }
     clearValues();
     const removeNames = [...removals];
-    setFailure("");
-    setNotice("");
     const problem = secretChangeProblem(upserts, removeNames, base.secretNames);
     if (problem) {
-      setFailure(
-        `${problem} For safety the values were cleared — enter them again.`,
-      );
+      fail(`${problem} For safety the values were cleared — enter them again.`);
       return;
     }
     saving.mutate({ upserts, removeNames });
@@ -347,16 +344,6 @@ function SecretForm({
             </LayerCard.Primary>
           </LayerCard>
         </fieldset>
-        {failure && (
-          <Text variant="error" role="alert">
-            {failure}
-          </Text>
-        )}
-        {notice && (
-          <Text variant="secondary" role="status">
-            {notice}
-          </Text>
-        )}
         <div className="flex flex-wrap items-center gap-2">
           <Button
             type="submit"

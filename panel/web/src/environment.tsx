@@ -5,12 +5,13 @@ import {
   Grid,
   LayerCard,
   Pagination,
-  Table,
   Text,
 } from "@cloudflare/kumo";
 import {
+  CubeIcon,
   GearIcon,
   GitBranchIcon,
+  GitCommitIcon,
   KeyIcon,
   PackageIcon,
   PulseIcon,
@@ -41,6 +42,7 @@ import {
   Id,
   ObservedTime,
   Page,
+  cardTitleLink,
 } from "./components";
 import { DeploymentAction } from "./deployment-action";
 
@@ -252,22 +254,24 @@ function EnvironmentView({
                 </LayerCard.Secondary>
                 <LayerCard.Primary className="flex flex-col gap-3 p-0">
                   {serviceList.services.length ? (
-                    <Table>
-                      <Table.Header>
-                        <Table.Row>
-                          <Table.Head>Service</Table.Head>
-                          <Table.Head>Image</Table.Head>
-                          <Table.Head>Checked</Table.Head>
-                          <Table.Head>Status</Table.Head>
-                        </Table.Row>
-                      </Table.Header>
-                      <Table.Body>
-                        {serviceList.services.map((service) => {
-                          const [label, variant] = serviceStatus(service);
-                          return (
-                            <Table.Row key={service.name}>
-                              <Table.Cell>{service.name}</Table.Cell>
-                              <Table.Cell>
+                    <ul className="divide-y divide-kumo-line">
+                      {serviceList.services.map((service) => {
+                        const [label, variant] = serviceStatus(service);
+                        return (
+                          <li
+                            key={service.name}
+                            className="flex flex-wrap items-center gap-x-4 gap-y-1 px-4 py-3"
+                          >
+                            <CubeIcon
+                              size={18}
+                              className="text-kumo-subtle"
+                              aria-hidden="true"
+                            />
+                            <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+                              <Text as="span" bold>
+                                {service.name}
+                              </Text>
+                              <Text as="span" variant="secondary" size="sm">
                                 {service.observedImageDigest ? (
                                   <Id
                                     value={service.observedImageDigest}
@@ -276,18 +280,16 @@ function EnvironmentView({
                                 ) : (
                                   "No image yet"
                                 )}
-                              </Table.Cell>
-                              <Table.Cell>
-                                <ObservedTime value={service.observedAt} />
-                              </Table.Cell>
-                              <Table.Cell>
-                                <Badge variant={variant}>{label}</Badge>
-                              </Table.Cell>
-                            </Table.Row>
-                          );
-                        })}
-                      </Table.Body>
-                    </Table>
+                              </Text>
+                            </span>
+                            <Badge variant={variant}>{label}</Badge>
+                            <span className="w-24 text-right text-sm text-kumo-subtle">
+                              <ObservedTime value={service.observedAt} />
+                            </span>
+                          </li>
+                        );
+                      })}
+                    </ul>
                   ) : (
                     <Empty
                       size="sm"
@@ -311,45 +313,51 @@ function EnvironmentView({
                 <LayerCard.Secondary>Releases</LayerCard.Secondary>
                 <LayerCard.Primary className="flex flex-col gap-3 p-0">
                   {releaseList.releases.length ? (
-                    <Table>
-                      <Table.Header>
-                        <Table.Row>
-                          <Table.Head>Commit</Table.Head>
-                          <Table.Head>Created</Table.Head>
-                          <Table.Head>Images</Table.Head>
-                        </Table.Row>
-                      </Table.Header>
-                      <Table.Body>
-                        {releaseList.releases.map((release) => (
-                          <Table.Row key={release.id}>
-                            <Table.Cell>
-                              <span className="flex items-center gap-2">
+                    <ul className="divide-y divide-kumo-line">
+                      {releaseList.releases.map((release) => (
+                        <li
+                          key={release.id}
+                          className="relative flex flex-wrap items-center gap-x-4 gap-y-1 px-4 py-3 transition-colors hover:bg-kumo-tint has-[a:focus-visible]:bg-kumo-tint"
+                        >
+                          <GitCommitIcon
+                            size={18}
+                            className="text-kumo-subtle"
+                            aria-hidden="true"
+                          />
+                          <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+                            <span className="flex items-center gap-2">
+                              <Text as="span" variant="mono">
                                 <Link
+                                  className={cardTitleLink}
                                   to="/releases/$releaseId"
                                   params={{ releaseId: release.id }}
-                                  className="font-mono"
                                 >
                                   {release.build?.sourceSha.slice(0, 7) ||
                                     "Release"}
                                 </Link>
-                                {release.id ===
-                                  environment.currentReleaseId && (
-                                  <Badge variant="success">Current</Badge>
-                                )}
-                                {release.id ===
-                                  environment.previousReleaseId && (
-                                  <Badge variant="neutral">Previous</Badge>
-                                )}
-                              </span>
-                            </Table.Cell>
-                            <Table.Cell>
-                              <ObservedTime value={release.createdAt} />
-                            </Table.Cell>
-                            <Table.Cell>{release.images.length}</Table.Cell>
-                          </Table.Row>
-                        ))}
-                      </Table.Body>
-                    </Table>
+                              </Text>
+                              {release.id === environment.currentReleaseId && (
+                                <Badge variant="success">Current</Badge>
+                              )}
+                              {release.id === environment.previousReleaseId && (
+                                <Badge variant="neutral">Previous</Badge>
+                              )}
+                            </span>
+                            <Text as="span" variant="secondary" size="sm">
+                              {[
+                                release.build?.branch,
+                                `${release.images.length} ${release.images.length === 1 ? "image" : "images"}`,
+                              ]
+                                .filter(Boolean)
+                                .join(" · ")}
+                            </Text>
+                          </span>
+                          <span className="w-24 text-right text-sm text-kumo-subtle">
+                            <ObservedTime value={release.createdAt} />
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
                   ) : (
                     <Empty
                       size="sm"

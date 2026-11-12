@@ -22,6 +22,17 @@ import {
 import { errorMessage, queryClient, unauthenticated } from "./api";
 import { PageHeader } from "./components/kumo/page-header/page-header";
 
+/**
+ * Clickable resource card: put `cardLink` on the card and `cardTitleLink` on the
+ * title link, and `flex-1` on LayerCard.Primary so it fills grid-stretched cards.
+ * The link's hit area covers the card, so badges inside stay out of the
+ * link (kumo outlines badges inside a hovered link) and screen readers hear the name only.
+ */
+export const cardLink =
+  "relative transition-shadow hover:ring-kumo-line has-[a:focus-visible]:outline-2 has-[a:focus-visible]:outline-kumo-focus";
+export const cardTitleLink =
+  "after:absolute after:inset-0 focus-visible:outline-none";
+
 /** Router link rendered as a kumo button. */
 export const ButtonLink = createLink(LinkButton);
 

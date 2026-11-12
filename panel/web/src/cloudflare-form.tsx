@@ -6,6 +6,7 @@ import {
   Input,
   SensitiveInput,
   Text,
+  useKumoToastManager,
 } from "@cloudflare/kumo";
 import { Code, ConnectError } from "@connectrpc/connect";
 import { WarningIcon } from "@phosphor-icons/react";
@@ -64,8 +65,13 @@ export function CloudflareForm({
   const [truncated, setTruncated] = useState(false);
   const [listed, setListed] = useState(integration.zones.length > 0);
   const [needsRefresh, setNeedsRefresh] = useState(false);
-  const [failure, setFailure] = useState("");
-  const [notice, setNotice] = useState("");
+  const [errors, setErrors] = useState<{
+    account?: string;
+    token?: string;
+    zones?: string;
+  }>({});
+  const toast = useKumoToastManager();
+  const fail = (title: string) => toast.add({ title, variant: "error" });
   const stale = integration.version !== baseVersion;
 
   function clearToken() {
@@ -97,26 +103,24 @@ export function CloudflareForm({
     mutationFn: async () => {
       const isCurrent = capturePage();
       clearToken();
-      setFailure("");
-      setNotice("");
       try {
         await reload(isCurrent);
       } catch (error) {
         if (isCurrent() && !(await expireSession(error)) && isCurrent())
-          setFailure("Couldn’t reload the saved connection. Try again.");
+          fail("Couldn’t reload the saved connection. Try again.");
       }
     },
   });
 
   const listZones = useMutation({
     mutationFn: async () => {
-      setFailure("");
+      setErrors({});
       if (!/^[0-9a-f]{32}$/.test(accountId)) {
-        setFailure("Enter the 32-character account ID first.");
+        setErrors({ account: "Enter the 32-character account ID first." });
         return;
       }
       if (!tokenPattern.test(token) || token.length > 4096) {
-        setFailure("Paste the API token first.");
+        setErrors({ token: "Paste the API token first." });
         return;
       }
       const isCurrent = capturePage();
@@ -150,7 +154,7 @@ export function CloudflareForm({
       } catch (error) {
         if (!isCurrent() || (await expireSession(error)) || !isCurrent())
           return;
-        setFailure(
+        fail(
           error instanceof ConnectError && error.code === Code.PermissionDenied
             ? error.rawMessage
             : "Couldn’t reach Cloudflare. Check the account ID and try again.",
@@ -168,16 +172,15 @@ export function CloudflareForm({
         zoneIds: [...selected],
         token,
       } satisfies Parameters<typeof cloudflare.connectAccount>[0];
-      setFailure("");
-      setNotice("");
+      setErrors({});
       if (!tokenPattern.test(request.token) || request.token.length > 4096) {
         request.token = "";
-        setFailure("Paste the API token (a single line).");
+        setErrors({ token: "Paste the API token (a single line)." });
         return;
       }
       if (!selected.length) {
         request.token = "";
-        setFailure("Choose at least one domain.");
+        setErrors({ zones: "Choose at least one domain." });
         return;
       }
       clearToken();
@@ -191,10 +194,7 @@ export function CloudflareForm({
         }
         if (!result.integration?.configured)
           throw new Error("Missing saved Cloudflare connection");
-        if (isCurrent()) {
-          setNotice("Cloudflare connected.");
-          setNeedsRefresh(true);
-        }
+        if (isCurrent()) setNeedsRefresh(true);
         try {
           await reload(isCurrent);
           if (isCurrent()) onDone?.();
@@ -204,14 +204,14 @@ export function CloudflareForm({
             !(await expireSession(refreshError)) &&
             isCurrent()
           )
-            setFailure("Saved, but the page couldn’t reload. Refresh it.");
+            fail("Saved, but the page couldn’t reload. Refresh it.");
         }
       } catch (error) {
         if (!isCurrent() || (await expireSession(error)) || !isCurrent())
           return;
         if (error instanceof ConnectError && error.code === Code.Aborted) {
           setNeedsRefresh(true);
-          setFailure(
+          fail(
             "The connection was changed elsewhere. Review it, then paste the token again.",
           );
           try {
@@ -222,21 +222,21 @@ export function CloudflareForm({
               !(await expireSession(refreshError)) &&
               isCurrent()
             )
-              setFailure("The connection changed elsewhere. Reload this page.");
+              fail("The connection changed elsewhere. Reload this page.");
           }
         } else if (
           error instanceof ConnectError &&
           error.code === Code.PermissionDenied
         ) {
           // The server returns fixed, actionable Cloudflare guidance here.
-          setFailure(`${error.rawMessage} Then paste the token again.`);
+          fail(`${error.rawMessage} Then paste the token again.`);
         } else if (mutationRejected(error)) {
-          setFailure(
+          fail(
             "Cloudflare refused the connection. Check the token’s permissions and the chosen domains, then paste the token again.",
           );
         } else {
           setNeedsRefresh(true);
-          setFailure(
+          fail(
             "We couldn’t confirm whether this saved. Reload the connection to check, then paste the token again if needed.",
           );
         }
@@ -292,6 +292,7 @@ export function CloudflareForm({
             label="Account ID"
             description="On your domain’s overview page, under API."
             value={accountId}
+            error={errors.account}
             onChange={(event) => setAccountId(event.target.value.trim())}
             required
             minLength={32}
@@ -303,6 +304,7 @@ export function CloudflareForm({
             label="API token"
             description="Stored encrypted. Never shown again."
             value={token}
+            error={errors.token}
             onValueChange={setToken}
             required
             maxLength={4096}
@@ -318,6 +320,7 @@ export function CloudflareForm({
                 : undefined
             }
             multiple
+            error={errors.zones}
             items={zoneItems}
             value={zoneItems.filter((item) => selected.includes(item.value))}
             onValueChange={(value) =>
@@ -367,16 +370,6 @@ export function CloudflareForm({
           </Button>
         </div>
       </fieldset>
-      {failure && (
-        <Text variant="error" size="sm">
-          <span role="alert">{failure}</span>
-        </Text>
-      )}
-      {notice && (
-        <Text variant="secondary" size="sm">
-          <span role="status">{notice}</span>
-        </Text>
-      )}
       <div className="flex flex-wrap gap-2">
         <Button
           type="submit"

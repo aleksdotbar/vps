@@ -1,5 +1,12 @@
 import { Code, ConnectError } from "@connectrpc/connect";
-import { Banner, Button, Input, LayerCard, Link, Text } from "@cloudflare/kumo";
+import {
+  Banner,
+  Button,
+  Input,
+  LayerCard,
+  Link,
+  useKumoToastManager,
+} from "@cloudflare/kumo";
 import { InfoIcon } from "@phosphor-icons/react";
 import { useMutation } from "@tanstack/react-query";
 import { useRouter } from "@tanstack/react-router";
@@ -24,7 +31,8 @@ export function ProjectForm({
   const expireSession = useSessionExpiry();
   const [intent, setIntent] =
     useState<Parameters<typeof panel.createProject>[0]>();
-  const [failure, setFailure] = useState("");
+  const toast = useKumoToastManager();
+  const fail = (title: string) => toast.add({ title, variant: "error" });
   const [createdId, setCreatedId] = useState("");
 
   const creation = useMutation({ mutationFn: create });
@@ -34,7 +42,6 @@ export function ProjectForm({
     const isCurrent = capturePage();
     onLockChange(true);
     setIntent(request);
-    setFailure("");
     try {
       const result = await panel.createProject(request);
       if (!result.project) throw new Error("Missing created project");
@@ -56,9 +63,7 @@ export function ProjectForm({
       } catch (navigationError) {
         if (!isCurrent()) return;
         if (!(await expireSession(navigationError)) && isCurrent())
-          setFailure(
-            "Project created, but it didn’t open. Use the link below.",
-          );
+          fail("Project created, but it didn’t open. Use the link below.");
       }
     } catch (createError) {
       if (!isCurrent()) return;
@@ -67,14 +72,14 @@ export function ProjectForm({
       if (mutationRejected(createError)) {
         setIntent(undefined);
         onLockChange(false);
-        setFailure(
+        fail(
           createError instanceof ConnectError &&
             createError.code === Code.AlreadyExists
             ? "This repository already has a project."
             : "The project couldn’t be created. Check repository access.",
         );
       } else {
-        setFailure(
+        fail(
           "We couldn’t confirm this. Check again — it won’t create a duplicate.",
         );
       }
@@ -126,11 +131,6 @@ export function ProjectForm({
               </>
             }
           />
-          {failure && (
-            <Text variant="error" role="alert">
-              {failure}
-            </Text>
-          )}
           <div className="flex items-center gap-3">
             {intent ? (
               <Button
