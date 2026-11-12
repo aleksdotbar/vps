@@ -1,58 +1,78 @@
-import { Link, Outlet, useRouter } from "@tanstack/react-router";
+import {
+  CubeIcon,
+  FolderSimpleIcon,
+  GearIcon,
+  HardDrivesIcon,
+  PulseIcon,
+} from "@phosphor-icons/react";
+import {
+  Link,
+  Outlet,
+  useRouter,
+  useRouterState,
+} from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 
 import { queryClient, unauthenticated } from "./api";
 import { Logout } from "./session";
 
+function section(pathname: string) {
+  if (/^\/(projects|environments|releases)(\/|$)/.test(pathname))
+    return "projects";
+  if (pathname.startsWith("/servers")) return "servers";
+  if (pathname.startsWith("/operations")) return "activity";
+  if (pathname.startsWith("/settings")) return "settings";
+  return "";
+}
+
 export function Shell() {
+  const current = section(
+    useRouterState({ select: (state) => state.location.pathname }),
+  );
+  const mark = (name: string) =>
+    current === name ? ({ "aria-current": "page" } as const) : {};
   return (
     <div className="app">
       <a className="skip-link" href="#main">
         Skip to content
       </a>
-      <header className="app-header">
+      <aside className="sidebar">
         <Link className="brand" to="/projects" search={{ cursor: "" }}>
-          Hosting panel
+          <span className="brand-mark" aria-hidden="true">
+            <CubeIcon size={16} weight="bold" />
+          </span>
+          <span className="brand-text">Panel</span>
         </Link>
-        <span className="private-label">Private installation</span>
-        <Logout />
-      </header>
-      <div className="app-body">
-        <aside>
-          <nav aria-label="Main navigation">
-            <Link
-              to="/projects"
-              search={{ cursor: "" }}
-              activeOptions={{ exact: false }}
-              activeProps={{ "aria-current": "page" }}
-            >
-              Projects
-            </Link>
-            <Link
-              to="/servers"
-              search={{ cursor: "" }}
-              activeOptions={{ exact: false }}
-              activeProps={{ "aria-current": "page" }}
-            >
-              Servers
-            </Link>
-            <Link
-              to="/operations"
-              search={{ environment: "", server: "", cursor: "" }}
-              activeOptions={{ exact: false }}
-              activeProps={{ "aria-current": "page" }}
-            >
-              Operations
-            </Link>
-            <Link to="/settings" activeProps={{ "aria-current": "page" }}>
-              Settings
-            </Link>
-          </nav>
-        </aside>
-        <main id="main" className="main" tabIndex={-1}>
-          <Outlet />
-        </main>
-      </div>
+        <nav className="nav" aria-label="Main navigation">
+          <Link to="/projects" search={{ cursor: "" }} {...mark("projects")}>
+            <FolderSimpleIcon size={18} aria-hidden="true" />
+            <span>Projects</span>
+          </Link>
+          <Link to="/servers" search={{ cursor: "" }} {...mark("servers")}>
+            <HardDrivesIcon size={18} aria-hidden="true" />
+            <span>Servers</span>
+          </Link>
+          <Link
+            to="/operations"
+            search={{ environment: "", server: "", cursor: "" }}
+            {...mark("activity")}
+          >
+            <PulseIcon size={18} aria-hidden="true" />
+            <span>Activity</span>
+          </Link>
+          <Link to="/settings" {...mark("settings")}>
+            <GearIcon size={18} aria-hidden="true" />
+            <span>Settings</span>
+          </Link>
+        </nav>
+        <div className="sidebar-footer">
+          <Logout />
+          <span className="hint">Private over Tailscale</span>
+        </div>
+      </aside>
+      <main id="main" className="main" tabIndex={-1}>
+        <Outlet />
+      </main>
     </div>
   );
 }

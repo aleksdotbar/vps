@@ -29,7 +29,7 @@ import {
   sessionQuery,
   unauthenticated,
 } from "./api";
-import { ErrorPage, InitialLoading, PageTitle } from "./components";
+import { Card, Empty, ErrorPage, InitialLoading } from "./components";
 import { Environment } from "./environment";
 import { Project, Projects } from "./projects";
 import { Server, Servers } from "./servers";
@@ -74,23 +74,32 @@ async function required<T>(value: Promise<T>): Promise<T> {
   }
 }
 
-const root = createRootRoute({
-  component: () => (
+function Root() {
+  return (
     <>
       <NavigationProgress />
       <Outlet />
     </>
-  ),
+  );
+}
+
+const root = createRootRoute({
+  component: Root,
   errorComponent: ErrorPage,
   notFoundComponent: () => (
-    <main className="not-found">
-      <PageTitle
-        title="Page not found"
-        description="Check the address or return to your projects."
-      />
-      <Link to="/projects" search={{ cursor: "" }}>
-        Projects
-      </Link>
+    <main className="standalone">
+      <Card>
+        <Empty
+          title="Page not found"
+          actions={
+            <Link to="/projects" search={{ cursor: "" }}>
+              Go to projects
+            </Link>
+          }
+        >
+          Check the address, or start from your projects.
+        </Empty>
+      </Card>
     </main>
   ),
 });
@@ -139,7 +148,19 @@ const projects = createRoute({
   validateSearch: (search) => pageSearch.parse(search),
   loaderDeps: ({ search }) => search,
   loader: ({ deps }) =>
-    required(queryClient.ensureQueryData(projectsQuery(deps.cursor))),
+    required(
+      Promise.all([
+        queryClient.ensureQueryData(projectsQuery(deps.cursor)),
+        queryClient.ensureQueryData(integrationQuery()),
+        queryClient.ensureQueryData(cloudflareIntegrationQuery()),
+        (async () => {
+          const { servers } = await queryClient.ensureQueryData(serversQuery());
+          const panelHost = servers.find((server) => server.panelHost);
+          if (panelHost)
+            await queryClient.ensureQueryData(serverTunnelQuery(panelHost.id));
+        })(),
+      ]),
+    ),
   component: ProjectsRoute,
 });
 function ProjectsRoute() {
@@ -178,6 +199,7 @@ const project = createRoute({
         queryClient.ensureQueryData(
           environmentsQuery(params.projectId, deps.cursor),
         ),
+        queryClient.ensureQueryData(serversQuery()),
       ]),
     ),
   component: ProjectRoute,
@@ -308,9 +330,14 @@ const environment = createRoute({
           ),
         ]);
         if (value.environment?.settings)
-          await queryClient.ensureQueryData(
-            serverQuery(value.environment.settings.serverId),
-          );
+          await Promise.all([
+            queryClient.ensureQueryData(
+              serverQuery(value.environment.settings.serverId),
+            ),
+            queryClient.ensureQueryData(
+              projectQuery(value.environment.projectId),
+            ),
+          ]);
       })(),
     ),
   component: EnvironmentRoute,

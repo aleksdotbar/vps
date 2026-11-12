@@ -1,9 +1,21 @@
+import { PackageIcon } from "@phosphor-icons/react";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
+import type { ReactNode } from "react";
 
 import type { Release } from "../../gen/ts/panel/v1/panel_pb";
 import { environmentQuery, releaseQuery } from "./api";
-import { Detail, Details, Empty, ObservedTime, PageTitle } from "./components";
+import {
+  Badge,
+  Banner,
+  Card,
+  Detail,
+  Details,
+  Empty,
+  Id,
+  ObservedTime,
+  PageHeader,
+} from "./components";
 import { DeploymentAction } from "./deployment-action";
 
 export function ReleaseDetail({ id }: { id: string }) {
@@ -11,9 +23,13 @@ export function ReleaseDetail({ id }: { id: string }) {
   const release = record.data.release;
   if (!release)
     return (
-      <Empty title="Release unavailable">
-        Return to projects and open the environment's release history.
-      </Empty>
+      <Card>
+        <Empty title="Release not found">
+          <Link to="/projects" search={{ cursor: "" }}>
+            Back to projects
+          </Link>
+        </Empty>
+      </Card>
     );
   return <ReleaseSnapshot release={release} refreshFailed={!!record.error} />;
 }
@@ -32,103 +48,134 @@ function ReleaseSnapshot({
   });
   const environment = environmentRecord.data.environment;
   const build = release.build;
-  const position = !environment
-    ? "Release selection unknown"
-    : release.id === environment.currentReleaseId
-      ? "Current release"
-      : release.id === environment?.previousReleaseId
-        ? "Previous release"
-        : "Prepared release";
+  const current = environment?.currentReleaseId === release.id;
+  const previous = environment?.previousReleaseId === release.id;
+  const shortSha = build?.sourceSha.slice(0, 7);
 
-  return (
+  const content = (trigger?: ReactNode, panel?: ReactNode) => (
     <>
-      <Link
-        className="back-link"
-        to="/environments/$environmentId"
-        params={{ environmentId }}
-        search={{ services: "", releases: "" }}
+      <PageHeader
+        breadcrumbs={[
+          <Link
+            key="environment"
+            to="/environments/$environmentId"
+            params={{ environmentId }}
+            search={{ services: "", releases: "" }}
+          >
+            {environment?.settings?.name ?? "Environment"}
+          </Link>,
+        ]}
+        title={
+          <span>
+            Release{" "}
+            <code style={{ fontSize: "inherit" }}>{shortSha ?? ""}</code>
+          </span>
+        }
+        badge={
+          current ? (
+            <Badge tone="success">Current</Badge>
+          ) : previous ? (
+            <Badge>Previous</Badge>
+          ) : undefined
+        }
+        description={
+          <ObservedTime value={release.createdAt} prefix="Created" />
+        }
       >
-        {environment?.settings?.name || "Environment"}
-      </Link>
-      <PageTitle title="Release details" description={release.id}>
-        <span className="status">{position}</span>
-      </PageTitle>
-      {(refreshFailed || environmentRecord.error) && (
-        <p role="alert">
-          Refresh failed. Showing previously loaded metadata; current release
-          selection may have changed.
-        </p>
-      )}
-      <p className="muted">
-        This immutable snapshot records prepared configuration. It does not
-        establish current service health or confirm deployment.
-      </p>
-      <Details>
-        <Detail label="Created">
-          <ObservedTime value={release.createdAt} />
-        </Detail>
-        <Detail label="Source SHA">
-          <code>{build?.sourceSha || "Unavailable"}</code>
-        </Detail>
-        <Detail label="Branch">{build?.branch || "Unavailable"}</Detail>
-        <Detail label="GitHub repository ID">
-          {build?.githubRepositoryId.toString() || "Unavailable"}
-        </Detail>
-        <Detail label="Settings version">
-          {release.environmentVersion.toString()}
-        </Detail>
-        <Detail label="Binding version">
-          {release.bindingVersion.toString()}
-        </Detail>
-        <Detail label="Secret version">
-          {release.secretVersionId || "Unavailable"}
-        </Detail>
-        <Detail label="Configuration SHA-256">
-          <code>{release.configurationSha256 || "Unavailable"}</code>
-        </Detail>
-      </Details>
-      {environment && (
-        <DeploymentAction
-          key={release.id}
-          environment={environment}
-          release={release}
-          refreshFailed={refreshFailed || !!environmentRecord.error}
-        />
-      )}
-      <section aria-labelledby="release-images-title">
-        <h2 id="release-images-title">Service images</h2>
-        {release.images.length ? (
-          <ul className="resource-list">
-            {release.images.map((image) => (
-              <li key={image.service}>
-                <div>
-                  <strong>{image.service}</strong>
-                  <code className="digest">{image.imageDigest}</code>
-                </div>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="muted">No image metadata recorded.</p>
+        {!current && trigger}
+      </PageHeader>
+      <div className="stack">
+        {panel}
+        {(refreshFailed || environmentRecord.error) && (
+          <Banner tone="warning">
+            Couldn’t refresh this release. Details may be out of date.
+          </Banner>
         )}
-      </section>
-      <section aria-labelledby="release-domains-title">
-        <h2 id="release-domains-title">Captured domains</h2>
-        {release.domains.length ? (
-          <ul className="resource-list">
-            {release.domains.map((domain) => (
-              <li key={domain.hostname}>
-                <span>{domain.hostname}</span>
-                <code>
-                  {domain.service}:{domain.port}
-                </code>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="muted">No domains captured.</p>
-        )}
-      </section>
+        <div className="grid-2">
+          <div className="stack">
+            <Card title="Images" labelledBy="release-images-title" flush>
+              {release.images.length ? (
+                <ul className="list">
+                  {release.images.map((image) => (
+                    <li key={image.service}>
+                      <div className="list-row">
+                        <span className="empty-icon" style={{ margin: 0 }}>
+                          <PackageIcon size={18} aria-hidden="true" />
+                        </span>
+                        <span className="list-main">
+                          <span className="list-title">{image.service}</span>
+                          <span className="list-meta">
+                            <Id value={image.imageDigest} label="image" />
+                          </span>
+                        </span>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <Empty title="No images recorded" />
+              )}
+            </Card>
+            <Card title="Domains" labelledBy="release-domains-title" flush>
+              {release.domains.length ? (
+                <ul className="list">
+                  {release.domains.map((domain) => (
+                    <li key={domain.hostname}>
+                      <div className="list-row">
+                        <span className="list-main">
+                          <span className="list-title">{domain.hostname}</span>
+                        </span>
+                        <span className="chip">
+                          {domain.service}:{domain.port}
+                        </span>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <Empty title="No public domains" />
+              )}
+            </Card>
+          </div>
+          <Card title="Details" labelledBy="release-details-title">
+            <Details stacked>
+              <Detail label="Commit">
+                <Id value={build?.sourceSha ?? ""} label="commit" />
+              </Detail>
+              <Detail label="Branch">{build?.branch}</Detail>
+              <Detail label="Settings version">
+                {release.environmentVersion.toString()}
+              </Detail>
+              <Detail label="Secrets version">
+                <Id
+                  value={release.secretVersionId}
+                  short
+                  label="secrets version"
+                />
+              </Detail>
+              <Detail label="Configuration hash">
+                <Id
+                  value={release.configurationSha256}
+                  short
+                  label="configuration hash"
+                />
+              </Detail>
+            </Details>
+          </Card>
+        </div>
+      </div>
     </>
+  );
+
+  if (!environment) return content();
+  return (
+    <DeploymentAction
+      key={release.id}
+      environment={environment}
+      release={release}
+      refreshFailed={refreshFailed || !!environmentRecord.error}
+    >
+      {({ trigger, panel }) => content(trigger, panel)}
+    </DeploymentAction>
   );
 }

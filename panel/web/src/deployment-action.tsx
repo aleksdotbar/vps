@@ -1,7 +1,7 @@
-import { Button } from "@cloudflare/kumo/components/button";
 import { Code, ConnectError } from "@connectrpc/connect";
 import { Link, useRouter } from "@tanstack/react-router";
 import { useRef, useState } from "react";
+import type { ReactNode } from "react";
 import { z } from "zod";
 
 import {
@@ -17,7 +17,15 @@ import {
   panel,
   refreshEnvironment,
 } from "./api";
-import { Detail, Details } from "./components";
+import {
+  Banner,
+  Button,
+  Card,
+  Detail,
+  Details,
+  Id,
+  ObservedTime,
+} from "./components";
 import { usePageContinuation } from "./use-page-continuation";
 import { useSessionExpiry } from "./use-session-expiry";
 
@@ -38,17 +46,17 @@ function deploymentError(error: unknown) {
   const reason = error.findDetails(ErrorDetailSchema)[0]?.reason;
   switch (reason) {
     case ErrorReason.STALE_VERSION:
-      return "Settings or secrets changed. Review the latest environment before submitting a new request.";
+      return "Settings or secrets changed while you were reviewing. Review again before deploying.";
     case ErrorReason.OPERATION_CONFLICT:
-      return "An unresolved operation blocks this action. Open operation history and wait for reconciliation.";
+      return "Another deployment is still in progress. Wait for it to finish in Activity.";
     case ErrorReason.SERVER_NOT_READY:
-      return "The assigned server is not ready. Open its details and resolve setup or connectivity first.";
+      return "The server isn’t ready. Open the server to see what needs attention.";
     case ErrorReason.INCOMPATIBLE_CONFIGURATION:
-      return "Check the GitHub installation, the commit's Compose files and images, the retained release assignment and required Tunnel setup.";
+      return "This commit can’t be deployed as configured. Check the Compose files, images, GitHub access and the Cloudflare tunnel.";
     case ErrorReason.REQUEST_ID_REUSED:
-      return "The request identity conflicts with an existing intent. Check operation history before starting another action.";
+      return "This request conflicts with an earlier one. Check Activity before trying again.";
     case ErrorReason.RESOURCE_IN_USE:
-      return "A retained resource conflicts with this action or operation capacity is full. Check operation history and environment configuration.";
+      return "A conflicting resource or a full queue blocks this. Check Activity and the environment settings.";
     default:
       return errorMessage(error);
   }
@@ -58,10 +66,15 @@ export function DeploymentAction({
   environment,
   release,
   refreshFailed,
+  serverName,
+  children,
 }: {
   environment: Environment;
   release?: Release;
   refreshFailed: boolean;
+  serverName?: string;
+  /** Places the trigger (e.g. in the page header) and the review panel. */
+  children: (parts: { trigger: ReactNode; panel: ReactNode }) => ReactNode;
 }) {
   const router = useRouter();
   const expireSession = useSessionExpiry();
@@ -75,7 +88,6 @@ export function DeploymentAction({
   const [failure, setFailure] = useState("");
   const stale =
     !!selection && environment.version !== selection.environment.version;
-  const title = release ? "Rollback environment" : "Deploy environment";
   const requestId = selection?.intent.request.mutation?.requestId;
 
   async function prepare() {
@@ -161,7 +173,7 @@ export function DeploymentAction({
     } catch (error) {
       if (isCurrent() && !(await expireSession(error)) && isCurrent())
         setFailure(
-          "Request accepted, but status could not be opened. Use Open operation to check its result.",
+          "Deployment started, but its status page didn’t open. Use the link below.",
         );
     }
   }
@@ -195,15 +207,13 @@ export function DeploymentAction({
       if (isCurrent() && (await expireSession(error))) return;
       if (mutationRejected(error) && !wasUnknown) {
         setSelection(undefined);
-        setFailure(
-          `Request refused. ${deploymentError(error)} Review current metadata before trying again.`,
-        );
+        setFailure(deploymentError(error));
       } else {
         setUnknown(true);
         setFailure(
           wasUnknown && mutationRejected(error)
-            ? `Retry refused. The earlier request may still have been accepted. ${deploymentError(error)}`
-            : "Request outcome unknown. Check operation status or retry the exact saved request. Do not start another deployment or rollback until resolved.",
+            ? `Retry refused — the first request may still have started. ${deploymentError(error)}`
+            : "We couldn’t confirm whether this started. Check its status or retry the same request — it won’t run twice.",
         );
       }
     } finally {
@@ -233,8 +243,8 @@ export function DeploymentAction({
       if (isCurrent() && !(await expireSession(error)) && isCurrent())
         setFailure(
           error instanceof ConnectError && error.code === Code.NotFound
-            ? "No operation is visible yet. The original request may still be processing. Keep this request and check again or retry it unchanged."
-            : `Status could not be checked. ${deploymentError(error)} The request remains unresolved.`,
+            ? "Not visible yet — it may still be processing. Check again or retry the same request."
+            : `Couldn’t check the status. ${deploymentError(error)}`,
         );
     } finally {
       running.current = false;
@@ -242,86 +252,36 @@ export function DeploymentAction({
     }
   }
 
-  return (
-    <section
-      aria-labelledby={release ? "rollback-title" : "deploy-title"}
-      aria-busy={pending}
+  const name =
+    selection?.environment.settings?.name ?? environment.settings?.name;
+  const trigger = acceptedId ? null : (
+    <Button
+      variant={release ? "secondary" : "primary"}
+      pending={pending && !selection}
+      disabled={pending || !!selection}
+      onClick={() => void prepare()}
     >
-      <h2 id={release ? "rollback-title" : "deploy-title"}>{title}</h2>
-      {!selection && !acceptedId && (
-        <Button
-          variant="primary"
-          disabled={pending}
-          onClick={() => void prepare()}
-        >
-          {pending
-            ? "Loading selection…"
-            : release
-              ? "Review rollback"
-              : "Deploy…"}
-        </Button>
-      )}
+      {release ? "Roll back to this release" : "Deploy"}
+    </Button>
+  );
+
+  const review = (
+    <>
       {selection && !acceptedId && (
-        <>
-          <p>
-            {release
-              ? "Restore this release's images, Compose configuration, domains and secret versions for the entire environment. Brief downtime is possible. Database contents, external effects and revoked credentials are not restored."
-              : "Deploy this selected branch revision with the captured settings and secrets for the entire environment. GitHub Actions may need to build it first. Brief downtime is possible."}
-          </p>
-          <Details>
-            <Detail label="Environment">
-              {selection.environment.settings?.name || selection.environment.id}
-            </Detail>
-            <Detail label="Server">
-              <code>{selection.environment.settings?.serverId}</code>
-            </Detail>
-            <Detail label={release ? "Release source" : "Source SHA"}>
-              <code>{selection.source}</code>
-            </Detail>
-            <Detail label="Branch">
-              {release
-                ? release.build?.branch || "Unavailable"
-                : selection.environment.settings?.branch}
-            </Detail>
-            <Detail label="Settings version">
-              {release
-                ? release.environmentVersion.toString()
-                : selection.environment.version.toString()}
-            </Detail>
-            <Detail label="Secret version">
-              {release
-                ? release.secretVersionId
-                : selection.environment.latestSecretVersionId || "None"}
-            </Detail>
-            {release && (
-              <Detail label="Selected release">
-                <code>{release.id}</code>
-              </Detail>
-            )}
-          </Details>
-          {!unknown && (stale || refreshFailed) && (
-            <p role="alert">
-              Environment metadata changed or refresh failed. Review the current
-              selection before confirming.
-            </p>
-          )}
-          {unknown && (
-            <p className="notice">
-              This exact request is retained while this page remains open. Keep
-              it open until resolved. Request ID: <code>{requestId}</code>
-            </p>
-          )}
-          <div className="form-actions">
-            {unknown ? (
+        <Card
+          title={release ? `Roll back ${name}?` : `Deploy to ${name}?`}
+          labelledBy="deploy-review-title"
+          footer={
+            unknown ? (
               <>
-                <Button disabled={pending} onClick={() => void check()}>
-                  Check operation status
-                </Button>
                 <Button
-                  variant="secondary"
-                  disabled={pending}
-                  onClick={() => void submit()}
+                  variant="primary"
+                  pending={pending}
+                  onClick={() => void check()}
                 >
+                  Check status
+                </Button>
+                <Button disabled={pending} onClick={() => void submit()}>
                   Retry same request
                 </Button>
               </>
@@ -329,24 +289,14 @@ export function DeploymentAction({
               <>
                 <Button
                   variant="primary"
-                  disabled={pending || stale || refreshFailed}
+                  pending={pending}
+                  disabled={stale || refreshFailed}
                   onClick={() => void submit()}
                 >
-                  {pending
-                    ? "Submitting…"
-                    : release
-                      ? "Confirm whole-environment rollback"
-                      : "Confirm deployment"}
+                  {release ? "Roll back" : "Deploy now"}
                 </Button>
                 <Button
-                  variant="secondary"
-                  disabled={pending}
-                  onClick={() => void prepare()}
-                >
-                  Refresh selection
-                </Button>
-                <Button
-                  variant="secondary"
+                  variant="ghost"
                   disabled={pending}
                   onClick={() => {
                     setSelection(undefined);
@@ -356,34 +306,86 @@ export function DeploymentAction({
                   Cancel
                 </Button>
               </>
+            )
+          }
+        >
+          <p>
+            {release ? (
+              <>
+                Restores this release’s images, configuration, domains and
+                secrets. Databases and other data are not rolled back.
+              </>
+            ) : (
+              <>
+                Deploys the latest commit on{" "}
+                <code>{selection.environment.settings?.branch}</code> with the
+                current settings and secrets. If its images aren’t built yet,
+                the deployment waits for them.
+              </>
+            )}{" "}
+            <span className="muted">
+              Services restart, so expect a brief interruption.
+            </span>
+          </p>
+          <Details>
+            <Detail label="Commit">
+              <Id value={selection.source} short label="commit" />
+            </Detail>
+            <Detail label="Branch">
+              {release
+                ? release.build?.branch || "—"
+                : selection.environment.settings?.branch}
+            </Detail>
+            <Detail label="Server">{serverName ?? "Assigned server"}</Detail>
+            {release && (
+              <Detail label="Release from">
+                <ObservedTime value={release.createdAt} />
+              </Detail>
             )}
-          </div>
-        </>
+          </Details>
+          {!unknown && (stale || refreshFailed) && (
+            <Banner
+              tone="warning"
+              actions={
+                <Button
+                  size="sm"
+                  pending={pending}
+                  onClick={() => void prepare()}
+                >
+                  Review again
+                </Button>
+              }
+            >
+              The environment changed while you were reviewing.
+            </Banner>
+          )}
+          {unknown && (
+            <Banner tone="warning" title="Outcome not confirmed">
+              Keep this page open until it’s resolved. Request{" "}
+              <Id value={requestId ?? ""} short label="request ID" />
+            </Banner>
+          )}
+          {failure && (
+            <p className="field-error" role="alert">
+              {failure}
+            </p>
+          )}
+        </Card>
       )}
-      {failure && (
-        <p className="form-error" role="alert">
-          {failure}
-        </p>
-      )}
+      {!selection && failure && <Banner tone="danger">{failure}</Banner>}
       {acceptedId && (
-        <p role="status">
-          Request accepted. Deployment success is not yet confirmed.{" "}
+        <Banner tone="info" role="status">
+          {release ? "Rollback" : "Deployment"} started.{" "}
           <Link
             to="/operations/$operationId"
             params={{ operationId: acceptedId }}
           >
-            Open operation
+            Follow its progress
           </Link>
-        </p>
+        </Banner>
       )}
-      <p className="action-link">
-        <Link
-          to="/operations"
-          search={{ environment: environment.id, server: "", cursor: "" }}
-        >
-          Environment operation history
-        </Link>
-      </p>
-    </section>
+    </>
   );
+
+  return children({ trigger, panel: review });
 }

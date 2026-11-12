@@ -1,5 +1,4 @@
 import { create } from "@bufbuild/protobuf";
-import { Button } from "@cloudflare/kumo/components/button";
 import { Code, ConnectError } from "@connectrpc/connect";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { Link, useRouter } from "@tanstack/react-router";
@@ -18,6 +17,7 @@ import {
   serverQuery,
   serversQuery,
 } from "./api";
+import { Banner, Button, ButtonLink } from "./components";
 import { EnvironmentFields } from "./environment-fields";
 import { usePageContinuation } from "./use-page-continuation";
 import { useSessionExpiry } from "./use-session-expiry";
@@ -98,11 +98,11 @@ export function EnvironmentForm({
     try {
       await reload(isCurrent);
       if (!isCurrent()) return;
-      setNotice("Current settings loaded. Unsaved edits were discarded.");
+      setNotice("Unsaved changes discarded.");
     } catch (error) {
       if (!isCurrent()) return;
       if (!(await expireSession(error)) && isCurrent())
-        setFailure("Settings refresh failed. Refresh before saving again.");
+        setFailure("Couldn’t reload the settings. Try again.");
     } finally {
       if (isMounted()) setPending(false);
     }
@@ -126,9 +126,7 @@ export function EnvironmentForm({
       const savedId = z.uuid().parse(result.environment.id);
       if (isCurrent()) {
         setIntent(undefined);
-        setNotice(
-          `Environment version ${result.environment.version} saved. Running applications were not restarted.`,
-        );
+        setNotice("Saved. Deploy to apply the changes.");
         if (next.kind === "create") setCreatedId(savedId);
         else setNeedsRefresh(true);
       }
@@ -148,7 +146,7 @@ export function EnvironmentForm({
         if (!isCurrent()) return;
         if (!(await expireSession(refreshError)) && isCurrent())
           setFailure(
-            "Saved, but current details could not be loaded. Open the environment or refresh before editing again.",
+            "Saved, but the page couldn’t reload. Refresh it before editing again.",
           );
       }
     } catch (error) {
@@ -164,7 +162,7 @@ export function EnvironmentForm({
         onLockChange?.(false);
         setNeedsRefresh(true);
         setFailure(
-          "Settings changed elsewhere. Refreshing the current version discards this draft; review before saving again.",
+          "These settings were changed elsewhere. Showing the latest version — review and save again.",
         );
         try {
           await reload(isCurrent);
@@ -172,7 +170,7 @@ export function EnvironmentForm({
           if (!isCurrent()) return;
           if (!(await expireSession(refreshError)) && isCurrent())
             setFailure(
-              "Settings changed elsewhere and refresh failed. Refresh before saving again.",
+              "These settings were changed elsewhere. Reload the page.",
             );
         }
       } else if (mutationRejected(error)) {
@@ -180,12 +178,12 @@ export function EnvironmentForm({
         onLockChange?.(false);
         setFailure(
           error instanceof ConnectError && error.code === Code.AlreadyExists
-            ? "The environment name or a hostname is already in use. Check the name and domain ownership."
-            : "Settings were refused. Check the server, branch, relative override path and domains. A server move is refused after deployment execution starts.",
+            ? "That name or one of the domains is already in use."
+            : "These settings were refused. Check the server, branch, override path and domains.",
         );
       } else {
         setFailure(
-          "Save outcome unknown. Check the same request to recover its result without repeating the change.",
+          "We couldn’t confirm the save. Check again — it won’t apply twice.",
         );
       }
     } finally {
@@ -197,14 +195,14 @@ export function EnvironmentForm({
     event.preventDefault();
     if (blocked) return;
     if (new TextEncoder().encode(settings.composeOverridePath).length > 512) {
-      setFailure("The Compose override path must not exceed 512 bytes.");
+      setFailure("The override path is too long.");
       return;
     }
     if (
       new Set(settings.domains.map((domain) => domain.hostname)).size !==
       settings.domains.length
     ) {
-      setFailure("Each hostname may appear only once.");
+      setFailure("Each domain can only be used once.");
       return;
     }
     const mutation = { requestId: crypto.randomUUID() };
@@ -225,37 +223,33 @@ export function EnvironmentForm({
 
   return (
     <>
-      <p className="notice">
-        Saving settings creates pending configuration. Domain edits leave active
-        routes and already queued release snapshots unchanged. Server, branch or
-        override changes invalidate unstarted work for the previous binding.
-      </p>
       {stale && !intent && (
-        <p role="alert">
-          Settings or secrets changed since this form opened. Refresh current
-          settings before saving.
-        </p>
+        <Banner
+          tone="warning"
+          actions={
+            <Button size="sm" pending={pending} onClick={() => void refresh()}>
+              Load latest
+            </Button>
+          }
+        >
+          These settings changed since you opened this page.
+        </Banner>
       )}
       {serverPage.error && (
-        <p role="alert">
-          Server refresh failed. Reload the server list before saving.
-        </p>
+        <Banner tone="warning">
+          Couldn’t load servers. Reload the page before saving.
+        </Banner>
       )}
       {!serverPage.data.servers.length && !selectedServer && (
-        <p role="status">
-          No registered servers on this page. Check{" "}
+        <Banner tone="info">
+          No servers are registered yet.{" "}
           <Link to="/servers" search={{ cursor: "" }}>
-            Servers
-          </Link>{" "}
-          before creating an environment.
-        </p>
+            Open servers
+          </Link>
+        </Banner>
       )}
-      <form
-        className="settings-form environment-form"
-        onSubmit={submit}
-        aria-busy={pending}
-      >
-        <fieldset disabled={blocked} className="form-fields">
+      <form className="form" onSubmit={submit} aria-busy={pending}>
+        <fieldset disabled={blocked} className="stack">
           <EnvironmentFields
             settings={settings}
             onChange={setSettings}
@@ -270,97 +264,115 @@ export function EnvironmentForm({
               !!environment?.currentReleaseId ||
               !!environment?.previousReleaseId
             }
+            serverPages={
+              !pending &&
+              !intent &&
+              !createdId &&
+              (cursor || serverPage.data.page?.nextPageToken) ? (
+                <span className="row">
+                  {cursor &&
+                    (environment ? (
+                      <ButtonLink
+                        variant="secondary"
+                        size="sm"
+                        to="/environments/$environmentId/settings"
+                        params={{ environmentId: environment.id }}
+                        search={{ servers: "" }}
+                      >
+                        First servers
+                      </ButtonLink>
+                    ) : (
+                      <ButtonLink
+                        variant="secondary"
+                        size="sm"
+                        to="/projects/$projectId/environments/new"
+                        params={{ projectId }}
+                        search={{ preset, servers: "" }}
+                      >
+                        First servers
+                      </ButtonLink>
+                    ))}
+                  {serverPage.data.page?.nextPageToken &&
+                    (environment ? (
+                      <ButtonLink
+                        variant="secondary"
+                        size="sm"
+                        to="/environments/$environmentId/settings"
+                        params={{ environmentId: environment.id }}
+                        search={{ servers: serverPage.data.page.nextPageToken }}
+                      >
+                        More servers
+                      </ButtonLink>
+                    ) : (
+                      <ButtonLink
+                        variant="secondary"
+                        size="sm"
+                        to="/projects/$projectId/environments/new"
+                        params={{ projectId }}
+                        search={{
+                          preset,
+                          servers: serverPage.data.page.nextPageToken,
+                        }}
+                      >
+                        More servers
+                      </ButtonLink>
+                    ))}
+                </span>
+              ) : undefined
+            }
           />
         </fieldset>
         {failure && (
-          <p className="form-error" role="alert">
+          <p className="field-error" role="alert">
             {failure}
           </p>
         )}
-        {notice && <p role="status">{notice}</p>}
-        {createdId && (
-          <Link
-            to="/environments/$environmentId"
-            params={{ environmentId: createdId }}
-            search={{ services: "", releases: "" }}
-          >
-            Open created environment
-          </Link>
+        {notice && (
+          <p className="help" role="status">
+            {notice}
+          </p>
         )}
         <div className="form-actions">
           {intent ? (
             <Button
               type="button"
-              disabled={pending}
+              variant="primary"
+              pending={pending}
               onClick={() => void save(intent)}
             >
-              Check save result
+              Check save
             </Button>
           ) : (
-            <Button type="submit" variant="primary" disabled={blocked}>
-              {environment ? "Save settings" : "Create environment"}
+            <Button
+              type="submit"
+              variant="primary"
+              pending={pending}
+              disabled={blocked && !pending}
+            >
+              {environment ? "Save changes" : "Create environment"}
             </Button>
           )}
           {environment && (
             <Button
               type="button"
-              variant="secondary"
+              variant="ghost"
               disabled={pending || !!intent}
               onClick={() => void refresh()}
             >
-              Discard edits and refresh
+              Discard changes
             </Button>
           )}
-          <Button
-            type="button"
-            variant="secondary"
-            disabled={pending || !!intent || serverPage.isFetching}
-            onClick={() => void serverPage.refetch()}
-          >
-            Refresh server choices
-          </Button>
+          {createdId && (
+            <Link
+              to="/environments/$environmentId"
+              params={{ environmentId: createdId }}
+              search={{ services: "", releases: "" }}
+            >
+              Open environment
+            </Link>
+          )}
         </div>
       </form>
-      {!pending && !intent && !createdId && (
-        <nav className="pagination" aria-label="Server choices">
-          {cursor &&
-            (environment ? (
-              <Link
-                to="/environments/$environmentId/settings"
-                params={{ environmentId: environment.id }}
-                search={{ servers: "" }}
-              >
-                Newest servers
-              </Link>
-            ) : (
-              <Link
-                to="/projects/$projectId/environments/new"
-                params={{ projectId }}
-                search={{ preset, servers: "" }}
-              >
-                Newest servers
-              </Link>
-            ))}
-          {serverPage.data.page?.nextPageToken &&
-            (environment ? (
-              <Link
-                to="/environments/$environmentId/settings"
-                params={{ environmentId: environment.id }}
-                search={{ servers: serverPage.data.page.nextPageToken }}
-              >
-                Older servers
-              </Link>
-            ) : (
-              <Link
-                to="/projects/$projectId/environments/new"
-                params={{ projectId }}
-                search={{ preset, servers: serverPage.data.page.nextPageToken }}
-              >
-                Older servers
-              </Link>
-            ))}
-        </nav>
-      )}
     </>
   );
 }

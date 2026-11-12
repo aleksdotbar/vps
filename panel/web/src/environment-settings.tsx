@@ -4,7 +4,13 @@ import { useState } from "react";
 
 import type { Server } from "../../gen/ts/panel/v1/panel_pb";
 import { environmentQuery, projectQuery } from "./api";
-import { Empty, PageTitle } from "./components";
+import {
+  Banner,
+  Card,
+  Empty,
+  EnvironmentStatus,
+  PageHeader,
+} from "./components";
 import { EnvironmentForm } from "./environment-form";
 
 const newEnvironmentRoute = getRouteApi(
@@ -48,52 +54,68 @@ export function CreateEnvironment({
   const [locked, setLocked] = useState(false);
   if (!data.project)
     return (
-      <Empty title="Project unavailable">Return to Projects and refresh.</Empty>
+      <Card>
+        <Empty title="Project not found">
+          <Link to="/projects" search={{ cursor: "" }}>
+            Back to projects
+          </Link>
+        </Empty>
+      </Card>
     );
   return (
     <>
-      <Link
-        className="back-link"
-        to="/projects/$projectId"
-        params={{ projectId }}
-        search={{ cursor: "" }}
+      <PageHeader
+        breadcrumbs={[
+          <Link key="projects" to="/projects" search={{ cursor: "" }}>
+            Projects
+          </Link>,
+          <Link
+            key="project"
+            to="/projects/$projectId"
+            params={{ projectId }}
+            search={{ cursor: "" }}
+          >
+            {data.project.name}
+          </Link>,
+        ]}
+        title="New environment"
+        description="Deploy one branch to a server, with its own secrets and domains."
       >
-        Project environments
-      </Link>
-      <PageTitle title="New environment" description={data.project.name} />
-      {error && (
-        <p role="alert">
-          Project refresh failed. Previously loaded project details may be out
-          of date.
-        </p>
-      )}
-      {!locked && (
-        <nav className="form-actions" aria-label="Environment defaults">
-          <Link
-            to="/projects/$projectId/environments/new"
-            params={{ projectId }}
-            search={{ preset: "staging", servers: "" }}
-            aria-current={preset === "staging" ? "page" : undefined}
-          >
-            Start with staging defaults
-          </Link>
-          <Link
-            to="/projects/$projectId/environments/new"
-            params={{ projectId }}
-            search={{ preset: "production", servers: "" }}
-            aria-current={preset === "production" ? "page" : undefined}
-          >
-            Start with production defaults
-          </Link>
-        </nav>
-      )}
-      <EnvironmentForm
-        key={`${projectId}:${preset}`}
-        projectId={projectId}
-        preset={preset}
-        cursor={cursor}
-        onLockChange={setLocked}
-      />
+        {!locked && (
+          <nav className="segmented" aria-label="Start from">
+            <Link
+              to="/projects/$projectId/environments/new"
+              params={{ projectId }}
+              search={{ preset: "staging", servers: "" }}
+              aria-current={preset === "staging" ? "page" : undefined}
+            >
+              Staging
+            </Link>
+            <Link
+              to="/projects/$projectId/environments/new"
+              params={{ projectId }}
+              search={{ preset: "production", servers: "" }}
+              aria-current={preset === "production" ? "page" : undefined}
+            >
+              Production
+            </Link>
+          </nav>
+        )}
+      </PageHeader>
+      <div className="stack" style={{ maxWidth: "48rem" }}>
+        {error && (
+          <Banner tone="warning">
+            Couldn’t refresh the project. Details may be out of date.
+          </Banner>
+        )}
+        <EnvironmentForm
+          key={`${projectId}:${preset}`}
+          projectId={projectId}
+          preset={preset}
+          cursor={cursor}
+          onLockChange={setLocked}
+        />
+      </div>
     </>
   );
 }
@@ -111,46 +133,47 @@ export function EditEnvironment({
   const environment = data.environment;
   if (!environment?.settings)
     return (
-      <Empty title="Environment unavailable">
-        Return to the project and refresh.
-      </Empty>
+      <Card>
+        <Empty title="Environment not found">
+          <Link to="/projects" search={{ cursor: "" }}>
+            Back to projects
+          </Link>
+        </Empty>
+      </Card>
     );
   return (
     <>
-      <Link
-        className="back-link"
-        to="/environments/$environmentId"
-        params={{ environmentId: id }}
-        search={{ services: "", releases: "" }}
-      >
-        Environment details
-      </Link>
-      <PageTitle
-        title={`${environment.settings.name} settings`}
-        description={`Current version: ${environment.version}`}
-      >
-        <span className="status">
-          {environment.pendingChanges
-            ? "Changes pending"
-            : environment.currentReleaseId
-              ? "Applied"
-              : "Not deployed"}
-        </span>
-      </PageTitle>
-      {error && (
-        <p role="alert">
-          Environment refresh failed. Refresh current settings before saving.
-        </p>
-      )}
-      <EnvironmentForm
-        key={id}
-        projectId={environment.projectId}
-        environment={environment}
-        preset="staging"
-        cursor={cursor}
-        initialServer={initialServer}
-        metadataError={!!error}
+      <PageHeader
+        breadcrumbs={[
+          <Link
+            key="environment"
+            to="/environments/$environmentId"
+            params={{ environmentId: id }}
+            search={{ services: "", releases: "" }}
+          >
+            {environment.settings.name}
+          </Link>,
+        ]}
+        title="Settings"
+        badge={<EnvironmentStatus environment={environment} />}
+        description="Changes apply on the next deployment."
       />
+      <div className="stack" style={{ maxWidth: "48rem" }}>
+        {error && (
+          <Banner tone="warning">
+            Couldn’t refresh these settings. Reload before saving.
+          </Banner>
+        )}
+        <EnvironmentForm
+          key={id}
+          projectId={environment.projectId}
+          environment={environment}
+          preset="staging"
+          cursor={cursor}
+          initialServer={initialServer}
+          metadataError={!!error}
+        />
+      </div>
     </>
   );
 }

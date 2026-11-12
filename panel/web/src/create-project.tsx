@@ -1,4 +1,3 @@
-import { Button } from "@cloudflare/kumo/components/button";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { getRouteApi, Link, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
@@ -6,7 +5,7 @@ import type { FormEvent } from "react";
 
 import type { Repository } from "../../gen/ts/panel/v1/panel_pb";
 import { integrationQuery, repositoriesQuery } from "./api";
-import { Empty, PageTitle } from "./components";
+import { Banner, Button, Card, Empty, PageHeader } from "./components";
 import { ProjectForm } from "./project-form";
 
 const route = getRouteApi("/_private/projects/new");
@@ -20,20 +19,33 @@ export function CreateProject({ repositoryId }: { repositoryId: string }) {
   const integration = useSuspenseQuery(integrationQuery()).data;
   return (
     <>
-      <Link className="back-link" to="/projects" search={{ cursor: "" }}>
-        All projects
-      </Link>
-      <PageTitle
+      <PageHeader
+        breadcrumbs={[
+          <Link key="projects" to="/projects" search={{ cursor: "" }}>
+            Projects
+          </Link>,
+        ]}
         title="New project"
-        description="Connect a repository whose CI pushes images tagged with each commit SHA."
+        description="Connect a GitHub repository to deploy from."
       />
-      {integration.installed ? (
-        <RepositoryPicker repositoryId={repositoryId} />
-      ) : (
-        <Empty title="Connect GitHub first">
-          Register and install your App in <Link to="/settings">Settings</Link>.
-        </Empty>
-      )}
+      <div className="stack" style={{ maxWidth: "40rem" }}>
+        {integration.installed ? (
+          <RepositoryPicker repositoryId={repositoryId} />
+        ) : (
+          <Card>
+            <Empty
+              title="Connect GitHub first"
+              actions={
+                <Link to="/settings" hash="github">
+                  Open settings
+                </Link>
+              }
+            >
+              The panel needs access to your repositories.
+            </Empty>
+          </Card>
+        )}
+      </div>
     </>
   );
 }
@@ -66,61 +78,73 @@ function RepositoryPicker({ repositoryId }: { repositoryId: string }) {
 
   if (data.page?.nextPageToken)
     return (
-      <Empty title="Repository list incomplete">
-        Reconnect the App with at most 100 repositories from{" "}
-        <Link to="/settings">Settings</Link>.
-      </Empty>
+      <Card>
+        <Empty title="Too many repositories">
+          Limit the GitHub App to at most 100 repositories in{" "}
+          <Link to="/settings" hash="github">
+            Settings
+          </Link>
+          .
+        </Empty>
+      </Card>
     );
   if (!selected.length && !locked)
     return (
-      <Empty title="No repositories available">
-        Choose <Link to="/settings/repositories">repository access</Link> or
-        update the installation in <Link to="/settings">Settings</Link>.
-      </Empty>
+      <Card>
+        <Empty
+          title="No repositories available"
+          actions={<Link to="/settings/repositories">Choose repositories</Link>}
+        >
+          Choose which repositories the panel may use.
+        </Empty>
+      </Card>
     );
 
   return (
     <>
       {error && (
-        <p role="alert">
-          Repository refresh failed. Previously loaded repository access may be
-          out of date.
-        </p>
+        <Banner tone="warning">
+          Couldn’t refresh repositories. The list may be out of date.
+        </Banner>
       )}
-      <form className="settings-form" onSubmit={choose}>
-        <label htmlFor="project-repository">Repository</label>
-        <select
-          id="project-repository"
-          name="repository"
-          defaultValue={repositoryId}
-          key={repositoryId}
-          required
-          disabled={locked || !!error}
-        >
-          <option value="">Choose a repository</option>
-          {selected.map((entry) => (
-            <option
-              key={String(entry.githubRepositoryId)}
-              value={String(entry.githubRepositoryId)}
-            >
-              {entry.owner}/{entry.name}
-            </option>
-          ))}
-        </select>
-        <Button type="submit" disabled={locked || !!error}>
-          Choose repository
-        </Button>
-        <p className="muted">
-          Missing a repository? Check{" "}
-          <Link to="/settings/repositories">panel repository access</Link> or
-          update the App installation in <Link to="/settings">Settings</Link>.
-        </p>
-      </form>
+      <Card title="1. Repository" labelledBy="repository-step-title">
+        <form className="form" onSubmit={choose}>
+          <div className="field">
+            <label htmlFor="project-repository">Repository</label>
+            <div className="row" style={{ flexWrap: "nowrap" }}>
+              <select
+                id="project-repository"
+                name="repository"
+                defaultValue={repositoryId}
+                key={repositoryId}
+                required
+                disabled={locked || !!error}
+              >
+                <option value="">Choose a repository…</option>
+                {selected.map((entry) => (
+                  <option
+                    key={String(entry.githubRepositoryId)}
+                    value={String(entry.githubRepositoryId)}
+                  >
+                    {entry.owner}/{entry.name}
+                  </option>
+                ))}
+              </select>
+              <Button type="submit" disabled={locked || !!error}>
+                Continue
+              </Button>
+            </div>
+            <p className="help">
+              Missing one?{" "}
+              <Link to="/settings/repositories">Choose repositories</Link>.
+            </p>
+          </div>
+        </form>
+      </Card>
       {repositoryId && !repository && (
-        <p role="alert">
-          This repository is no longer available to the panel. Choose another
-          repository.
-        </p>
+        <Banner tone="warning">
+          That repository is no longer available. Choose another one.
+        </Banner>
       )}
       {repository && (
         <ProjectForm

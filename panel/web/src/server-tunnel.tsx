@@ -1,4 +1,3 @@
-import { Button } from "@cloudflare/kumo/components/button";
 import { Code, ConnectError } from "@connectrpc/connect";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { Link, useRouter } from "@tanstack/react-router";
@@ -13,7 +12,18 @@ import {
   queryClient,
   serverTunnelQuery,
 } from "./api";
-import { Detail, Details, ObservedTime } from "./components";
+import {
+  Badge,
+  Banner,
+  Button,
+  Card,
+  Detail,
+  Details,
+  Id,
+  ObservedTime,
+  RefreshButton,
+  type Tone,
+} from "./components";
 import { usePageContinuation } from "./use-page-continuation";
 import { useSessionExpiry } from "./use-session-expiry";
 
@@ -23,14 +33,14 @@ type TunnelIntent = {
   expectedConnectionVersion: bigint;
 };
 
-const phaseLabels: Record<ServerTunnelPhase, string> = {
-  [ServerTunnelPhase.UNSPECIFIED]: "Not provisioned",
-  [ServerTunnelPhase.QUEUED]: "Queued",
-  [ServerTunnelPhase.PREPARED]: "Host prepared",
-  [ServerTunnelPhase.CREATING]: "Creating tunnel",
-  [ServerTunnelPhase.FINALIZING]: "Verifying connector",
-  [ServerTunnelPhase.READY]: "Provisioning verified",
-  [ServerTunnelPhase.NEEDS_ATTENTION]: "Needs attention",
+const phaseLabels: Record<ServerTunnelPhase, [string, Tone]> = {
+  [ServerTunnelPhase.UNSPECIFIED]: ["Not set up", "neutral"],
+  [ServerTunnelPhase.QUEUED]: ["Queued", "info"],
+  [ServerTunnelPhase.PREPARED]: ["Preparing host", "info"],
+  [ServerTunnelPhase.CREATING]: ["Creating tunnel", "info"],
+  [ServerTunnelPhase.FINALIZING]: ["Checking connector", "info"],
+  [ServerTunnelPhase.READY]: ["Connected", "success"],
+  [ServerTunnelPhase.NEEDS_ATTENTION]: ["Needs attention", "warning"],
 };
 
 function provisioning(phase?: ServerTunnelPhase) {
@@ -80,7 +90,12 @@ export function ServerTunnel({ server }: { server: Server }) {
     !intent && absent && integration?.configured && integration.version > 0n;
   const canReconcile =
     tunnel?.phase === ServerTunnelPhase.NEEDS_ATTENTION && recordedIntent;
-  const busy = pending || tunnelQuery.isFetching || connectionQuery.isFetching;
+  const busy = pending;
+  const [phaseLabel, phaseTone]: [string, Tone] = absent
+    ? phaseLabels[ServerTunnelPhase.UNSPECIFIED]
+    : tunnel
+      ? (phaseLabels[tunnel.phase] ?? ["Unknown", "neutral"])
+      : ["Unavailable", "neutral"];
 
   async function refreshData() {
     const queries = [
@@ -109,7 +124,7 @@ export function ServerTunnel({ server }: { server: Server }) {
     } catch (error) {
       if (isCurrent() && !(await expireSession(error)) && isCurrent())
         setFailure(
-          "Tunnel status refresh failed. Refresh before provisioning or reconciling.",
+          "Couldn’t refresh the tunnel status. Try again before continuing.",
         );
     } finally {
       if (isMounted()) setPending(false);
@@ -130,9 +145,7 @@ export function ServerTunnel({ server }: { server: Server }) {
         throw new Error("Tunnel intent unavailable");
       if (isCurrent()) {
         setIntent({ request, admitted: true });
-        setNotice(
-          "Request recorded. Provisioning status below comes from the panel's latest observation.",
-        );
+        setNotice("Tunnel requested. Status updates here automatically.");
       }
       // Shared observations remain stale even when the operator leaves this page.
       await queryClient.invalidateQueries({
@@ -144,8 +157,8 @@ export function ServerTunnel({ server }: { server: Server }) {
         if (!admitted) setIntent(undefined);
         setFailure(
           error instanceof ConnectError && error.code === Code.Aborted
-            ? "The Cloudflare connection changed. Refresh status, then review the connection before provisioning."
-            : "Request refused. Check final host setup, the Cloudflare connection and any existing tunnel intent, then refresh status.",
+            ? "The Cloudflare connection changed. Review it in Settings, then try again."
+            : "The tunnel couldn’t be created. Check that the server is ready and Cloudflare is connected.",
         );
         await queryClient.invalidateQueries({
           queryKey: cloudflareIntegrationQuery().queryKey,
@@ -155,7 +168,7 @@ export function ServerTunnel({ server }: { server: Server }) {
         });
       } else {
         setFailure(
-          "Request outcome unknown. Check the same request to recover its result; no new tunnel intent will be sent.",
+          "We couldn’t confirm the request. Check its status — no second tunnel will be created.",
         );
       }
     } finally {
@@ -163,112 +176,113 @@ export function ServerTunnel({ server }: { server: Server }) {
     }
   }
 
+  const action =
+    intent && !recordedIntent ? (
+      <Button
+        variant="primary"
+        pending={pending}
+        disabled={busy || metadataError}
+        onClick={() => void provision(intent.request)}
+      >
+        Check request
+      </Button>
+    ) : canReconcile ? (
+      <Button
+        variant="primary"
+        pending={pending}
+        disabled={busy || metadataError}
+        onClick={() => void provision(canReconcile)}
+      >
+        Resume setup
+      </Button>
+    ) : canProvision ? (
+      <Button
+        variant="primary"
+        pending={pending}
+        disabled={busy || metadataError}
+        onClick={() =>
+          void provision({
+            mutation: { requestId: crypto.randomUUID() },
+            serverId: server.id,
+            expectedConnectionVersion: integration.version,
+          })
+        }
+      >
+        Create tunnel
+      </Button>
+    ) : null;
+
   return (
-    <section aria-labelledby="server-tunnel-title" aria-busy={pending}>
-      <h2 id="server-tunnel-title">Cloudflare Tunnel</h2>
-      <p>
-        Provision a connector for this server. This does not create DNS records,
-        application routes or deploy applications.
-      </p>
-      {metadataError && (
-        <p role="alert">
-          Refresh failed. Tunnel or connection details may be out of date;
-          refresh before continuing.
-        </p>
-      )}
-      <Details>
-        <Detail label="Provisioning status">
-          {absent
-            ? "Not provisioned"
-            : tunnel && tunnel.phase !== ServerTunnelPhase.UNSPECIFIED
-              ? (phaseLabels[tunnel.phase] ?? "Unknown")
-              : "Unavailable"}
-        </Detail>
-        <Detail label="Last provisioning observation">
-          <ObservedTime value={tunnel?.observedAt} />
-        </Detail>
-        <Detail label="Account ID">
-          <code>
-            {tunnel?.accountId || integration?.accountId || "Not connected"}
-          </code>
-        </Detail>
-        <Detail label="Tunnel ID">
-          <code>{tunnel?.tunnelId || "Not assigned"}</code>
-        </Detail>
-        {tunnel?.requestId && (
-          <Detail label="Provisioning request ID">
-            <code>{tunnel.requestId}</code>
-          </Detail>
+    <Card
+      title="Cloudflare Tunnel"
+      description="Carries public traffic for your domains to this server."
+      labelledBy="server-tunnel-title"
+      actions={
+        <RefreshButton
+          label="Refresh tunnel status"
+          onRefresh={() => refresh()}
+        />
+      }
+      footer={action}
+    >
+      <div className="row">
+        <Badge tone={phaseTone} active={provisioning(tunnel?.phase)}>
+          {phaseLabel}
+        </Badge>
+        {tunnel?.observedAt && (
+          <span className="subtle">
+            <ObservedTime value={tunnel.observedAt} prefix="Checked" />
+          </span>
         )}
-      </Details>
-      {tunnel?.message && <p className="notice">{tunnel.message}</p>}
-      <p className="muted">
-        Provisioning status updates automatically while pending. It does not
-        establish application health.
-      </p>
-      {absent && !integration?.configured && (
-        <p className="action-link">
-          <Link to="/settings">Connect Cloudflare in Settings</Link> before
-          provisioning.
-        </p>
-      )}
-      {absent && (
-        <p className="action-link">
-          Complete server setup before provisioning. Private access is checked
-          before creating the tunnel.
-        </p>
-      )}
-      <div className="form-actions action-link">
-        {intent && !recordedIntent ? (
-          <Button
-            disabled={busy || metadataError}
-            onClick={() => void provision(intent.request)}
-          >
-            Check provision request
-          </Button>
-        ) : canReconcile ? (
-          <Button
-            disabled={busy || metadataError}
-            onClick={() => void provision(canReconcile)}
-          >
-            Reconcile existing tunnel
-          </Button>
-        ) : canProvision ? (
-          <Button
-            variant="primary"
-            disabled={busy || metadataError}
-            onClick={() =>
-              void provision({
-                mutation: { requestId: crypto.randomUUID() },
-                serverId: server.id,
-                expectedConnectionVersion: integration.version,
-              })
-            }
-          >
-            Provision tunnel
-          </Button>
-        ) : null}
-        <Button
-          variant="secondary"
-          disabled={busy}
-          onClick={() => void refresh()}
-        >
-          Refresh tunnel status
-        </Button>
       </div>
+      {metadataError && (
+        <Banner tone="warning">
+          Couldn’t refresh the tunnel status. Refresh before continuing.
+        </Banner>
+      )}
+      {tunnel?.message && <Banner tone="warning">{tunnel.message}</Banner>}
+      {absent && !integration?.configured && (
+        <Banner
+          tone="info"
+          title="Connect Cloudflare first"
+          actions={
+            <Link to="/settings" hash="cloudflare">
+              Open settings
+            </Link>
+          }
+        >
+          The tunnel is created in your Cloudflare account.
+        </Banner>
+      )}
+      {canReconcile && (
+        <p className="help">
+          Resuming reuses the original request, so a tunnel is never created
+          twice.
+        </p>
+      )}
+      {(tunnel?.tunnelId || tunnel?.accountId) && (
+        <Details>
+          <Detail label="Tunnel ID">
+            <Id value={tunnel.tunnelId} label="tunnel ID" />
+          </Detail>
+          <Detail label="Account">
+            <Id
+              value={tunnel.accountId || integration?.accountId || ""}
+              label="account ID"
+            />
+          </Detail>
+        </Details>
+      )}
       {failure && (
-        <p className="form-error" role="alert">
+        <p className="field-error" role="alert">
           {failure}
         </p>
       )}
-      {notice && <p role="status">{notice}</p>}
-      {canReconcile && (
-        <p className="muted">
-          Reconciliation keeps the original request and connection version. It
-          can resume a stopped observation job; an uncertain create is never
-          repeated. Review the provider and target when status needs attention.
+      {notice && (
+        <p className="help" role="status">
+          {notice}
         </p>
       )}
-    </section>
+    </Card>
   );
 }

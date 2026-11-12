@@ -1,4 +1,3 @@
-import { Button } from "@cloudflare/kumo/components/button";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { useState } from "react";
@@ -11,27 +10,38 @@ import {
   queryClient,
   repositoriesQuery,
 } from "./api";
-import { Empty, PageTitle } from "./components";
+import { Banner, Button, Card, Empty, PageHeader } from "./components";
 import { useSessionExpiry } from "./use-session-expiry";
 
 export function RepositorySelection() {
   const integration = useSuspenseQuery(integrationQuery()).data;
   return (
     <>
-      <Link className="back-link" to="/settings">
-        Settings
-      </Link>
-      <PageTitle
-        title="Repository access"
-        description="Choose which installed repositories the panel can use."
+      <PageHeader
+        breadcrumbs={[
+          <Link key="settings" to="/settings">
+            Settings
+          </Link>,
+        ]}
+        title="Repositories"
+        description="Choose which installed repositories the panel may deploy."
       />
-      {integration.installed ? (
-        <SelectionForm />
-      ) : (
-        <Empty title="Connect GitHub first">
-          Register and install your GitHub App in Settings.
-        </Empty>
-      )}
+      <div className="stack" style={{ maxWidth: "40rem" }}>
+        {integration.installed ? (
+          <SelectionForm />
+        ) : (
+          <Card>
+            <Empty
+              title="Connect GitHub first"
+              actions={
+                <Link to="/settings" hash="github">
+                  Open settings
+                </Link>
+              }
+            />
+          </Card>
+        )}
+      </div>
     </>
   );
 }
@@ -62,7 +72,7 @@ function SelectionForm() {
     try {
       await github.selectRepositories(request);
       setIntent(undefined);
-      setNotice("Repository selection saved.");
+      setNotice("Saved.");
       try {
         await queryClient.cancelQueries({
           queryKey: repositoriesQuery().queryKey,
@@ -70,20 +80,18 @@ function SelectionForm() {
         await queryClient.fetchQuery({ ...repositoriesQuery(), staleTime: 0 });
       } catch (refreshError) {
         if (!(await expireSession(refreshError)))
-          setFailure(
-            "Saved, but repository status could not be refreshed. Reload this page before editing again.",
-          );
+          setFailure("Saved, but the list couldn’t reload. Refresh the page.");
       }
     } catch (saveError) {
       if (await expireSession(saveError)) return;
       if (mutationRejected(saveError)) {
         setIntent(undefined);
         setFailure(
-          "Selection was refused. Refresh the repository list and choose at least one repository.",
+          "The selection was refused. Choose at least one repository.",
         );
       } else {
         setFailure(
-          "Save outcome unknown. Retry the same selection to recover its result; no new selection will be submitted.",
+          "We couldn’t confirm the save. Retry — it won’t apply twice.",
         );
       }
     } finally {
@@ -109,83 +117,99 @@ function SelectionForm() {
 
   if (data.page?.nextPageToken && !intent)
     return (
-      <Empty title="Repository list incomplete">
-        Reconnect the App with at most 100 selected repositories before editing
-        panel access.
-      </Empty>
+      <Card>
+        <Empty title="Too many repositories">
+          Limit the GitHub App installation to at most 100 repositories.
+        </Empty>
+      </Card>
     );
   if (!data.repositories.length && !intent)
     return (
-      <Empty title="No repositories installed">
-        Update repository access on GitHub from Settings, then return here.
-      </Empty>
+      <Card>
+        <Empty title="No repositories installed">
+          Give the GitHub App access to your repositories in Settings, then come
+          back here.
+        </Empty>
+      </Card>
     );
 
   return (
     <>
-      <p className="notice">
-        Only checked repositories can be used by the panel. Clearing a
-        repository also blocks Actions and deployments for its existing project.
-        GitHub installation access is unchanged.
-      </p>
       {error && (
-        <p role="alert">
-          Refresh failed. Reload this page before editing repository access.
-        </p>
+        <Banner tone="warning">
+          Couldn’t refresh repositories. Reload the page before editing.
+        </Banner>
       )}
-      <form className="settings-form" onSubmit={submit} aria-busy={pending}>
-        <fieldset key={selectionKey} disabled={pending || !!intent || !!error}>
-          <legend>Repositories available to the panel</legend>
-          {data.repositories.map((repository) => (
-            <label
-              className="checkbox-label"
-              key={String(repository.githubRepositoryId)}
-            >
-              <input
-                type="checkbox"
-                name="repository"
-                value={String(repository.githubRepositoryId)}
-                defaultChecked={selectedIds.includes(
-                  String(repository.githubRepositoryId),
-                )}
-              />
-              <span>
-                {repository.owner}/{repository.name}
-              </span>
-            </label>
-          ))}
-        </fieldset>
+      <form className="form" onSubmit={submit} aria-busy={pending}>
+        <Card
+          title="Available repositories"
+          description="Unchecking one stops deployments of its project."
+          labelledBy="repositories-title"
+          flush
+        >
+          <fieldset
+            key={selectionKey}
+            disabled={pending || !!intent || !!error}
+          >
+            <legend className="visually-hidden">Repositories</legend>
+            <ul className="list">
+              {data.repositories.map((repository) => (
+                <li key={String(repository.githubRepositoryId)}>
+                  <label className="checkbox list-row">
+                    <input
+                      type="checkbox"
+                      name="repository"
+                      value={String(repository.githubRepositoryId)}
+                      defaultChecked={selectedIds.includes(
+                        String(repository.githubRepositoryId),
+                      )}
+                    />
+                    <span className="checkbox-text">
+                      {repository.owner}/{repository.name}
+                    </span>
+                  </label>
+                </li>
+              ))}
+            </ul>
+          </fieldset>
+        </Card>
         {failure && (
-          <p className="form-error" role="alert">
+          <p className="field-error" role="alert">
             {failure}
           </p>
         )}
-        {notice && <p role="status">{notice}</p>}
+        {notice && (
+          <p className="help" role="status">
+            {notice}
+          </p>
+        )}
         <div className="form-actions">
           {intent ? (
             <Button
               type="button"
-              disabled={pending}
+              variant="primary"
+              pending={pending}
               onClick={() => void save(intent)}
             >
-              Retry same selection
+              Retry
             </Button>
           ) : (
             <Button
               type="submit"
               variant="primary"
-              disabled={pending || !!error}
+              pending={pending}
+              disabled={!!error}
             >
-              Save selection
+              Save
             </Button>
           )}
           <Button
             type="button"
-            variant="secondary"
-            disabled={pending || isFetching || !!intent}
+            variant="ghost"
+            disabled={pending || !!intent || isFetching}
             onClick={() => void refetch()}
           >
-            Refresh repositories
+            Reload list
           </Button>
         </div>
       </form>

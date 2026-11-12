@@ -1,93 +1,131 @@
-import { Button } from "@cloudflare/kumo/components/button";
+import { ArrowSquareOutIcon, CloudIcon } from "@phosphor-icons/react";
 import { useSuspenseQuery } from "@tanstack/react-query";
+import { useState } from "react";
 
 import { cloudflareIntegrationQuery } from "./api";
 import { CloudflareForm } from "./cloudflare-form";
-import { Detail, Details, ObservedTime } from "./components";
+import {
+  Badge,
+  Banner,
+  Button,
+  Card,
+  Detail,
+  Details,
+  Empty,
+  Id,
+  ObservedTime,
+  RefreshButton,
+} from "./components";
 
 export function CloudflareConnection() {
-  const { data, error, refetch, isFetching } = useSuspenseQuery(
+  const { data, error, refetch } = useSuspenseQuery(
     cloudflareIntegrationQuery(),
   );
   const integration = data.integration;
+  const [editing, setEditing] = useState(false);
+  const configured = !!integration?.configured;
+
   return (
-    <section aria-labelledby="cloudflare-title">
-      <h2 id="cloudflare-title">Cloudflare</h2>
+    <Card
+      title={
+        <span className="row" id="cloudflare">
+          <CloudIcon size={18} aria-hidden="true" />
+          Cloudflare
+          {configured ? (
+            <Badge tone="success">Connected</Badge>
+          ) : (
+            <Badge>Not connected</Badge>
+          )}
+        </span>
+      }
+      description="Publishes your domains through a Cloudflare Tunnel."
+      labelledBy="cloudflare-title"
+      actions={
+        <RefreshButton
+          label="Refresh Cloudflare status"
+          onRefresh={() => refetch()}
+        />
+      }
+    >
       {!integration ? (
-        <>
-          <p role="alert">Cloudflare connection details are unavailable.</p>
-          <Button
-            variant="secondary"
-            disabled={isFetching}
-            onClick={() => void refetch()}
-          >
-            Refresh Cloudflare status
-          </Button>
-        </>
+        <Empty title="Connection details unavailable">
+          Refresh to try again.
+        </Empty>
       ) : (
         <>
-          <p>
-            Use an account-owned API token with Cloudflare One Connector:
-            cloudflared Write for this account and DNS Write restricted to the
-            selected zones.{" "}
-            <a
-              href="https://developers.cloudflare.com/fundamentals/api/get-started/account-owned-tokens/"
-              target="_blank"
-              rel="noreferrer"
-            >
-              Token setup instructions
-            </a>
-          </p>
           {error && (
-            <p role="alert">
-              Cloudflare refresh failed. Details may be out of date; refresh
-              before saving.
-            </p>
+            <Banner tone="warning">
+              Couldn’t refresh the connection. Details may be out of date.
+            </Banner>
           )}
-          <Details>
-            <Detail label="Connection">
-              {integration.configured ? "Saved" : "Not connected"}
-            </Detail>
-            <Detail label="Current version">
-              {integration.configured ? String(integration.version) : "None"}
-            </Detail>
-            <Detail label="Account ID">
-              <code>{integration.accountId || "Not configured"}</code>
-            </Detail>
-            <Detail label="Token ID">
-              <code>{integration.tokenId || "Not configured"}</code>
-            </Detail>
-            <Detail label="Last read verification">
-              <ObservedTime value={integration.verifiedAt} />
-            </Detail>
-            <Detail label="Token expiry">
-              {integration.expiresAt ? (
-                <ObservedTime value={integration.expiresAt} />
-              ) : (
-                "Not reported"
-              )}
-            </Detail>
-          </Details>
-          {integration.zones.length ? (
-            <ul className="resource-list" aria-label="Saved Cloudflare zones">
-              {integration.zones.map((zone) => (
-                <li key={zone.id}>
-                  <span>{zone.name}</span>
-                  <code>{zone.id}</code>
-                </li>
-              ))}
-            </ul>
+          {configured && (
+            <Details>
+              <Detail label="Domains">
+                <span className="row" style={{ gap: "0.375rem" }}>
+                  {integration.zones.map((zone) => (
+                    <span className="chip" key={zone.id} title={zone.id}>
+                      {zone.name}
+                    </span>
+                  ))}
+                </span>
+              </Detail>
+              <Detail label="Account">
+                <Id value={integration.accountId} label="account ID" />
+              </Detail>
+              <Detail label="Token">
+                <span className="row" style={{ gap: "0.5rem" }}>
+                  <Id value={integration.tokenId} short label="token ID" />
+                  <span className="subtle">
+                    {integration.expiresAt ? (
+                      <ObservedTime
+                        value={integration.expiresAt}
+                        prefix="Expires"
+                      />
+                    ) : (
+                      "No expiry"
+                    )}
+                  </span>
+                </span>
+              </Detail>
+              <Detail label="Last verified">
+                <ObservedTime value={integration.verifiedAt} />
+              </Detail>
+            </Details>
+          )}
+          {configured && !editing ? (
+            <div className="form-actions">
+              <Button onClick={() => setEditing(true)}>
+                Replace token or domains
+              </Button>
+            </div>
           ) : (
-            <p className="muted">No zones configured.</p>
+            <>
+              <p className="help">
+                Create an <strong>account API token</strong> (Manage Account →
+                Account API Tokens) with{" "}
+                <em>Cloudflare One Connector: cloudflared → Edit</em> on the
+                account, and <em>Zone → Read</em> plus <em>DNS → Edit</em> on
+                your domain.{" "}
+                <a
+                  className="row"
+                  style={{ display: "inline-flex", gap: "0.25rem" }}
+                  href="https://developers.cloudflare.com/fundamentals/api/get-started/account-owned-tokens/"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  Guide
+                  <ArrowSquareOutIcon size={12} aria-hidden="true" />
+                </a>
+              </p>
+              <CloudflareForm
+                integration={integration}
+                metadataError={!!error}
+                onDone={configured ? () => setEditing(false) : undefined}
+              />
+            </>
           )}
-          <p className="action-link">
-            Read verification does not prove write permissions or tunnel, DNS or
-            route readiness. Saving this connection does not deploy
-            applications.
-          </p>
-          <CloudflareForm integration={integration} metadataError={!!error} />
         </>
       )}
-    </section>
+    </Card>
   );
 }

@@ -1,6 +1,5 @@
-import { Button } from "@cloudflare/kumo/components/button";
 import { useState } from "react";
-import type { FormEvent } from "react";
+import type { FormEvent, ReactNode } from "react";
 
 import {
   errorMessage,
@@ -10,6 +9,7 @@ import {
   queryClient,
 } from "./api";
 import { githubDestination, githubRegistration } from "./github-navigation";
+import { Banner, Button } from "./components";
 import { useSessionExpiry } from "./use-session-expiry";
 
 type Intent =
@@ -25,9 +25,12 @@ type Destination =
 export function GitHubSetup({
   registered,
   installed,
+  actions,
 }: {
   registered: boolean;
   installed: boolean;
+  /** Extra actions shown next to the installation button. */
+  actions?: ReactNode;
 }) {
   const expireSession = useSessionExpiry();
   const [intent, setIntent] = useState<Intent>();
@@ -63,12 +66,10 @@ export function GitHubSetup({
       if (await expireSession(error)) return;
       if (mutationRejected(error)) {
         setIntent(undefined);
-        setFailure(
-          "Setup was refused. Check the owner and App name, or refresh connection status before trying again.",
-        );
+        setFailure("GitHub setup was refused. Check the owner and App name.");
       } else {
         setFailure(
-          "Setup preparation outcome is unknown. Retry the same request to recover its result. No GitHub page has been opened.",
+          "We couldn’t confirm this step. Retry — it won’t create anything twice.",
         );
       }
     } finally {
@@ -110,112 +111,134 @@ export function GitHubSetup({
   }
 
   return (
-    <div aria-busy={pending}>
-      <p>
-        {registered
-          ? "Install this App on its owner account using Only select repositories. Keep contents: read and actions: write permissions. Select at most 100 repositories."
-          : "Register an App owned by your GitHub user or organization, then install it using Only select repositories. The panel requests contents: read and actions: write permissions."}
-      </p>
+    <div className="stack" aria-busy={pending}>
       {!registered && !destination && (
-        <form className="settings-form" onSubmit={register}>
-          <label htmlFor="github-owner-kind">Owner type</label>
-          <select
-            id="github-owner-kind"
-            name="kind"
-            disabled={pending || !!intent}
-          >
-            <option value="user">Personal account</option>
-            <option value="organization">Organization</option>
-          </select>
-          <label htmlFor="github-owner">GitHub owner</label>
-          <input
-            id="github-owner"
-            name="owner"
-            required
-            maxLength={100}
-            pattern={"[A-Za-z0-9][A-Za-z0-9\\-]*"}
-            readOnly={pending || !!intent}
-            autoComplete="off"
-          />
-          <label htmlFor="github-app-name">App name</label>
-          <input
-            id="github-app-name"
-            name="name"
-            required
-            maxLength={100}
-            readOnly={pending || !!intent}
-          />
-          <Button
-            type="submit"
-            variant="primary"
-            disabled={pending || !!intent}
-          >
-            Prepare App registration
-          </Button>
+        <form className="form" onSubmit={register}>
+          <p className="muted">
+            Create a GitHub App for this panel. GitHub then asks which
+            repositories it may read — choose only the ones you deploy.
+          </p>
+          <fieldset className="fields" disabled={pending || !!intent}>
+            <div className="fields-2">
+              <div className="field">
+                <label htmlFor="github-owner-kind">Owner type</label>
+                <select id="github-owner-kind" name="kind">
+                  <option value="user">Personal account</option>
+                  <option value="organization">Organization</option>
+                </select>
+              </div>
+              <div className="field">
+                <label htmlFor="github-owner">GitHub owner</label>
+                <input
+                  id="github-owner"
+                  name="owner"
+                  required
+                  maxLength={100}
+                  pattern={"[A-Za-z0-9][A-Za-z0-9\\-]*"}
+                  autoComplete="off"
+                  placeholder="your-username"
+                />
+              </div>
+            </div>
+            <div className="field">
+              <label htmlFor="github-app-name">App name</label>
+              <input
+                id="github-app-name"
+                name="name"
+                required
+                maxLength={100}
+                aria-describedby="github-app-name-help"
+                placeholder="your-username-panel"
+              />
+              <p className="help" id="github-app-name-help">
+                Must be unique across GitHub.
+              </p>
+            </div>
+          </fieldset>
+          <div className="form-actions">
+            <Button
+              type="submit"
+              variant="primary"
+              pending={pending}
+              disabled={!!intent}
+            >
+              Create GitHub App
+            </Button>
+          </div>
         </form>
       )}
       {registered && !destination && !intent && (
-        <Button
-          disabled={pending}
-          onClick={() =>
-            void prepare({
-              kind: "installation",
-              request: { mutation: { requestId: crypto.randomUUID() } },
-            })
-          }
-        >
-          {installed
-            ? "Update repository access on GitHub"
-            : "Prepare installation"}
-        </Button>
+        <div className="form-actions">
+          <Button
+            variant={installed ? "secondary" : "primary"}
+            pending={pending}
+            onClick={() =>
+              void prepare({
+                kind: "installation",
+                request: { mutation: { requestId: crypto.randomUUID() } },
+              })
+            }
+          >
+            {installed ? "Change access on GitHub" : "Install on GitHub"}
+          </Button>
+          {actions}
+        </div>
       )}
       {destination?.kind === "registration" && (
-        <form
-          className="settings-form"
-          method="post"
-          action={destination.action}
-          rel="noreferrer"
-        >
+        <form method="post" action={destination.action} rel="noreferrer">
           <input
             type="hidden"
             name="manifest"
             value={destination.manifestJson}
           />
-          <p>
-            Continue within 15 minutes in this browser session. GitHub will ask
-            you to register and install the App.
-          </p>
-          <Button type="submit" variant="primary">
-            Continue to GitHub
-          </Button>
+          <Banner
+            tone="info"
+            title="Ready to continue on GitHub"
+            actions={
+              <Button type="submit" variant="primary">
+                Continue to GitHub
+              </Button>
+            }
+          >
+            GitHub creates the App, then asks where to install it. Continue
+            within 15 minutes.
+          </Banner>
         </form>
       )}
       {destination?.kind === "installation" && (
-        <p className="action-link">
-          <a href={destination.href} rel="noreferrer">
-            Continue installation on GitHub
-          </a>
-        </p>
+        <Banner
+          tone="info"
+          title="Ready to continue on GitHub"
+          actions={
+            <a href={destination.href} rel="noreferrer">
+              Continue to GitHub
+            </a>
+          }
+        >
+          Choose “Only select repositories” and pick the ones you deploy.
+        </Banner>
       )}
       {failure && (
-        <p className="form-error" role="alert">
+        <p className="field-error" role="alert">
           {failure}
         </p>
       )}
-      <div className="form-actions">
-        {intent && (
-          <Button disabled={pending} onClick={() => void prepare(intent)}>
-            Retry same preparation
+      {(intent || destination) && (
+        <div className="form-actions">
+          {intent && (
+            <Button pending={pending} onClick={() => void prepare(intent)}>
+              Retry
+            </Button>
+          )}
+          <Button
+            variant="ghost"
+            disabled={pending}
+            onClick={() => void refresh()}
+          >
+            I’m done on GitHub
           </Button>
-        )}
-        <Button
-          variant="secondary"
-          disabled={pending}
-          onClick={() => void refresh()}
-        >
-          Refresh connection status
-        </Button>
-      </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,4 +1,3 @@
-import { Button } from "@cloudflare/kumo/components/button";
 import { Code, ConnectError } from "@connectrpc/connect";
 import { Link, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
@@ -7,6 +6,7 @@ import { z } from "zod";
 
 import type { Repository } from "../../gen/ts/panel/v1/panel_pb";
 import { mutationRejected, panel, projectsQuery, queryClient } from "./api";
+import { Banner, Button, Card } from "./components";
 import { useSessionExpiry } from "./use-session-expiry";
 import { usePageContinuation } from "./use-page-continuation";
 
@@ -55,7 +55,7 @@ export function ProjectForm({
         if (!isCurrent()) return;
         if (!(await expireSession(navigationError)) && isCurrent())
           setFailure(
-            "Project created, but its details could not be opened. Use Open project to try again.",
+            "Project created, but it didn’t open. Use the link below.",
           );
       }
     } catch (createError) {
@@ -68,12 +68,12 @@ export function ProjectForm({
         setFailure(
           createError instanceof ConnectError &&
             createError.code === Code.AlreadyExists
-            ? "This repository already has a project. Return to Projects to open it."
-            : "Creation was refused. Check repository access, then refresh this page.",
+            ? "This repository already has a project."
+            : "The project couldn’t be created. Check repository access.",
         );
       } else {
         setFailure(
-          "Creation outcome unknown. Check the same request to recover its result without creating a duplicate.",
+          "We couldn’t confirm this. Check again — it won’t create a duplicate.",
         );
       }
     } finally {
@@ -93,60 +93,61 @@ export function ProjectForm({
   }
 
   return (
-    <section aria-labelledby="project-images-title">
-      <h2 id="project-images-title">Images</h2>
-      <p>
-        Your CI pushes one image per service tagged with the full commit SHA. In
-        Compose, write each image as{" "}
-        <code>ghcr.io/owner/name:${"{GIT_SHA}"}</code>; the panel deploys the
-        digest of that tag. Creating a project does not deploy it.
-      </p>
-      <form className="settings-form" onSubmit={submit} aria-busy={pending}>
-        <label htmlFor="project-name">Project name</label>
-        <input
-          id="project-name"
-          name="name"
-          defaultValue={repository.name}
-          required
-          maxLength={100}
-          readOnly={pending || !!intent || !!createdId}
-        />
-        {intent ? (
-          <Button
-            type="button"
-            disabled={pending}
-            onClick={() => void create(intent)}
-          >
-            Check creation result
-          </Button>
-        ) : (
-          <Button
-            type="submit"
-            variant="primary"
-            disabled={pending || !!createdId}
-          >
-            Create project
-          </Button>
+    <Card title="2. Project" labelledBy="project-step-title">
+      <form className="form" onSubmit={submit} aria-busy={pending}>
+        <div className="field">
+          <label htmlFor="project-name">Name</label>
+          <input
+            id="project-name"
+            name="name"
+            defaultValue={repository.name}
+            required
+            maxLength={100}
+            readOnly={pending || !!intent || !!createdId}
+          />
+        </div>
+        <Banner tone="info" title="How builds work">
+          Your CI pushes one image per service, tagged with the commit SHA. In{" "}
+          <code>compose.yaml</code>, reference it as{" "}
+          <code>ghcr.io/owner/name:${"{GIT_SHA}"}</code>. Creating the project
+          doesn’t deploy anything yet.
+        </Banner>
+        {failure && (
+          <p className="field-error" role="alert">
+            {failure}
+          </p>
         )}
+        <div className="form-actions">
+          {intent ? (
+            <Button
+              type="button"
+              variant="primary"
+              pending={pending}
+              onClick={() => void create(intent)}
+            >
+              Check result
+            </Button>
+          ) : (
+            <Button
+              type="submit"
+              variant="primary"
+              pending={pending}
+              disabled={!!createdId}
+            >
+              Create project
+            </Button>
+          )}
+          {createdId && (
+            <Link
+              to="/projects/$projectId"
+              params={{ projectId: createdId }}
+              search={{ cursor: "" }}
+            >
+              Open project
+            </Link>
+          )}
+        </div>
       </form>
-      {failure && (
-        <p className="form-error" role="alert">
-          {failure}
-        </p>
-      )}
-      {createdId && (
-        <p role="status">
-          Project created.{" "}
-          <Link
-            to="/projects/$projectId"
-            params={{ projectId: createdId }}
-            search={{ cursor: "" }}
-          >
-            Open project
-          </Link>
-          .
-        </p>
-      )}
-    </section>
+    </Card>
   );
 }

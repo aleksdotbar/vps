@@ -1,4 +1,4 @@
-import { Button } from "@cloudflare/kumo/components/button";
+import { KeyIcon, PlusIcon, TrashIcon } from "@phosphor-icons/react";
 import { Code, ConnectError } from "@connectrpc/connect";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { getRouteApi, Link } from "@tanstack/react-router";
@@ -14,7 +14,14 @@ import {
   queryClient,
   refreshEnvironment,
 } from "./api";
-import { Detail, Details, Empty, PageTitle } from "./components";
+import {
+  Banner,
+  Button,
+  Card,
+  Empty,
+  EnvironmentStatus,
+  PageHeader,
+} from "./components";
 import { secretChangeProblem } from "./secret-changes";
 import { useSessionExpiry } from "./use-session-expiry";
 
@@ -29,45 +36,38 @@ export function EnvironmentSecrets({ id }: { id: string }) {
   const environment = data.environment;
   if (!environment?.settings)
     return (
-      <Empty title="Environment unavailable">
-        Return to the project and refresh.
-      </Empty>
+      <Card>
+        <Empty title="Environment not found">
+          <Link to="/projects" search={{ cursor: "" }}>
+            Back to projects
+          </Link>
+        </Empty>
+      </Card>
     );
   return (
     <>
-      <Link
-        className="back-link"
-        to="/environments/$environmentId"
-        params={{ environmentId: id }}
-        search={{ services: "", releases: "" }}
-      >
-        Environment details
-      </Link>
-      <PageTitle
-        title={`${environment.settings.name} secrets`}
-        description="Values are never returned by the panel."
+      <PageHeader
+        breadcrumbs={[
+          <Link
+            key="environment"
+            to="/environments/$environmentId"
+            params={{ environmentId: id }}
+            search={{ services: "", releases: "" }}
+          >
+            {environment.settings.name}
+          </Link>,
+        ]}
+        title="Secrets"
+        badge={<EnvironmentStatus environment={environment} />}
+        description="Environment variables your services read. Values are encrypted and never shown again."
       />
-      <Details>
-        <Detail label="Environment version">
-          {String(environment.version)}
-        </Detail>
-        <Detail label="Secret version">
-          {environment.latestSecretVersionId || "Unavailable"}
-        </Detail>
-        <Detail label="Saved names">
-          {environment.secretNames.length
-            ? environment.secretNames.join(", ")
-            : "None configured"}
-        </Detail>
-        <Detail label="Configuration">
-          {environment.pendingChanges
-            ? "Changes pending"
-            : environment.currentReleaseId
-              ? "Applied"
-              : "Not deployed"}
-        </Detail>
-      </Details>
-      <SecretForm key={id} environment={environment} metadataError={!!error} />
+      <div className="stack" style={{ maxWidth: "48rem" }}>
+        <SecretForm
+          key={id}
+          environment={environment}
+          metadataError={!!error}
+        />
+      </div>
     </>
   );
 }
@@ -113,12 +113,10 @@ function SecretForm({
     setNotice("");
     try {
       await reload();
-      setNotice(
-        "Current names and versions refreshed. Values cannot be read back; review metadata before entering a new change.",
-      );
+      setNotice("Unsaved changes discarded.");
     } catch (error) {
       if (!(await expireSession(error)))
-        setFailure("Metadata refresh failed. Refresh before saving again.");
+        setFailure("Couldn’t reload secrets. Try again.");
     } finally {
       setPending(false);
     }
@@ -137,7 +135,7 @@ function SecretForm({
         !(value instanceof HTMLTextAreaElement)
       ) {
         clearValues(submittedForm);
-        setFailure("The secret form could not be read. Re-enter the change.");
+        setFailure("The form couldn’t be read. Enter the values again.");
         return;
       }
       upserts.push({ name: name.value, value: value.value });
@@ -150,7 +148,9 @@ function SecretForm({
     setNotice("");
     const problem = secretChangeProblem(upserts, removeNames, base.secretNames);
     if (problem) {
-      setFailure(`${problem} Values were cleared; enter them again.`);
+      setFailure(
+        `${problem} For safety the values were cleared — enter them again.`,
+      );
       return;
     }
     setPending(true);
@@ -169,9 +169,7 @@ function SecretForm({
         for (const item of upserts) item.value = "";
       }
       if (!result.environment) throw new Error("Missing saved environment");
-      setNotice(
-        `Secret version ${result.environment.latestSecretVersionId} saved. Running applications were not restarted; queued releases keep their captured version.`,
-      );
+      setNotice("Saved. Deploy to apply the new values.");
       setNeedsRefresh(true);
       try {
         await queryClient.invalidateQueries({
@@ -180,33 +178,29 @@ function SecretForm({
         await reload();
       } catch (refreshError) {
         if (!(await expireSession(refreshError)))
-          setFailure(
-            "Saved, but metadata refresh failed. Refresh before entering another change.",
-          );
+          setFailure("Saved, but the page couldn’t reload. Refresh it.");
       }
     } catch (error) {
       if (await expireSession(error)) return;
       if (error instanceof ConnectError && error.code === Code.Aborted) {
         setNeedsRefresh(true);
         setFailure(
-          "Settings or secrets changed elsewhere. Current metadata is being refreshed. Review it and re-enter values before saving again.",
+          "Secrets were changed elsewhere. Showing the latest — enter your values again.",
         );
         try {
           await reload();
         } catch (refreshError) {
           if (!(await expireSession(refreshError)))
-            setFailure(
-              "The environment changed and refresh failed. Refresh before saving again.",
-            );
+            setFailure("Secrets were changed elsewhere. Reload the page.");
         }
       } else if (mutationRejected(error)) {
         setFailure(
-          "The secret change was refused. Check names, sizes and removals, then re-enter values. No values were retained for retry.",
+          "The change was refused. Check the names and sizes, then enter the values again.",
         );
       } else {
         setNeedsRefresh(true);
         setFailure(
-          "Save outcome unknown. No values were retained for retry. Refresh names and versions, review them, then re-enter any required change.",
+          "We couldn’t confirm the save. Reload to check, then re-enter any values still needed.",
         );
       }
     } finally {
@@ -216,108 +210,147 @@ function SecretForm({
 
   return (
     <>
-      <p className="notice">
-        Only explicit changes are saved. Omitted names retain their values; an
-        empty value is valid. Secrets apply on the next eligible deployment and
-        do not change running applications or already queued release snapshots.
-      </p>
       {stale && (
-        <p role="alert">
-          Settings or secrets changed since this form opened. Refresh metadata
-          before saving.
-        </p>
+        <Banner
+          tone="warning"
+          actions={
+            <Button size="sm" pending={pending} onClick={() => void refresh()}>
+              Load latest
+            </Button>
+          }
+        >
+          Secrets changed since you opened this page.
+        </Banner>
       )}
       {metadataError && (
-        <p role="alert">Metadata refresh failed. Refresh before saving.</p>
+        <Banner tone="warning">Couldn’t refresh. Reload before saving.</Banner>
       )}
       <form
         ref={form}
-        className="settings-form"
+        className="form"
         onSubmit={(event) => void submit(event)}
         autoComplete="off"
         aria-busy={pending}
       >
-        <fieldset className="form-fields" disabled={blocked}>
-          <legend>Set or replace secret values</legend>
-          {rows.map((row, index) => (
-            <fieldset className="domain-row" key={row}>
-              <legend>Secret change {index + 1}</legend>
-              <label htmlFor={`name-${row}`}>Name</label>
-              <input
-                id={`name-${row}`}
-                name={`name-${row}`}
-                required
-                maxLength={128}
-                pattern="[A-Za-z_][A-Za-z0-9_]*"
-                autoComplete="off"
-                spellCheck={false}
-              />
-              <label htmlFor={`value-${row}`}>
-                Value (visible; empty is valid)
-              </label>
-              <textarea
-                id={`value-${row}`}
-                name={`value-${row}`}
-                data-secret-value=""
-                rows={4}
-                wrap="soft"
-                maxLength={16384}
-                autoComplete="off"
-                spellCheck={false}
-                aria-describedby="secret-value-help"
-              />
+        <fieldset disabled={blocked} className="stack">
+          <Card
+            title="Saved secrets"
+            description="To change a value, add it again below with the same name."
+            labelledBy="saved-secrets-title"
+            flush
+          >
+            {base.secretNames.length ? (
+              <ul className="list">
+                {base.secretNames.map((name) => (
+                  <li key={name}>
+                    <label className="list-row removable">
+                      <code>{name}</code>
+                      <span className="spacer" />
+                      <span className="checkbox subtle">
+                        <input type="checkbox" name="remove" value={name} />
+                        Remove
+                      </span>
+                    </label>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <Empty icon={<KeyIcon size={20} />} title="No secrets yet">
+                Add the values your Compose file expects below.
+              </Empty>
+            )}
+          </Card>
+          <Card
+            title="Add or replace"
+            description="Values are visible while you type and cleared as soon as you save. An empty value is allowed."
+            labelledBy="secret-changes-title"
+          >
+            {rows.map((row, index) => (
+              <div
+                className="repeat-row repeat-row-secret"
+                key={row}
+                role="group"
+                aria-label={`Secret ${index + 1}`}
+              >
+                <div className="field">
+                  <label htmlFor={`name-${row}`}>Name</label>
+                  <input
+                    id={`name-${row}`}
+                    name={`name-${row}`}
+                    required
+                    maxLength={128}
+                    pattern="[A-Za-z_][A-Za-z0-9_]*"
+                    autoComplete="off"
+                    spellCheck={false}
+                    className="mono"
+                    placeholder="API_TOKEN"
+                  />
+                </div>
+                <div className="field">
+                  <label htmlFor={`value-${row}`}>Value</label>
+                  <textarea
+                    id={`value-${row}`}
+                    name={`value-${row}`}
+                    data-secret-value=""
+                    rows={1}
+                    wrap="soft"
+                    maxLength={16384}
+                    autoComplete="off"
+                    spellCheck={false}
+                  />
+                </div>
+                <div className="button-cell">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    shape="square"
+                    aria-label={`Discard secret ${index + 1}`}
+                    icon={<TrashIcon size={16} />}
+                    onClick={() =>
+                      setRows(rows.filter((entry) => entry !== row))
+                    }
+                  />
+                </div>
+              </div>
+            ))}
+            <div>
               <Button
                 type="button"
-                variant="secondary"
-                onClick={() => setRows(rows.filter((entry) => entry !== row))}
+                icon={<PlusIcon size={16} />}
+                disabled={rows.length >= 64}
+                onClick={() => setRows([...rows, crypto.randomUUID()])}
               >
-                Discard change {index + 1}
+                Add secret
               </Button>
-            </fieldset>
-          ))}
-          <Button
-            type="button"
-            disabled={rows.length >= 64}
-            onClick={() => setRows([...rows, crypto.randomUUID()])}
-          >
-            Add secret value ({rows.length}/64)
-          </Button>
-          <p id="secret-value-help" className="muted">
-            Values are visible while editing and support multiple lines. They
-            are cleared before a save request. Existing values are never filled
-            in.
-          </p>
-          <fieldset>
-            <legend>Remove saved secrets</legend>
-            {base.secretNames.length ? (
-              base.secretNames.map((name) => (
-                <label className="checkbox-label" key={name}>
-                  <input type="checkbox" name="remove" value={name} />
-                  <span>Remove {name}</span>
-                </label>
-              ))
-            ) : (
-              <p className="muted">No saved names to remove.</p>
-            )}
-          </fieldset>
+            </div>
+          </Card>
         </fieldset>
         {failure && (
-          <p className="form-error" role="alert">
+          <p className="field-error" role="alert">
             {failure}
           </p>
         )}
-        {notice && <p role="status">{notice}</p>}
+        {notice && (
+          <p className="help" role="status">
+            {notice}
+          </p>
+        )}
         <div className="form-actions">
-          <Button type="submit" variant="primary" disabled={blocked}>
-            Save secret changes
+          <Button
+            type="submit"
+            variant="primary"
+            pending={pending}
+            disabled={blocked && !pending}
+          >
+            Save secrets
           </Button>
           <Button
             type="button"
-            variant="secondary"
+            variant="ghost"
             disabled={pending}
             onClick={() => void refresh()}
           >
-            Discard changes and refresh metadata
+            Discard changes
           </Button>
         </div>
       </form>
