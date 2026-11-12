@@ -67,9 +67,6 @@ service GitHubService {
   rpc ListRepositories(ListRepositoriesRequest) returns (ListRepositoriesResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
-  rpc ListWorkflows(ListWorkflowsRequest) returns (ListWorkflowsResponse) {
-    option idempotency_level = NO_SIDE_EFFECTS;
-  }
   rpc SelectRepositories(SelectRepositoriesRequest) returns (SelectRepositoriesResponse);
   rpc SaveRegistryCredential(SaveRegistryCredentialRequest) returns (SaveRegistryCredentialResponse);
 }
@@ -108,20 +105,6 @@ message ListRepositoriesResponse {
   repeated Repository repositories = 1;
   PageResponse page = 2;
   repeated int64 selected_repository_ids = 3;
-}
-message GitHubWorkflow {
-  int64 id = 1;
-  string name = 2;
-  string path = 3;
-  string state = 4;
-}
-message ListWorkflowsRequest {
-  int64 repository_id = 1 [(buf.validate.field).int64.gt = 0];
-  PageRequest page = 2 [(buf.validate.field).required = true];
-}
-message ListWorkflowsResponse {
-  repeated GitHubWorkflow workflows = 1;
-  PageResponse page = 2;
 }
 message SelectRepositoriesRequest {
   Mutation mutation = 1 [(buf.validate.field).required = true];
@@ -254,7 +237,8 @@ message Project {
   string id = 1;
   string name = 2;
   Repository repository = 3;
-  int64 github_workflow_id = 4;
+  reserved 4;
+  reserved "github_workflow_id";
   google.protobuf.Timestamp created_at = 5;
 }
 
@@ -340,18 +324,19 @@ enum ServiceHealth {
   SERVICE_HEALTH_NOT_CONFIGURED = 5;
 }
 
+// Images are resolved from the GIT_SHA tags of source_sha; no build run is recorded.
 message BuildIdentity {
   int64 github_repository_id = 1;
-  int64 github_workflow_id = 2;
-  int64 github_run_id = 3;
-  uint32 github_run_attempt = 4;
+  reserved 2, 3, 4;
+  reserved "github_workflow_id", "github_run_id", "github_run_attempt";
   string branch = 5;
   string source_sha = 6;
 }
 
 message ServiceImage {
   string service = 1;
-  string image_variable = 2;
+  reserved 2;
+  reserved "image_variable";
   string image_digest = 3;
 }
 
@@ -494,7 +479,8 @@ message CreateProjectRequest {
     max_len: 100
   }];
   Repository repository = 3 [(buf.validate.field).required = true];
-  int64 github_workflow_id = 4 [(buf.validate.field).int64.gt = 0];
+  reserved 4;
+  reserved "github_workflow_id";
 }
 message CreateProjectResponse {
   Project project = 1;

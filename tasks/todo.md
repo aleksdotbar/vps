@@ -4,7 +4,7 @@ Contract: [MVP requirements](../docs/spec.md).
 
 ## Deploy and recover
 
-- Integrate build selection, secrets, native execution, routing and observed results.
+- Integrate image-tag release resolution, secrets, native execution, routing and observed results.
 - Remove redundant setup-history and deployment-state machinery.
 - Verify deployment, failed replacement recovery and interrupted-operation reconciliation on a disposable target.
 - Finish environment deployment/rollback controls and service observations.

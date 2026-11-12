@@ -19,6 +19,7 @@ import (
 	panelv1 "github.com/aleksdotbar/vps/panel/gen/go/panel/v1"
 	"github.com/aleksdotbar/vps/panel/internal/compose"
 	"github.com/aleksdotbar/vps/panel/internal/operations"
+	"github.com/aleksdotbar/vps/panel/internal/releases"
 	"github.com/aleksdotbar/vps/panel/internal/routes"
 	"github.com/aleksdotbar/vps/panel/internal/securestate"
 	"github.com/aleksdotbar/vps/panel/internal/store"
@@ -76,10 +77,10 @@ func releaseSetup(t *testing.T) (*Service, *sql.DB, *operations.Runtime, *compos
 			t.Fatal(err)
 		}
 	}
-	artifact, err := os.ReadFile("../../../examples/stateless/release.json")
-	if err != nil {
-		t.Fatal(err)
-	}
+	artifact := releases.Artifact{SchemaVersion: 1, SourceSHA: "0123456789abcdef0123456789abcdef01234567", Services: map[string]releases.ArtifactService{
+		"app":    {Image: "ghcr.io/example/stateless-app@sha256:" + strings.Repeat("1", 64)},
+		"worker": {Image: "ghcr.io/example/stateless-worker@sha256:" + strings.Repeat("2", 64)},
+	}}
 	command := os.Getenv("PANEL_TEST_COMPOSE")
 	if command == "" {
 		command = "docker-compose"
@@ -89,7 +90,7 @@ func releaseSetup(t *testing.T) (*Service, *sql.DB, *operations.Runtime, *compos
 		t.Fatal(err)
 	}
 	intent := operations.Intent{RequestID: uuid.NewString(), Kind: operations.Deploy, EnvironmentID: environment.Id, ExpectedVersion: selection.Environment.Version, SourceSHA: "0123456789abcdef0123456789abcdef01234567"}
-	input := ReleaseInput{Intent: intent, Selection: selection, Build: Build{RepositoryID: 1, WorkflowID: 2, RunID: 3, RunAttempt: 1, Branch: "main", SourceSHA: intent.SourceSHA}, Tree: directory, Artifact: artifact}
+	input := ReleaseInput{Intent: intent, Selection: selection, Build: Build{RepositoryID: 1, Branch: "main", SourceSHA: intent.SourceSHA}, Tree: directory, Artifact: artifact}
 	return service, database, runtime, resolver, input
 }
 func seedReleaseRouting(t *testing.T, service *Service, serverID string) {
@@ -151,7 +152,7 @@ func TestQueuedReleaseKeepsCapturedDomainsAndSecretsAndReplaysBeforeSourceIO(t *
 	}
 	retry := input
 	retry.Tree = filepath.Join(t.TempDir(), "missing")
-	retry.Artifact = nil
+	retry.Artifact = releases.Artifact{}
 	replay, replayedOperation, err := service.QueueRelease(ctx, runtime, resolver, retry)
 	if err != nil || replay.ID != release.ID || replayedOperation.ID != operation.ID {
 		t.Fatalf("idempotent replay required source or created new release: %v", err)

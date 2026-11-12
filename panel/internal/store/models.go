@@ -89,18 +89,10 @@ type Environment struct {
 }
 
 type GithubBranchProgress struct {
-	EnvironmentID      string
-	BindingVersion     int64
-	DiscoveryPage      int64
-	HighWaterRun       int64
-	HighWaterAttempt   int64
-	CandidateRunID     int64
-	CandidateAttempt   int64
-	CandidateRunNumber int64
-	CandidateSha       string
-	ManualCutoff       int64
-	ManualAttempt      int64
-	NextPollAt         int64
+	EnvironmentID  string
+	BindingVersion int64
+	HandledSha     string
+	NextPollAt     int64
 }
 
 type GithubIntegration struct {
@@ -205,7 +197,6 @@ type Project struct {
 	RepositoryID    int64
 	RepositoryOwner string
 	RepositoryName  string
-	WorkflowID      int64
 	CreatedAt       int64
 }
 
@@ -222,9 +213,6 @@ type Release struct {
 	EnvironmentID      string
 	ServerID           string
 	RepositoryID       int64
-	WorkflowID         int64
-	RunID              int64
-	RunAttempt         int64
 	Branch             string
 	SourceSha          string
 	EnvironmentVersion int64
@@ -329,28 +317,21 @@ type Session struct {
 }
 
 type WaitingBuild struct {
-	ID                string
-	EnvironmentID     string
-	ServerID          string
-	IntentJson        []byte
-	Fingerprint       []byte
-	SelectionJson     []byte
-	BindingVersion    int64
-	Automatic         bool
-	State             string
-	Reason            string
-	RunID             int64
-	RunAttempt        int64
-	RunNumber         int64
-	ArtifactID        int64
-	ArtifactDigest    string
-	DispatchStartedAt int64
-	DiscoveryPage     int64
-	PollCount         int64
-	Failures          int64
-	NextPollAt        int64
-	RiverJobID        int64
-	CreatedAt         int64
-	UpdatedAt         int64
-	ExpiresAt         int64
+	ID             string
+	EnvironmentID  string
+	ServerID       string
+	IntentJson     []byte
+	Fingerprint    []byte
+	SelectionJson  []byte
+	BindingVersion int64
+	Automatic      bool
+	State          string
+	Reason         string
+	PollCount      int64
+	Failures       int64
+	NextPollAt     int64
+	RiverJobID     int64
+	CreatedAt      int64
+	UpdatedAt      int64
+	ExpiresAt      int64
 }

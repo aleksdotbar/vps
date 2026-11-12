@@ -50,7 +50,7 @@ func setup(t *testing.T, deadlines ...time.Time) *fixture {
 	if err := queries.ObserveServer(ctx, store.ObserveServerParams{ID: server, Readiness: "ready", ObservedAt: time.Now().UnixMilli()}); err != nil {
 		t.Fatal(err)
 	}
-	if err := queries.CreateProject(ctx, store.CreateProjectParams{ID: project, Name: "fixture", RepositoryID: 1, RepositoryOwner: "example", RepositoryName: "app", WorkflowID: 2, CreatedAt: 1}); err != nil {
+	if err := queries.CreateProject(ctx, store.CreateProjectParams{ID: project, Name: "fixture", RepositoryID: 1, RepositoryOwner: "example", RepositoryName: "app", CreatedAt: 1}); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := f.vault.UpdateEnvironment(ctx, environment, 0, map[string]string{}, nil); err != nil {
@@ -60,7 +60,7 @@ func setup(t *testing.T, deadlines ...time.Time) *fixture {
 		t.Fatal(err)
 	}
 	for i, id := range []string{f.previous, f.candidate} {
-		if err := queries.CreateRelease(ctx, store.CreateReleaseParams{ID: id, EnvironmentID: environment, ServerID: server, RepositoryID: 1, WorkflowID: 2, RunID: int64(i + 1), RunAttempt: 1, Branch: "main", SourceSha: strings.Repeat("a", 40), EnvironmentVersion: int64(i + 1), BindingVersion: 1, ImagesJson: []byte(`[]`), DomainsJson: []byte(`[]`), SecretVersion: 1, ComposeConfig: []byte(`{}`), SecretBindingsJson: []byte(`[]`), ConfigSha256: strings.Repeat("a", 64), CreatedAt: int64(i + 1)}); err != nil {
+		if err := queries.CreateRelease(ctx, store.CreateReleaseParams{ID: id, EnvironmentID: environment, ServerID: server, RepositoryID: 1, Branch: "main", SourceSha: strings.Repeat("a", 40), EnvironmentVersion: int64(i + 1), BindingVersion: 1, ImagesJson: []byte(`[]`), DomainsJson: []byte(`[]`), SecretVersion: 1, ComposeConfig: []byte(`{}`), SecretBindingsJson: []byte(`[]`), ConfigSha256: strings.Repeat("a", 64), CreatedAt: int64(i + 1)}); err != nil {
 			t.Fatal(err)
 		}
 		if err := queries.CreateReleaseService(ctx, store.CreateReleaseServiceParams{ReleaseID: id, Name: "app", ImageDigest: f.image}); err != nil {

@@ -52,7 +52,7 @@ func (s *Service) CreateProject(ctx context.Context, request *panelv1.CreateProj
 		return nil, ErrCapacity
 	}
 	id := uuid.NewString()
-	if err := store.New(value.Tx).CreateProject(ctx, store.CreateProjectParams{ID: id, Name: request.GetName(), RepositoryID: request.GetRepository().GetGithubRepositoryId(), RepositoryOwner: request.GetRepository().GetOwner(), RepositoryName: request.GetRepository().GetName(), WorkflowID: request.GetGithubWorkflowId(), CreatedAt: time.Now().UnixMilli()}); err != nil {
+	if err := store.New(value.Tx).CreateProject(ctx, store.CreateProjectParams{ID: id, Name: request.GetName(), RepositoryID: request.GetRepository().GetGithubRepositoryId(), RepositoryOwner: request.GetRepository().GetOwner(), RepositoryName: request.GetRepository().GetName(), CreatedAt: time.Now().UnixMilli()}); err != nil {
 		return nil, writeError(err)
 	}
 	project, err := store.New(value.Tx).GetProject(ctx, id)

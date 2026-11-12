@@ -12,7 +12,7 @@ export function Projects({ cursor }: { cursor: string }) {
         title="Projects"
         description="Repositories and their environments."
       >
-        <Link to="/projects/new" search={{ repository: "", workflows: "" }}>
+        <Link to="/projects/new" search={{ repository: "" }}>
           New project
         </Link>
       </PageTitle>
@@ -47,7 +47,7 @@ export function Projects({ cursor }: { cursor: string }) {
           </ul>
         ) : (
           <Empty title="No projects yet">
-            Create a project to connect its repository and build workflow.
+            Create a project to connect its repository.
           </Empty>
         )}
       </section>
@@ -99,9 +99,6 @@ export function Project({ id, cursor }: { id: string; cursor: string }) {
         </Link>
       </PageTitle>
       <Details>
-        <Detail label="GitHub workflow">
-          {project.githubWorkflowId.toString()}
-        </Detail>
         <Detail label="Created">
           <ObservedTime value={project.createdAt} />
         </Detail>

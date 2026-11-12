@@ -46,7 +46,7 @@ func setup(t *testing.T) (*Service, *sql.DB, string) {
 func projectAndEnvironment(t *testing.T, service *Service, serverID string) (*panelv1.Project, *panelv1.Environment) {
 	t.Helper()
 	ctx := context.Background()
-	project, err := service.CreateProject(ctx, &panelv1.CreateProjectRequest{Mutation: &panelv1.Mutation{RequestId: uuid.NewString()}, Name: "generic", Repository: &panelv1.Repository{GithubRepositoryId: 1, Owner: "example", Name: "generic"}, GithubWorkflowId: 2})
+	project, err := service.CreateProject(ctx, &panelv1.CreateProjectRequest{Mutation: &panelv1.Mutation{RequestId: uuid.NewString()}, Name: "generic", Repository: &panelv1.Repository{GithubRepositoryId: 1, Owner: "example", Name: "generic"}})
 	if err != nil {
 		t.Fatal(err)
 	}

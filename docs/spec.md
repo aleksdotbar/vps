@@ -8,7 +8,7 @@
 - No OS installation, provider API or automated host maintenance.
 - Panel and applications may share a host; register that host automatically and prevent its removal.
 - The panel manages its own host through restricted private SSH; no resident custom agent.
-- GitHub Actions builds application images; deployments never build application source on hosts.
+- Application CI (e.g. GitHub Actions) builds images; deployments never build application source on hosts.
 - NixOS manages host configuration; application releases never rebuild or roll back the OS.
 - Private administration over Tailscale; public application ingress through Cloudflare Tunnel.
 
@@ -18,7 +18,7 @@
 - Environment: one server, branch, Compose override, secret namespace and domain configuration.
 - Support staging/development and intentional production releases through separate branch bindings.
 - Show Compose services individually; deploy and roll back the whole environment.
-- Snapshot source/run identity, image digests, Compose configuration, domains and secret versions in immutable releases.
+- Snapshot source commit, image digests, Compose configuration, domains and secret versions in immutable releases.
 - Settings and secret edits take effect on the next deployment; retain already admitted selections.
 - Supersede unstarted work when its branch/server/override binding changes.
 - Reject server reassignment after deployment or while started work remains unresolved.
@@ -27,13 +27,13 @@
 
 - Use native Compose merge, interpolation and validation; no custom project-definition language.
 - Keep hostnames and secret values in panel state; application repositories declare services, healthchecks and required secret names.
-- Accept prebuilt images by immutable GHCR digest; require complete service/image mapping.
+- Every service image is `ghcr.io/<owner>/<name>:${GIT_SHA}`; the panel sets `GIT_SHA` to the deployed commit and pins each tag to its digest.
 - Restrict privileged containers, host namespaces, socket/device access, arbitrary host mounts and public origin ports.
 - Enforce non-root execution, bounded resources/logs, health checks and graceful shutdown.
 - Give each service only its declared secrets; never interpolate the panel's ambient environment.
-- Use an installation-owned GitHub App and selected repositories. Supply a conventional Actions template.
-- First deployment reuses an exact verified build or dispatches one; later eligible pushes deploy automatically.
-- Poll durably with bounded retries and provider backoff; reconcile uncertain dispatch before repeating it.
+- Use an installation-owned GitHub App with read-only contents access to selected repositories. Supply a conventional build workflow example.
+- Deploy the branch head, or the chosen commit, once all its image tags exist; later branch pushes deploy automatically.
+- Wait for missing image tags durably with bounded retries and provider backoff, then fail naming the missing image.
 - Use public GHCR images for MVP; keep runtime credentials off build jobs.
 
 ## Installation and trust

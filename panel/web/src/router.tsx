@@ -28,7 +28,6 @@ import {
   servicesQuery,
   sessionQuery,
   unauthenticated,
-  workflowsQuery,
 } from "./api";
 import { ErrorPage, InitialLoading, PageTitle } from "./components";
 import { Environment } from "./environment";
@@ -60,7 +59,6 @@ const repositoryId = z
   .catch("");
 const newProjectSearch = z.object({
   repository: repositoryId.default(""),
-  workflows: cursor.default(""),
 });
 
 async function required<T>(value: Promise<T>): Promise<T> {
@@ -152,22 +150,13 @@ const newProject = createRoute({
   getParentRoute: () => privateRoute,
   path: "/projects/new",
   validateSearch: (search) => newProjectSearch.parse(search),
-  loaderDeps: ({ search }) => search,
-  loader: ({ deps }) =>
+  loader: () =>
     required(
       (async () => {
         const integration =
           await queryClient.ensureQueryData(integrationQuery());
         if (!integration.installed) return;
-        const repositories =
-          await queryClient.ensureQueryData(repositoriesQuery());
-        if (
-          deps.repository &&
-          repositories.selectedRepositoryIds.includes(BigInt(deps.repository))
-        )
-          await queryClient.ensureQueryData(
-            workflowsQuery(BigInt(deps.repository), deps.workflows),
-          );
+        await queryClient.ensureQueryData(repositoriesQuery());
       })(),
     ),
   component: lazyRouteComponent(

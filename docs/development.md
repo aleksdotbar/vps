@@ -5,7 +5,7 @@
 - Tool bootstrap and checks: [Makefile](../panel/Makefile), [scripts](../panel/scripts).
 - Dependencies and versions: [Go module](../panel/go.mod), [Go sums](../panel/go.sum), [frontend manifest](../panel/web/package.json), [frontend lock](../panel/web/pnpm-lock.yaml), [Nix lock](../nix/flake.lock).
 - Frontend install policy: [pnpm workspace](../panel/web/pnpm-workspace.yaml).
-- RPCs and release metadata: [protobuf](../panel/proto), [release schema](../panel/contracts/release-artifact.schema.json).
+- RPCs: [protobuf](../panel/proto).
 - Host inputs: [foundation](../panel/internal/foundation/input.go), [machine](../panel/internal/machine/machine.go).
 
 ## Setup and commands

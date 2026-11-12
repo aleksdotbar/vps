@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"math"
 	"strings"
 	"time"
 
@@ -29,17 +28,19 @@ import (
 type Selection struct {
 	Environment store.Environment `json:"environment"`
 }
+
+// Build identifies the source commit; Artifact holds the image digests the
+// caller resolved from that commit's GIT_SHA tags.
 type Build struct {
-	RepositoryID, WorkflowID, RunID int64
-	RunAttempt                      int64
-	Branch, SourceSHA               string
+	RepositoryID      int64
+	Branch, SourceSHA string
 }
 type ReleaseInput struct {
 	Intent    operations.Intent
 	Selection Selection
 	Build     Build
 	Tree      string
-	Artifact  []byte
+	Artifact  releases.Artifact
 }
 
 // CaptureSelection composes with P05's accepted waiting-build intent transaction.
@@ -110,10 +111,15 @@ func (s *Service) QueueRelease(ctx context.Context, runtime *operations.Runtime,
 		return store.Release{}, store.Operation{}, readError(err)
 	}
 	build := input.Build
-	if build.RepositoryID != project.RepositoryID || build.WorkflowID != project.WorkflowID || build.RunID < 1 || build.RunAttempt < 1 || build.RunAttempt > math.MaxUint32 || build.Branch != selected.Branch || build.SourceSHA != input.Intent.SourceSHA {
+	if build.RepositoryID != project.RepositoryID || build.Branch != selected.Branch || build.SourceSHA != input.Intent.SourceSHA {
 		return store.Release{}, store.Operation{}, ErrInvalid
 	}
-	artifact, err := releases.ParseArtifact(input.Artifact, build.SourceSHA)
+	// Re-admit the resolved set through the same strict parser retained material uses.
+	encoded, err := json.Marshal(input.Artifact)
+	if err != nil {
+		return store.Release{}, store.Operation{}, ErrInvalid
+	}
+	artifact, err := releases.ParseArtifact(encoded, build.SourceSHA)
 	if err != nil {
 		return store.Release{}, store.Operation{}, err
 	}
@@ -145,7 +151,7 @@ func (s *Service) QueueRelease(ctx context.Context, runtime *operations.Runtime,
 	images := make([]*panelv1.ServiceImage, 0, len(prepared.Services))
 	for _, name := range prepared.Services {
 		service := artifact.Services[name]
-		images = append(images, &panelv1.ServiceImage{Service: name, ImageVariable: service.ImageVariable, ImageDigest: service.Image})
+		images = append(images, &panelv1.ServiceImage{Service: name, ImageDigest: service.Image})
 	}
 	imageData, _ := json.Marshal(images)
 	// SecretBinding.Secret is a variable name; this metadata never holds plaintext.
@@ -171,7 +177,7 @@ func (s *Service) QueueRelease(ctx context.Context, runtime *operations.Runtime,
 		return store.Release{}, store.Operation{}, err
 	}
 	id := uuid.NewString()
-	if err := queries.CreateRelease(ctx, store.CreateReleaseParams{ID: id, EnvironmentID: selected.ID, ServerID: selected.ServerID, RepositoryID: build.RepositoryID, WorkflowID: build.WorkflowID, RunID: build.RunID, RunAttempt: build.RunAttempt, Branch: build.Branch, SourceSha: build.SourceSHA, EnvironmentVersion: selected.Version, BindingVersion: selected.BindingVersion, ImagesJson: imageData, DomainsJson: selected.DomainsJson, SecretVersion: selected.SecretVersion, ComposeConfig: prepared.Config, SecretBindingsJson: bindings, ConfigSha256: hash, CreatedAt: time.Now().UnixMilli()}); err != nil {
+	if err := queries.CreateRelease(ctx, store.CreateReleaseParams{ID: id, EnvironmentID: selected.ID, ServerID: selected.ServerID, RepositoryID: build.RepositoryID, Branch: build.Branch, SourceSha: build.SourceSHA, EnvironmentVersion: selected.Version, BindingVersion: selected.BindingVersion, ImagesJson: imageData, DomainsJson: selected.DomainsJson, SecretVersion: selected.SecretVersion, ComposeConfig: prepared.Config, SecretBindingsJson: bindings, ConfigSha256: hash, CreatedAt: time.Now().UnixMilli()}); err != nil {
 		return store.Release{}, store.Operation{}, fmt.Errorf("store immutable release: %w", err)
 	}
 	for _, name := range prepared.Services {
@@ -277,11 +283,7 @@ func releaseMessage(value store.GetReleaseMetadataRow) (*panelv1.Release, error)
 	if err != nil {
 		return nil, err
 	}
-	attempt, err := apiAttempt(value.RunAttempt)
-	if err != nil {
-		return nil, err
-	}
-	return &panelv1.Release{Id: value.ID, EnvironmentId: value.EnvironmentID, Build: &panelv1.BuildIdentity{GithubRepositoryId: value.RepositoryID, GithubWorkflowId: value.WorkflowID, GithubRunId: value.RunID, GithubRunAttempt: attempt, Branch: value.Branch, SourceSha: value.SourceSha}, EnvironmentVersion: version, BindingVersion: binding, Images: images, Domains: domains, SecretVersionId: fmt.Sprint(value.SecretVersion), ConfigurationSha256: value.ConfigSha256, CreatedAt: timestamppb.New(time.UnixMilli(value.CreatedAt))}, nil
+	return &panelv1.Release{Id: value.ID, EnvironmentId: value.EnvironmentID, Build: &panelv1.BuildIdentity{GithubRepositoryId: value.RepositoryID, Branch: value.Branch, SourceSha: value.SourceSha}, EnvironmentVersion: version, BindingVersion: binding, Images: images, Domains: domains, SecretVersionId: fmt.Sprint(value.SecretVersion), ConfigurationSha256: value.ConfigSha256, CreatedAt: timestamppb.New(time.UnixMilli(value.CreatedAt))}, nil
 }
 func (s *Service) GetRelease(ctx context.Context, id string) (*panelv1.Release, error) {
 	canonical, err := uuid.Parse(id)

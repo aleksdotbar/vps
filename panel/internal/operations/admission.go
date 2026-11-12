@@ -209,9 +209,6 @@ func (r *Runtime) Enqueue(ctx context.Context, tx *sql.Tx, intent Intent, target
 	}
 
 	if intent.Kind == Rollback {
-		if err := advanceRollbackCutoff(ctx, queries, intent.EnvironmentID); err != nil {
-			return store.Operation{}, err
-		}
 		if err := store.New(tx).SupersedeWaitingAutomatic(ctx, store.SupersedeWaitingAutomaticParams{UpdatedAt: time.Now().UnixMilli(), EnvironmentID: intent.EnvironmentID}); err != nil {
 			return store.Operation{}, err
 		}
@@ -265,33 +262,4 @@ func (r *Runtime) Enqueue(ctx context.Context, tx *sql.Tx, intent Intent, target
 		}
 	}
 	return queries.GetOperation(ctx, intent.RequestID)
-}
-
-// Explicit rollback blocks every already persisted automatic candidate. The P10
-// provider boundary additionally captures the latest provider run order outside
-// this transaction before admission, covering as-yet undiscovered older runs.
-func advanceRollbackCutoff(ctx context.Context, queries *store.Queries, environmentID string) error {
-	progress, err := queries.GetBranchProgress(ctx, environmentID)
-	if errors.Is(err, sql.ErrNoRows) {
-		return nil
-	}
-	if err != nil {
-		return err
-	}
-	number, attempt := progress.ManualCutoff, progress.ManualAttempt
-	advance := func(n, a int64) {
-		if n > number || (n == number && a > attempt) {
-			number = n
-			attempt = a
-		}
-	}
-	advance(progress.HighWaterRun, progress.HighWaterAttempt)
-	advance(progress.CandidateRunNumber, progress.CandidateAttempt)
-	waiting, err := queries.HighestWaitingRun(ctx, store.HighestWaitingRunParams{EnvironmentID: environmentID, BindingVersion: progress.BindingVersion})
-	if err == nil {
-		advance(waiting.RunNumber, waiting.RunAttempt)
-	} else if !errors.Is(err, sql.ErrNoRows) {
-		return err
-	}
-	return queries.SetManualBuildCutoff(ctx, store.SetManualBuildCutoffParams{EnvironmentID: environmentID, ManualCutoff: number, ManualAttempt: attempt})
 }

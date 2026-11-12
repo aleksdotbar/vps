@@ -93,13 +93,6 @@ func (h *handler) ListRepositories(ctx context.Context, request *connect.Request
 	}
 	return connect.NewResponse(value), nil
 }
-func (h *handler) ListWorkflows(ctx context.Context, request *connect.Request[panelv1.ListWorkflowsRequest]) (*connect.Response[panelv1.ListWorkflowsResponse], error) {
-	value, err := h.github.ListWorkflows(ctx, request.Msg.GetRepositoryId(), request.Msg.GetPage())
-	if err != nil {
-		return nil, githubError(err)
-	}
-	return connect.NewResponse(value), nil
-}
 func (h *handler) SelectRepositories(ctx context.Context, request *connect.Request[panelv1.SelectRepositoriesRequest]) (*connect.Response[panelv1.SelectRepositoriesResponse], error) {
 	value, err := h.github.SelectRepositories(ctx, request.Msg)
 	if err != nil {

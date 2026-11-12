@@ -10,7 +10,6 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/google/go-github/v93/github"
 	"github.com/google/uuid"
 	"github.com/riverqueue/river"
 
@@ -23,15 +22,24 @@ import (
 
 const pollInterval = 30 * time.Second
 
+// imageWait bounds how long a deployment waits for its GIT_SHA image tags.
+const imageWait = time.Hour
+
+// ImageResolver resolves a public GHCR repository tag to an immutable digest.
+type ImageResolver interface {
+	Resolve(ctx context.Context, repository, tag string) (string, error)
+}
+
 type Builds struct {
 	integration *Service
 	metadata    *projects.Service
 	resolver    *compose.Resolver
 	runtime     *operations.Runtime
+	images      ImageResolver
 }
 
-func NewBuilds(integration *Service, metadata *projects.Service, resolver *compose.Resolver, runtime *operations.Runtime) *Builds {
-	return &Builds{integration, metadata, resolver, runtime}
+func NewBuilds(integration *Service, metadata *projects.Service, resolver *compose.Resolver, runtime *operations.Runtime, images ImageResolver) *Builds {
+	return &Builds{integration, metadata, resolver, runtime, images}
 }
 func (b *Builds) Register(workers *river.Workers) ([]*river.PeriodicJob, error) {
 	if err := river.AddWorkerSafely(workers, &buildWorker{builds: b}); err != nil {
@@ -76,23 +84,11 @@ func (b *Builds) RequestDeploy(ctx context.Context, request *panelv1.DeployEnvir
 	if err != nil {
 		return "", err
 	}
-	client, repository, err := b.integration.selectedClient(ctx, project.RepositoryID, false)
+	// The current branch head becomes handled: automatic discovery must not
+	// replace this explicit intent with the same head, only with a newer push.
+	head, err := b.branchHead(ctx, project.RepositoryID, environment.Branch)
 	if err != nil {
 		return "", err
-	}
-	if err := b.integration.verifyWorkflow(ctx, client, repository, project.WorkflowID); err != nil {
-		return "", err
-	}
-	// A provider run-number cutoff prevents already existing automatic runs from
-	// undoing this explicit intent after they finish out of completion order.
-	runs, response, err := client.Actions.ListWorkflowRunsByID(ctx, repository.Owner, repository.Name, project.WorkflowID, &github.ListWorkflowRunsOptions{ListOptions: github.ListOptions{PerPage: 1, Page: 1}})
-	if err != nil || runs == nil {
-		return "", b.integration.failure(ctx, response, err)
-	}
-	cutoff, attempt := int64(0), int64(0)
-	if len(runs.WorkflowRuns) > 0 {
-		cutoff = int64(runs.WorkflowRuns[0].GetRunNumber())
-		attempt = int64(runs.WorkflowRuns[0].GetRunAttempt())
 	}
 	tx, err = b.integration.database.BeginTx(ctx, nil)
 	if err != nil {
@@ -129,10 +125,10 @@ func (b *Builds) RequestDeploy(ctx context.Context, request *panelv1.DeployEnvir
 			return "", err
 		}
 	}
-	if err := queries.SetManualBuildCutoff(ctx, store.SetManualBuildCutoffParams{ManualCutoff: cutoff, ManualAttempt: attempt, EnvironmentID: intent.EnvironmentID}); err != nil {
+	if err := queries.SetHandledBranchHead(ctx, store.SetHandledBranchHeadParams{HandledSha: head, EnvironmentID: intent.EnvironmentID}); err != nil {
 		return "", err
 	}
-	if err := b.insert(ctx, tx, intent, identity, selection, 0, 0, 0); err != nil {
+	if err := b.insert(ctx, tx, intent, identity, selection); err != nil {
 		return "", err
 	}
 	if err := tx.Commit(); err != nil {
@@ -140,15 +136,20 @@ func (b *Builds) RequestDeploy(ctx context.Context, request *panelv1.DeployEnvir
 	}
 	return intent.RequestID, nil
 }
-func (s *Service) verifyWorkflow(ctx context.Context, client *github.Client, repository store.GithubRepository, id int64) error {
-	workflow, response, err := client.Actions.GetWorkflowByID(ctx, repository.Owner, repository.Name, id)
-	if err != nil || workflow == nil {
-		return s.failure(ctx, response, err)
+func (b *Builds) branchHead(ctx context.Context, repositoryID int64, name string) (string, error) {
+	client, repository, err := b.integration.selectedClient(ctx, repositoryID)
+	if err != nil {
+		return "", err
 	}
-	if workflow.GetID() != id || workflow.GetPath() != ".github/workflows/panel-build.yaml" || workflow.GetState() != "active" {
-		return ErrSetup
+	branch, response, err := client.Repositories.GetBranch(ctx, repository.Owner, repository.Name, name, 0)
+	if err != nil || branch == nil {
+		return "", b.integration.failure(ctx, response, err)
 	}
-	return nil
+	sha := branch.Commit.GetSHA()
+	if !sourceSHA(sha) {
+		return "", ErrProvider
+	}
+	return sha, nil
 }
 func (b *Builds) replay(ctx context.Context, tx *sql.Tx, intent operations.Intent, identity []byte) (bool, error) {
 	waiting, err := store.New(tx).GetWaitingBuild(ctx, intent.RequestID)
@@ -164,7 +165,7 @@ func (b *Builds) replay(ctx context.Context, tx *sql.Tx, intent operations.Inten
 	_, found, err := b.runtime.Replay(ctx, tx, intent)
 	return found, err
 }
-func (b *Builds) insert(ctx context.Context, tx *sql.Tx, intent operations.Intent, identity []byte, selection projects.Selection, runID, attempt, number int64) error {
+func (b *Builds) insert(ctx context.Context, tx *sql.Tx, intent operations.Intent, identity []byte, selection projects.Selection) error {
 	queries := store.New(tx)
 	capacity, err := queries.WaitingBuildCapacity(ctx)
 	if err != nil {
@@ -194,7 +195,7 @@ func (b *Builds) insert(ctx context.Context, tx *sql.Tx, intent operations.Inten
 		return ErrInvalid
 	}
 	now := time.Now()
-	if err := queries.CreateWaitingBuild(ctx, store.CreateWaitingBuildParams{ID: intent.RequestID, EnvironmentID: intent.EnvironmentID, ServerID: selection.Environment.ServerID, IntentJson: encoded, Fingerprint: identity, SelectionJson: selected, BindingVersion: selection.Environment.BindingVersion, Automatic: intent.Automatic, NextPollAt: now.UnixMilli(), CreatedAt: now.UnixMilli(), UpdatedAt: now.UnixMilli(), ExpiresAt: now.Add(24 * time.Hour).UnixMilli(), RunID: runID, RunAttempt: attempt, RunNumber: number}); err != nil {
+	if err := queries.CreateWaitingBuild(ctx, store.CreateWaitingBuildParams{ID: intent.RequestID, EnvironmentID: intent.EnvironmentID, ServerID: selection.Environment.ServerID, IntentJson: encoded, Fingerprint: identity, SelectionJson: selected, BindingVersion: selection.Environment.BindingVersion, Automatic: intent.Automatic, NextPollAt: now.UnixMilli(), CreatedAt: now.UnixMilli(), UpdatedAt: now.UnixMilli(), ExpiresAt: now.Add(imageWait).UnixMilli()}); err != nil {
 		return err
 	}
 	jobID, err := b.runtime.EnqueueBuild(ctx, tx, intent.RequestID)
@@ -203,11 +204,9 @@ func (b *Builds) insert(ctx context.Context, tx *sql.Tx, intent operations.Inten
 	}
 	return queries.SetWaitingBuildJob(ctx, store.SetWaitingBuildJobParams{RiverJobID: jobID, ID: intent.RequestID})
 }
-func automaticID(environmentID string, bindingVersion, runID, attempt int64) string {
-	return uuid.NewSHA1(uuid.NameSpaceOID, []byte(environmentID+":"+formatID(bindingVersion)+":"+formatID(runID)+":"+formatID(attempt))).String()
+func automaticID(environmentID string, bindingVersion int64, sha string) string {
+	return uuid.NewSHA1(uuid.NameSpaceOID, []byte(environmentID+":"+strconv.FormatInt(bindingVersion, 10)+":"+sha)).String()
 }
-
-func formatID(value int64) string { return strconv.FormatInt(value, 10) }
 
 func (b *Builds) GetDeploymentSource(ctx context.Context, id string, expected uint64) (*panelv1.GetDeploymentSourceResponse, error) {
 	if expected < 1 || expected > math.MaxInt64 {
@@ -231,17 +230,9 @@ func (b *Builds) GetDeploymentSource(ctx context.Context, id string, expected ui
 	if err != nil {
 		return nil, err
 	}
-	client, repository, err := b.integration.selectedClient(ctx, project.RepositoryID, false)
+	sha, err := b.branchHead(ctx, project.RepositoryID, environment.Branch)
 	if err != nil {
 		return nil, err
-	}
-	branch, response, err := client.Repositories.GetBranch(ctx, repository.Owner, repository.Name, environment.Branch, 0)
-	if err != nil || branch == nil {
-		return nil, b.integration.failure(ctx, response, err)
-	}
-	sha := branch.Commit.GetSHA()
-	if !sourceSHA(sha) {
-		return nil, ErrProvider
 	}
 	current, err := store.New(b.integration.database).GetEnvironment(ctx, environment.ID)
 	if err != nil {

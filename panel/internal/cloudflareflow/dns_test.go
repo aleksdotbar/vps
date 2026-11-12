@@ -59,14 +59,14 @@ func setupDNSDeadline(t *testing.T, deadline time.Time) *dnsFixture {
 	run(`INSERT INTO cloudflare_integration(id,account_id,token_id,version,verified_at) VALUES(1,?,?,1,1)`, fixtureAccount, fixtureTokenID)
 	run(`INSERT INTO cloudflare_zones(id,name) VALUES(?,'example.com')`, fixtureZone)
 	run(`INSERT INTO server_tunnels(server_id,request_id,installation_id,account_id,credential_version,name,phase,create_attempted,create_attempted_at,tunnel_id,config_sha256,observed_at,created_at,updated_at) VALUES(?,?,?,?,1,'fixture','ready',TRUE,1,?,?,1,1,1)`, server, uuid.NewString(), installation, fixtureAccount, tunnel, strings.Repeat("a", 64))
-	run(`INSERT INTO projects(id,name,repository_id,repository_owner,repository_name,workflow_id,created_at) VALUES(?,'fixture',1,'example','fixture',2,1)`, project)
+	run(`INSERT INTO projects(id,name,repository_id,repository_owner,repository_name,created_at) VALUES(?,'fixture',1,'example','fixture',1)`, project)
 	run(`INSERT INTO environments(id,project_id,name,server_id,branch,override_path,domains_json,auto_deploy,version,binding_version,secret_version,secret_names_json,bridge_name,created_at) VALUES(?,?,'staging',?,'main','compose.staging.yaml','[]',FALSE,1,1,1,'[]','fixture',1)`, environment, project, server)
 	domains, err := json.Marshal([]*panelv1.Domain{{Hostname: "web.example.com", Service: "app", Port: 3000}})
 	if err != nil {
 		t.Fatal(err)
 	}
 	queries := store.New(connection.database)
-	err = queries.CreateRelease(t.Context(), store.CreateReleaseParams{ID: release, EnvironmentID: environment, ServerID: server, RepositoryID: 1, WorkflowID: 2, RunID: 3, RunAttempt: 1, Branch: "main", SourceSha: strings.Repeat("a", 40), EnvironmentVersion: 1, BindingVersion: 1, ImagesJson: []byte("[]"), DomainsJson: domains, SecretVersion: 1, ComposeConfig: []byte(`{"services":{}}`), SecretBindingsJson: []byte("[]"), ConfigSha256: strings.Repeat("a", 64), CreatedAt: time.Now().UnixMilli()})
+	err = queries.CreateRelease(t.Context(), store.CreateReleaseParams{ID: release, EnvironmentID: environment, ServerID: server, RepositoryID: 1, Branch: "main", SourceSha: strings.Repeat("a", 40), EnvironmentVersion: 1, BindingVersion: 1, ImagesJson: []byte("[]"), DomainsJson: domains, SecretVersion: 1, ComposeConfig: []byte(`{"services":{}}`), SecretBindingsJson: []byte("[]"), ConfigSha256: strings.Repeat("a", 64), CreatedAt: time.Now().UnixMilli()})
 	if err != nil {
 		t.Fatal(err)
 	}

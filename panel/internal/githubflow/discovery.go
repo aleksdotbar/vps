@@ -7,7 +7,6 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/google/go-github/v93/github"
 	"github.com/riverqueue/river"
 
 	"github.com/aleksdotbar/vps/panel/internal/operations"
@@ -35,9 +34,6 @@ func (w *discoveryWorker) Work(ctx context.Context, job *river.Job[operations.Di
 		return errors.New("GitHub discovery could not be persisted")
 	}
 	return nil
-}
-func newer(number, attempt, previousNumber, previousAttempt int64) bool {
-	return number > previousNumber || (number == previousNumber && attempt > previousAttempt)
 }
 func (b *Builds) sweep(ctx context.Context) error {
 	queries := store.New(b.integration.database)
@@ -118,14 +114,9 @@ func (b *Builds) Discover(ctx context.Context, environmentID string) error {
 	if err != nil {
 		return err
 	}
-	client, repository, err := b.integration.selectedClient(ctx, project.RepositoryID, false)
+	head, err := b.branchHead(ctx, project.RepositoryID, environment.Branch)
 	if err != nil {
 		return b.deferDiscovery(ctx, progress, err)
-	}
-
-	runs, response, err := client.Actions.ListWorkflowRunsByID(ctx, repository.Owner, repository.Name, project.WorkflowID, &github.ListWorkflowRunsOptions{Branch: environment.Branch, Event: "push", Status: "success", ListOptions: github.ListOptions{Page: 1, PerPage: 100}})
-	if err != nil || runs == nil {
-		return b.deferDiscovery(ctx, progress, b.integration.failure(ctx, response, err))
 	}
 	tx, err = b.integration.database.BeginTx(ctx, nil)
 	if err != nil {
@@ -137,41 +128,32 @@ func (b *Builds) Discover(ctx context.Context, environmentID string) error {
 	if err != nil {
 		return err
 	}
-	if !current.AutoDeploy || current.BindingVersion != environment.BindingVersion {
+	if !current.AutoDeploy || current.BindingVersion != environment.BindingVersion || current.Branch != environment.Branch {
 		return nil
 	}
-	// Read fresh progress after provider IO: an explicit manual request may have
-	// advanced its source/run cutoff and cleared candidates during this call.
+	// Read fresh progress after provider IO: an explicit deploy or rollback may
+	// have marked this head handled during the call.
 	progress, err = queries.GetBranchProgress(ctx, environmentID)
 	if err != nil {
 		return err
 	}
-	for _, run := range runs.WorkflowRuns {
-		number, attempt := int64(run.GetRunNumber()), int64(run.GetRunAttempt())
-		if run.GetStatus() != "completed" || run.GetConclusion() != "success" || !eligibleRun(run, project, current.Branch, run.GetHeadSHA(), false) || !newer(number, attempt, progress.HighWaterRun, progress.HighWaterAttempt) || !newer(number, attempt, progress.ManualCutoff, progress.ManualAttempt) {
-			continue
+	if head != progress.HandledSha {
+		admitted, err := b.admitHead(ctx, tx, current, head)
+		if err != nil {
+			return err
 		}
-		if progress.CandidateRunID == 0 || newer(number, attempt, progress.CandidateRunNumber, progress.CandidateAttempt) {
-			progress.CandidateRunID = run.GetID()
-			progress.CandidateAttempt = attempt
-			progress.CandidateRunNumber = number
-			progress.CandidateSha = run.GetHeadSHA()
+		if admitted {
+			progress.HandledSha = head
 		}
 	}
-	// Automatic discovery samples the latest100 successful branch pushes every
-	// cycle. Manual exact-SHA search owns bounded historical pagination.
-	progress.DiscoveryPage = 1
 	progress.NextPollAt = time.Now().Add(pollInterval).UnixMilli()
-	if err := b.admitCandidate(ctx, tx, current, &progress); err != nil {
-		return err
-	}
 	if err := saveProgress(ctx, queries, progress); err != nil {
 		return err
 	}
 	return tx.Commit()
 }
 func saveProgress(ctx context.Context, queries *store.Queries, progress store.GithubBranchProgress) error {
-	return queries.SaveBranchProgress(ctx, store.SaveBranchProgressParams{EnvironmentID: progress.EnvironmentID, DiscoveryPage: progress.DiscoveryPage, HighWaterRun: progress.HighWaterRun, HighWaterAttempt: progress.HighWaterAttempt, CandidateRunID: progress.CandidateRunID, CandidateAttempt: progress.CandidateAttempt, CandidateRunNumber: progress.CandidateRunNumber, CandidateSha: progress.CandidateSha, NextPollAt: progress.NextPollAt})
+	return queries.SaveBranchProgress(ctx, store.SaveBranchProgressParams{EnvironmentID: progress.EnvironmentID, HandledSha: progress.HandledSha, NextPollAt: progress.NextPollAt})
 }
 func (b *Builds) deferDiscovery(ctx context.Context, progress store.GithubBranchProgress, cause error) error {
 	if ctx.Err() != nil {
@@ -194,82 +176,66 @@ func (b *Builds) deferDiscovery(ctx context.Context, progress store.GithubBranch
 	slog.WarnContext(ctx, "GitHub automatic build discovery deferred", "environment_id", progress.EnvironmentID, "reason", reason, "retry_after_seconds", int64(delay.Seconds()))
 	return store.New(b.integration.database).DeferBranchPoll(ctx, store.DeferBranchPollParams{NextPollAt: progress.NextPollAt, EnvironmentID: progress.EnvironmentID, BindingVersion: progress.BindingVersion})
 }
-func (b *Builds) admitCandidate(ctx context.Context, tx *sql.Tx, environment store.Environment, progress *store.GithubBranchProgress) error {
-	if progress.CandidateRunID > 0 && (!newer(progress.CandidateRunNumber, progress.CandidateAttempt, progress.HighWaterRun, progress.HighWaterAttempt) || !newer(progress.CandidateRunNumber, progress.CandidateAttempt, progress.ManualCutoff, progress.ManualAttempt)) {
-		progress.CandidateRunID = 0
-		return nil
-	}
-	if progress.CandidateRunID < 1 {
-		return nil
-	}
+
+// admitHead queues an automatic deployment for a new branch head, superseding
+// older automatic work that has not started. It reports false when the head
+// must be retried later (capacity, conflicts, server not ready).
+func (b *Builds) admitHead(ctx context.Context, tx *sql.Tx, environment store.Environment, head string) (bool, error) {
 	queries := store.New(tx)
+	id := automaticID(environment.ID, environment.BindingVersion, head)
 	if existing, err := queries.ActiveWaitingBuildForEnvironment(ctx, environment.ID); err == nil {
-		if !existing.Automatic || !newer(progress.CandidateRunNumber, progress.CandidateAttempt, existing.RunNumber, existing.RunAttempt) {
-			return nil
+		if existing.ID == id {
+			return true, nil
+		}
+		if !existing.Automatic {
+			return false, nil
 		}
 		if err := queries.FinishWaitingBuild(ctx, store.FinishWaitingBuildParams{ID: existing.ID, State: "superseded", Reason: "newer_build", UpdatedAt: time.Now().UnixMilli()}); err != nil {
-			return err
+			return false, err
 		}
 	} else if !errors.Is(err, sql.ErrNoRows) {
-		return err
+		return false, err
 	}
 	conflicts, err := queries.UnresolvedServerOperations(ctx, environment.ServerID)
 	if err != nil {
-		return err
+		return false, err
 	}
 	for _, operation := range conflicts {
 		if operation.Kind == string(operations.Enroll) {
-			return nil
+			return false, nil
 		}
 		if operation.EnvironmentID != environment.ID {
 			continue
 		}
 		if !operation.Automatic || operation.Started || operation.State != "queued" {
-			return nil
-		}
-		previous, err := queries.GetWaitingBuild(ctx, operation.ID)
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil
-		}
-		if err != nil {
-			return err
-		}
-		if !newer(progress.CandidateRunNumber, progress.CandidateAttempt, previous.RunNumber, previous.RunAttempt) {
-			return nil
+			return false, nil
 		}
 		if err := queries.SupersedeQueuedAutomaticCandidate(ctx, store.SupersedeQueuedAutomaticCandidateParams{ID: operation.ID, UpdatedAt: time.Now().UnixMilli()}); err != nil {
-			return err
+			return false, err
 		}
 	}
-	id := automaticID(environment.ID, environment.BindingVersion, progress.CandidateRunID, progress.CandidateAttempt)
 	if _, err := queries.GetWaitingBuild(ctx, id); err == nil {
-		progress.HighWaterRun = progress.CandidateRunNumber
-		progress.HighWaterAttempt = progress.CandidateAttempt
-		progress.CandidateRunID = 0
-		return nil
+		return true, nil
 	} else if !errors.Is(err, sql.ErrNoRows) {
-		return err
+		return false, err
 	}
 	selection, err := b.metadata.CaptureSelection(ctx, tx, environment.ID, environment.Version)
 	if errors.Is(err, projects.ErrServer) {
-		return nil
+		return false, nil
 	}
 	if err != nil {
-		return err
+		return false, err
 	}
-	intent, identity, err := operations.IntentIdentity(operations.Intent{RequestID: id, Kind: operations.Deploy, EnvironmentID: environment.ID, ExpectedVersion: environment.Version, SourceSHA: progress.CandidateSha, Automatic: true})
+	intent, identity, err := operations.IntentIdentity(operations.Intent{RequestID: id, Kind: operations.Deploy, EnvironmentID: environment.ID, ExpectedVersion: environment.Version, SourceSHA: head, Automatic: true})
 	if err != nil {
-		return err
+		return false, err
 	}
-	if err := b.insert(ctx, tx, intent, identity, selection, progress.CandidateRunID, progress.CandidateAttempt, progress.CandidateRunNumber); err != nil {
-		// Capacity/conflicts leave the persisted newest candidate for a later poll.
+	if err := b.insert(ctx, tx, intent, identity, selection); err != nil {
+		// Capacity/conflicts leave the head unhandled for a later poll.
 		if errors.Is(err, operations.ErrCapacity) || errors.Is(err, operations.ErrConflict) {
-			return nil
+			return false, nil
 		}
-		return err
+		return false, err
 	}
-	progress.HighWaterRun = progress.CandidateRunNumber
-	progress.HighWaterAttempt = progress.CandidateAttempt
-	progress.CandidateRunID = 0
-	return nil
+	return true, nil
 }

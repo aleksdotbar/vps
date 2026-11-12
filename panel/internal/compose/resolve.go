@@ -71,40 +71,113 @@ func New(command string) (*Resolver, error) {
 	return &Resolver{command: resolved}, nil
 }
 
-// Resolve copies two bounded files from one immutable source root. The raw gate
-// runs before native Compose can follow any repository-controlled file reference.
-// availableSecrets contains presence/nonempty flags, never plaintext values.
-func (r *Resolver) Resolve(ctx context.Context, tree, override string, artifact releases.Artifact, availableSecrets map[string]bool, network Network) (Prepared, error) {
-	if !safePath(override) || override == "compose.yaml" || !projectName.MatchString(network.ProjectName) || !bridgeName.MatchString(network.BridgeName) {
-		return Prepared{}, ErrUnsafe
+// SourceVariable is the only Compose variable the panel supplies besides
+// secrets: the full commit SHA whose images the release deploys.
+const SourceVariable = "GIT_SHA"
+
+// Images reads the image repository of every service. Each image must be
+// written as `ghcr.io/<owner>/<name>:${GIT_SHA}`; the override may replace it.
+func Images(tree, override string) (map[string]string, error) {
+	files, err := readSources(tree, override)
+	if err != nil {
+		return nil, err
+	}
+	images := make(map[string]string)
+	seen := make(map[string]bool)
+	for _, data := range files {
+		top, err := parseDocument(data)
+		if err != nil {
+			return nil, err
+		}
+		services := mapping(top, "services")
+		if services == nil || services.Kind != yaml.MappingNode || len(services.Content) > 128 {
+			return nil, ErrUnsafe
+		}
+		for index := 0; index < len(services.Content); index += 2 {
+			name := services.Content[index].Value
+			service := services.Content[index+1]
+			if service.Kind != yaml.MappingNode || len(name) > 128 {
+				return nil, ErrUnsafe
+			}
+			seen[name] = true
+			if value := mapping(service, "image"); value != nil {
+				repository, ok := imageRepository(value)
+				if !ok {
+					return nil, ErrUnsafe
+				}
+				images[name] = repository
+			}
+		}
+	}
+	if len(seen) == 0 || len(seen) > 64 || len(images) != len(seen) {
+		return nil, ErrUnsafe
+	}
+	return images, nil
+}
+
+var imageReference = regexp.MustCompile(`^(ghcr\.io/[a-z0-9]+(?:[._-][a-z0-9]+)*(?:/[a-z0-9]+(?:[._-][a-z0-9]+)*)+):\$\{` + SourceVariable + `(?:(?::\?|\?)[^{}$]*)?\}$`)
+
+func imageRepository(node *yaml.Node) (string, bool) {
+	if node.Kind != yaml.ScalarNode || len(node.Value) > 512 {
+		return "", false
+	}
+	match := imageReference.FindStringSubmatch(node.Value)
+	if len(match) != 2 {
+		return "", false
+	}
+	return match[1], true
+}
+
+// pinnedRepository is the repository part of an admitted repo@sha256 image.
+func pinnedRepository(image string) string {
+	repository, _, _ := strings.Cut(image, "@")
+	return repository
+}
+
+func readSources(tree, override string) ([][]byte, error) {
+	if !safePath(override) || override == "compose.yaml" {
+		return nil, ErrUnsafe
 	}
 	root, err := os.OpenRoot(tree)
 	if err != nil {
-		return Prepared{}, ErrUnsafe
+		return nil, ErrUnsafe
 	}
 	defer func() { _ = root.Close() }()
 	files := make([][]byte, 0, 2)
 	for _, path := range []string{"compose.yaml", override} {
 		file, err := privatefile.OpenNoFollow(root, path, os.O_RDONLY, 0)
 		if err != nil {
-			return Prepared{}, ErrUnsafe
+			return nil, ErrUnsafe
 		}
 		info, statErr := file.Stat()
 		if statErr != nil || !info.Mode().IsRegular() {
 			_ = file.Close()
-			return Prepared{}, ErrUnsafe
+			return nil, ErrUnsafe
 		}
 		data, readErr := io.ReadAll(io.LimitReader(file, maxFileBytes+1))
 		closeErr := file.Close()
 		if readErr != nil || closeErr != nil || len(data) > maxFileBytes {
-			return Prepared{}, ErrUnsafe
+			return nil, ErrUnsafe
 		}
 		files = append(files, data)
 	}
-	for _, service := range artifact.Services {
-		if _, collision := availableSecrets[service.ImageVariable]; collision || reserved(service.ImageVariable) {
-			return Prepared{}, ErrUnsafe
-		}
+	return files, nil
+}
+
+// Resolve copies two bounded files from one immutable source root. The raw gate
+// runs before native Compose can follow any repository-controlled file reference.
+// artifact carries the digests already resolved for each service's GIT_SHA tag.
+// availableSecrets contains presence/nonempty flags, never plaintext values.
+func (r *Resolver) Resolve(ctx context.Context, tree, override string, artifact releases.Artifact, availableSecrets map[string]bool, network Network) (Prepared, error) {
+	if !projectName.MatchString(network.ProjectName) || !bridgeName.MatchString(network.BridgeName) || !sourceSHA.MatchString(artifact.SourceSHA) {
+		return Prepared{}, ErrUnsafe
+	}
+	files, err := readSources(tree, override)
+	if err != nil {
+		return Prepared{}, err
+	}
+	if _, collision := availableSecrets[SourceVariable]; collision {
+		return Prepared{}, ErrUnsafe
 	}
 	references := make(map[string]bool)
 	for _, data := range files {
@@ -124,10 +197,8 @@ func (r *Resolver) Resolve(ctx context.Context, tree, override string, artifact 
 	}
 	nonce := rand.Text()
 	placeholders := make(map[string]string, len(availableSecrets))
-	values := make(map[string]string, len(artifact.Services)+len(availableSecrets))
-	for _, service := range artifact.Services {
-		values[service.ImageVariable] = service.Image
-	}
+	values := make(map[string]string, len(availableSecrets)+1)
+	values[SourceVariable] = artifact.SourceSHA
 	for name := range references {
 		placeholder := "PANEL_SECRET_" + nonce + "_" + name
 		placeholders[placeholder] = name
@@ -164,6 +235,7 @@ func (r *Resolver) Resolve(ctx context.Context, tree, override string, artifact 
 }
 
 var projectName = regexp.MustCompile(`^vps-[a-f0-9]{32}$`)
+var sourceSHA = regexp.MustCompile(`^[0-9a-f]{40}$`)
 var bridgeName = regexp.MustCompile(`^vps-[a-f0-9]{10}$`)
 var variable = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]{0,127}$`)
 var expression = regexp.MustCompile(`^\$\{([A-Za-z_][A-Za-z0-9_]*)(?:(:\?|\?)[^{}$]*)?\}$`)
@@ -171,28 +243,35 @@ var expression = regexp.MustCompile(`^\$\{([A-Za-z_][A-Za-z0-9_]*)(?:(:\?|\?)[^{
 func safePath(path string) bool {
 	return path != "" && !filepath.IsAbs(path) && filepath.Clean(path) == path && !strings.ContainsAny(path, "\\\x00") && len(path) <= 512 && len(strings.Split(path, "/")) <= 16 && !strings.HasPrefix(path, "../") && path != ".." && (strings.HasSuffix(path, ".yaml") || strings.HasSuffix(path, ".yml"))
 }
-func gate(data []byte, artifact releases.Artifact, secrets map[string]bool, references map[string]bool) error {
+func parseDocument(data []byte) (*yaml.Node, error) {
 	var document yaml.Node
 	decoder := yaml.NewDecoder(bytes.NewReader(data))
 	if decoder.Decode(&document) != nil || len(document.Content) != 1 {
-		return ErrUnsafe
+		return nil, ErrUnsafe
 	}
 	var extra yaml.Node
 	if !errors.Is(decoder.Decode(&extra), io.EOF) {
-		return ErrUnsafe
+		return nil, ErrUnsafe
 	}
 	visited := 0
 	if err := safeYAML(&document, 0, &visited); err != nil {
-		return err
+		return nil, err
 	}
 	top := document.Content[0]
 	if top.Kind != yaml.MappingNode {
-		return ErrUnsafe
+		return nil, ErrUnsafe
 	}
 	for index := 0; index < len(top.Content); index += 2 {
 		if top.Content[index].Value != "services" {
-			return ErrUnsafe
+			return nil, ErrUnsafe
 		}
+	}
+	return top, nil
+}
+func gate(data []byte, artifact releases.Artifact, secrets map[string]bool, references map[string]bool) error {
+	top, err := parseDocument(data)
+	if err != nil {
+		return err
 	}
 	services := mapping(top, "services")
 	if services == nil || services.Kind != yaml.MappingNode || len(services.Content) > 128 {
@@ -212,8 +291,8 @@ func gate(data []byte, artifact releases.Artifact, secrets map[string]bool, refe
 				return ErrUnsafe
 			}
 			if key == "image" {
-				match := expression.FindStringSubmatch(value.Value)
-				if value.Kind != yaml.ScalarNode || len(match) != 3 || match[1] != expected.ImageVariable {
+				repository, ok := imageRepository(value)
+				if !ok || repository != pinnedRepository(expected.Image) {
 					return ErrUnsafe
 				}
 			} else if key == "environment" {
@@ -228,7 +307,7 @@ func gate(data []byte, artifact releases.Artifact, secrets map[string]bool, refe
 					}
 					match := expression.FindStringSubmatch(entryValue.Value)
 					if len(match) == 3 {
-						if reserved(match[1]) {
+						if reserved(match[1]) || match[1] == SourceVariable {
 							return ErrUnsafe
 						}
 						nonempty, exists := secrets[match[1]]
@@ -361,7 +440,15 @@ func admitResolvedPolicy(data []byte, artifact releases.Artifact, placeholders m
 		var memory string
 		var pids int64
 		var readOnly bool
-		if json.Unmarshal(service["image"], &image) != nil || image != expected.Image || json.Unmarshal(service["user"], &user) != nil || !nonroot(user) || json.Unmarshal(service["cpus"], &cpus) != nil || cpus <= 0 || cpus > 64 || json.Unmarshal(service["mem_limit"], &memory) != nil || json.Unmarshal(service["pids_limit"], &pids) != nil || pids < 1 || pids > 1024 || json.Unmarshal(service["read_only"], &readOnly) != nil || !readOnly {
+		if json.Unmarshal(service["image"], &image) != nil {
+			return Prepared{}, ErrUnsafe
+		}
+		// Native config yields repo:<GIT_SHA>; the release pins the resolved digest.
+		if !preparedInput && image == pinnedRepository(expected.Image)+":"+artifact.SourceSHA {
+			image = expected.Image
+			service["image"], _ = json.Marshal(image)
+		}
+		if image != expected.Image || json.Unmarshal(service["user"], &user) != nil || !nonroot(user) || json.Unmarshal(service["cpus"], &cpus) != nil || cpus <= 0 || cpus > 64 || json.Unmarshal(service["mem_limit"], &memory) != nil || json.Unmarshal(service["pids_limit"], &pids) != nil || pids < 1 || pids > 1024 || json.Unmarshal(service["read_only"], &readOnly) != nil || !readOnly {
 			return Prepared{}, ErrUnsafe
 		}
 		memoryBytes, err := strconv.ParseInt(memory, 10, 64)

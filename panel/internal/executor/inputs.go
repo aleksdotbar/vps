@@ -106,7 +106,7 @@ func releaseManifest(operation store.Operation, captured store.DeploymentExecuti
 		if _, exists := manifest.Artifact.Services[image.Service]; exists {
 			return manifest, errExecutionState
 		}
-		manifest.Artifact.Services[image.Service] = releases.ArtifactService{ImageVariable: image.ImageVariable, Image: image.ImageDigest}
+		manifest.Artifact.Services[image.Service] = releases.ArtifactService{Image: image.ImageDigest}
 	}
 	artifact, err := json.Marshal(manifest.Artifact)
 	if err != nil {

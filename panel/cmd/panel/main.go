@@ -32,6 +32,7 @@ import (
 	"github.com/aleksdotbar/vps/panel/internal/privatefile"
 	"github.com/aleksdotbar/vps/panel/internal/projects"
 	"github.com/aleksdotbar/vps/panel/internal/readiness"
+	"github.com/aleksdotbar/vps/panel/internal/registry"
 	"github.com/aleksdotbar/vps/panel/internal/remote"
 	"github.com/aleksdotbar/vps/panel/internal/securestate"
 	"github.com/aleksdotbar/vps/panel/internal/store"
@@ -174,7 +175,7 @@ func run() (returnErr error) {
 	var builds *githubflow.Builds
 	deploymentExecutor := executor.New(database, cipher, helperClient, cloudflare)
 	queue, err := operations.New(ctx, database, deploymentExecutor, func(workers *river.Workers, runtime *operations.Runtime) ([]*river.PeriodicJob, error) {
-		builds = githubflow.NewBuilds(integration, metadata, resolver, runtime)
+		builds = githubflow.NewBuilds(integration, metadata, resolver, runtime, registry.New())
 		tunnels = cloudflareflow.NewTunnels(cloudflare, helperClient, runtime)
 		if err := tunnels.Register(workers); err != nil {
 			return nil, err

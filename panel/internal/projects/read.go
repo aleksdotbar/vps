@@ -50,7 +50,7 @@ func next(kind, scope, snapshot string, at int64, id string) string {
 	return base64.RawURLEncoding.EncodeToString(encoded)
 }
 func projectMessage(value store.Project) *panelv1.Project {
-	return &panelv1.Project{Id: value.ID, Name: value.Name, Repository: &panelv1.Repository{GithubRepositoryId: value.RepositoryID, Owner: value.RepositoryOwner, Name: value.RepositoryName}, GithubWorkflowId: value.WorkflowID, CreatedAt: timestamppb.New(time.UnixMilli(value.CreatedAt))}
+	return &panelv1.Project{Id: value.ID, Name: value.Name, Repository: &panelv1.Repository{GithubRepositoryId: value.RepositoryID, Owner: value.RepositoryOwner, Name: value.RepositoryName}, CreatedAt: timestamppb.New(time.UnixMilli(value.CreatedAt))}
 }
 
 var errCorruptMetadata = errors.New("stored metadata is invalid")
@@ -66,12 +66,6 @@ func apiVersion(value int64) (uint64, error) {
 		return 0, errCorruptMetadata
 	}
 	return uint64(value), nil
-}
-func apiAttempt(value int64) (uint32, error) {
-	if value < 1 || value > math.MaxUint32 {
-		return 0, errCorruptMetadata
-	}
-	return uint32(value), nil
 }
 func environmentMessage(value store.Environment) (*panelv1.Environment, error) {
 	var domains []*panelv1.Domain

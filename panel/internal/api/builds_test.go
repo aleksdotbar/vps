@@ -35,7 +35,7 @@ func rpcBuildSetup(t *testing.T, provider http.RoundTripper) (*installation, *pr
 	if err := queries.ObserveServer(ctx, store.ObserveServerParams{ID: serverID, Readiness: "ready", ObservedAt: time.Now().UnixMilli()}); err != nil {
 		t.Fatal(err)
 	}
-	project, err := metadata.CreateProject(ctx, &panelv1.CreateProjectRequest{Mutation: &panelv1.Mutation{RequestId: uuid.NewString()}, Name: "generic", Repository: &panelv1.Repository{GithubRepositoryId: 1, Owner: "example", Name: "generic"}, GithubWorkflowId: 2})
+	project, err := metadata.CreateProject(ctx, &panelv1.CreateProjectRequest{Mutation: &panelv1.Mutation{RequestId: uuid.NewString()}, Name: "generic", Repository: &panelv1.Repository{GithubRepositoryId: 1, Owner: "example", Name: "generic"}})
 	if err != nil {
 		t.Fatal(err)
 	}

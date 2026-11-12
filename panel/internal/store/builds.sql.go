@@ -10,7 +10,7 @@ import (
 )
 
 const activeWaitingBuildForEnvironment = `-- name: ActiveWaitingBuildForEnvironment :one
-SELECT id, environment_id, server_id, intent_json, fingerprint, selection_json, binding_version, automatic, state, reason, run_id, run_attempt, run_number, artifact_id, artifact_digest, dispatch_started_at, discovery_page, poll_count, failures, next_poll_at, river_job_id, created_at, updated_at, expires_at FROM waiting_builds WHERE environment_id=? AND state IN ('waiting','dispatch_unknown','needs_attention') LIMIT 1
+SELECT id, environment_id, server_id, intent_json, fingerprint, selection_json, binding_version, automatic, state, reason, poll_count, failures, next_poll_at, river_job_id, created_at, updated_at, expires_at FROM waiting_builds WHERE environment_id=? AND state IN ('waiting','dispatch_unknown','needs_attention') LIMIT 1
 `
 
 func (q *Queries) ActiveWaitingBuildForEnvironment(ctx context.Context, environmentID string) (WaitingBuild, error) {
@@ -27,13 +27,6 @@ func (q *Queries) ActiveWaitingBuildForEnvironment(ctx context.Context, environm
 		&i.Automatic,
 		&i.State,
 		&i.Reason,
-		&i.RunID,
-		&i.RunAttempt,
-		&i.RunNumber,
-		&i.ArtifactID,
-		&i.ArtifactDigest,
-		&i.DispatchStartedAt,
-		&i.DiscoveryPage,
 		&i.PollCount,
 		&i.Failures,
 		&i.NextPollAt,
@@ -91,34 +84,8 @@ func (q *Queries) AutoDeployEnvironments(ctx context.Context) ([]Environment, er
 	return items, nil
 }
 
-const bindWaitingArtifact = `-- name: BindWaitingArtifact :execrows
-UPDATE waiting_builds SET artifact_id=?1,artifact_digest=?2 WHERE id=?3 AND run_id=?4 AND run_attempt=?5 AND state='waiting' AND artifact_id IN (0,?1) AND (artifact_digest='' OR artifact_digest=?2)
-`
-
-type BindWaitingArtifactParams struct {
-	ArtifactID     int64
-	ArtifactDigest string
-	ID             string
-	RunID          int64
-	RunAttempt     int64
-}
-
-func (q *Queries) BindWaitingArtifact(ctx context.Context, arg BindWaitingArtifactParams) (int64, error) {
-	result, err := q.db.ExecContext(ctx, bindWaitingArtifact,
-		arg.ArtifactID,
-		arg.ArtifactDigest,
-		arg.ID,
-		arg.RunID,
-		arg.RunAttempt,
-	)
-	if err != nil {
-		return 0, err
-	}
-	return result.RowsAffected()
-}
-
 const createWaitingBuild = `-- name: CreateWaitingBuild :exec
-INSERT INTO waiting_builds(id,environment_id,server_id,intent_json,fingerprint,selection_json,binding_version,automatic,next_poll_at,created_at,updated_at,expires_at,run_id,run_attempt,run_number) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+INSERT INTO waiting_builds(id,environment_id,server_id,intent_json,fingerprint,selection_json,binding_version,automatic,next_poll_at,created_at,updated_at,expires_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)
 `
 
 type CreateWaitingBuildParams struct {
@@ -134,9 +101,6 @@ type CreateWaitingBuildParams struct {
 	CreatedAt      int64
 	UpdatedAt      int64
 	ExpiresAt      int64
-	RunID          int64
-	RunAttempt     int64
-	RunNumber      int64
 }
 
 func (q *Queries) CreateWaitingBuild(ctx context.Context, arg CreateWaitingBuildParams) error {
@@ -153,9 +117,6 @@ func (q *Queries) CreateWaitingBuild(ctx context.Context, arg CreateWaitingBuild
 		arg.CreatedAt,
 		arg.UpdatedAt,
 		arg.ExpiresAt,
-		arg.RunID,
-		arg.RunAttempt,
-		arg.RunNumber,
 	)
 	return err
 }
@@ -197,7 +158,7 @@ func (q *Queries) FinishWaitingBuild(ctx context.Context, arg FinishWaitingBuild
 }
 
 const getBranchProgress = `-- name: GetBranchProgress :one
-SELECT environment_id, binding_version, discovery_page, high_water_run, high_water_attempt, candidate_run_id, candidate_attempt, candidate_run_number, candidate_sha, manual_cutoff, manual_attempt, next_poll_at FROM github_branch_progress WHERE environment_id=?
+SELECT environment_id, binding_version, handled_sha, next_poll_at FROM github_branch_progress WHERE environment_id=?
 `
 
 func (q *Queries) GetBranchProgress(ctx context.Context, environmentID string) (GithubBranchProgress, error) {
@@ -206,22 +167,14 @@ func (q *Queries) GetBranchProgress(ctx context.Context, environmentID string) (
 	err := row.Scan(
 		&i.EnvironmentID,
 		&i.BindingVersion,
-		&i.DiscoveryPage,
-		&i.HighWaterRun,
-		&i.HighWaterAttempt,
-		&i.CandidateRunID,
-		&i.CandidateAttempt,
-		&i.CandidateRunNumber,
-		&i.CandidateSha,
-		&i.ManualCutoff,
-		&i.ManualAttempt,
+		&i.HandledSha,
 		&i.NextPollAt,
 	)
 	return i, err
 }
 
 const getWaitingBuild = `-- name: GetWaitingBuild :one
-SELECT id, environment_id, server_id, intent_json, fingerprint, selection_json, binding_version, automatic, state, reason, run_id, run_attempt, run_number, artifact_id, artifact_digest, dispatch_started_at, discovery_page, poll_count, failures, next_poll_at, river_job_id, created_at, updated_at, expires_at FROM waiting_builds WHERE id=?
+SELECT id, environment_id, server_id, intent_json, fingerprint, selection_json, binding_version, automatic, state, reason, poll_count, failures, next_poll_at, river_job_id, created_at, updated_at, expires_at FROM waiting_builds WHERE id=?
 `
 
 func (q *Queries) GetWaitingBuild(ctx context.Context, id string) (WaitingBuild, error) {
@@ -238,13 +191,6 @@ func (q *Queries) GetWaitingBuild(ctx context.Context, id string) (WaitingBuild,
 		&i.Automatic,
 		&i.State,
 		&i.Reason,
-		&i.RunID,
-		&i.RunAttempt,
-		&i.RunNumber,
-		&i.ArtifactID,
-		&i.ArtifactDigest,
-		&i.DispatchStartedAt,
-		&i.DiscoveryPage,
 		&i.PollCount,
 		&i.Failures,
 		&i.NextPollAt,
@@ -253,27 +199,6 @@ func (q *Queries) GetWaitingBuild(ctx context.Context, id string) (WaitingBuild,
 		&i.UpdatedAt,
 		&i.ExpiresAt,
 	)
-	return i, err
-}
-
-const highestWaitingRun = `-- name: HighestWaitingRun :one
-SELECT run_number,run_attempt FROM waiting_builds WHERE environment_id=? AND binding_version=? ORDER BY run_number DESC,run_attempt DESC LIMIT 1
-`
-
-type HighestWaitingRunParams struct {
-	EnvironmentID  string
-	BindingVersion int64
-}
-
-type HighestWaitingRunRow struct {
-	RunNumber  int64
-	RunAttempt int64
-}
-
-func (q *Queries) HighestWaitingRun(ctx context.Context, arg HighestWaitingRunParams) (HighestWaitingRunRow, error) {
-	row := q.db.QueryRowContext(ctx, highestWaitingRun, arg.EnvironmentID, arg.BindingVersion)
-	var i HighestWaitingRunRow
-	err := row.Scan(&i.RunNumber, &i.RunAttempt)
 	return i, err
 }
 
@@ -303,7 +228,7 @@ func (q *Queries) InitializeBranchProgress(ctx context.Context, arg InitializeBr
 }
 
 const pollableWaitingBuilds = `-- name: PollableWaitingBuilds :many
-SELECT id, environment_id, server_id, intent_json, fingerprint, selection_json, binding_version, automatic, state, reason, run_id, run_attempt, run_number, artifact_id, artifact_digest, dispatch_started_at, discovery_page, poll_count, failures, next_poll_at, river_job_id, created_at, updated_at, expires_at FROM waiting_builds WHERE state IN ('waiting','dispatch_unknown') ORDER BY next_poll_at,id LIMIT 128
+SELECT id, environment_id, server_id, intent_json, fingerprint, selection_json, binding_version, automatic, state, reason, poll_count, failures, next_poll_at, river_job_id, created_at, updated_at, expires_at FROM waiting_builds WHERE state IN ('waiting','dispatch_unknown') ORDER BY next_poll_at,id LIMIT 128
 `
 
 func (q *Queries) PollableWaitingBuilds(ctx context.Context) ([]WaitingBuild, error) {
@@ -326,13 +251,6 @@ func (q *Queries) PollableWaitingBuilds(ctx context.Context) ([]WaitingBuild, er
 			&i.Automatic,
 			&i.State,
 			&i.Reason,
-			&i.RunID,
-			&i.RunAttempt,
-			&i.RunNumber,
-			&i.ArtifactID,
-			&i.ArtifactDigest,
-			&i.DispatchStartedAt,
-			&i.DiscoveryPage,
 			&i.PollCount,
 			&i.Failures,
 			&i.NextPollAt,
@@ -355,7 +273,7 @@ func (q *Queries) PollableWaitingBuilds(ctx context.Context) ([]WaitingBuild, er
 }
 
 const resetBranchProgress = `-- name: ResetBranchProgress :exec
-UPDATE github_branch_progress SET binding_version=?,discovery_page=1,high_water_run=0,high_water_attempt=0,candidate_run_id=0,candidate_attempt=0,candidate_run_number=0,candidate_sha='',manual_cutoff=0,manual_attempt=0,next_poll_at=0 WHERE environment_id=?
+UPDATE github_branch_progress SET binding_version=?,handled_sha='',next_poll_at=0 WHERE environment_id=?
 `
 
 type ResetBranchProgressParams struct {
@@ -369,52 +287,36 @@ func (q *Queries) ResetBranchProgress(ctx context.Context, arg ResetBranchProgre
 }
 
 const saveBranchProgress = `-- name: SaveBranchProgress :exec
-UPDATE github_branch_progress SET discovery_page=?,high_water_run=?,high_water_attempt=?,candidate_run_id=?,candidate_attempt=?,candidate_run_number=?,candidate_sha=?,next_poll_at=? WHERE environment_id=?
+UPDATE github_branch_progress SET handled_sha=?,next_poll_at=? WHERE environment_id=?
 `
 
 type SaveBranchProgressParams struct {
-	DiscoveryPage      int64
-	HighWaterRun       int64
-	HighWaterAttempt   int64
-	CandidateRunID     int64
-	CandidateAttempt   int64
-	CandidateRunNumber int64
-	CandidateSha       string
-	NextPollAt         int64
-	EnvironmentID      string
+	HandledSha    string
+	NextPollAt    int64
+	EnvironmentID string
 }
 
 func (q *Queries) SaveBranchProgress(ctx context.Context, arg SaveBranchProgressParams) error {
-	_, err := q.db.ExecContext(ctx, saveBranchProgress,
-		arg.DiscoveryPage,
-		arg.HighWaterRun,
-		arg.HighWaterAttempt,
-		arg.CandidateRunID,
-		arg.CandidateAttempt,
-		arg.CandidateRunNumber,
-		arg.CandidateSha,
-		arg.NextPollAt,
-		arg.EnvironmentID,
-	)
+	_, err := q.db.ExecContext(ctx, saveBranchProgress, arg.HandledSha, arg.NextPollAt, arg.EnvironmentID)
 	return err
 }
 
 const scheduleWaitingBuild = `-- name: ScheduleWaitingBuild :exec
-UPDATE waiting_builds SET next_poll_at=?,discovery_page=?,poll_count=poll_count+1,failures=?,updated_at=? WHERE id=? AND state IN ('waiting','dispatch_unknown') AND poll_count<2880
+UPDATE waiting_builds SET next_poll_at=?,reason=?,poll_count=poll_count+1,failures=?,updated_at=? WHERE id=? AND state IN ('waiting','dispatch_unknown') AND poll_count<2880
 `
 
 type ScheduleWaitingBuildParams struct {
-	NextPollAt    int64
-	DiscoveryPage int64
-	Failures      int64
-	UpdatedAt     int64
-	ID            string
+	NextPollAt int64
+	Reason     string
+	Failures   int64
+	UpdatedAt  int64
+	ID         string
 }
 
 func (q *Queries) ScheduleWaitingBuild(ctx context.Context, arg ScheduleWaitingBuildParams) error {
 	_, err := q.db.ExecContext(ctx, scheduleWaitingBuild,
 		arg.NextPollAt,
-		arg.DiscoveryPage,
+		arg.Reason,
 		arg.Failures,
 		arg.UpdatedAt,
 		arg.ID,
@@ -422,18 +324,17 @@ func (q *Queries) ScheduleWaitingBuild(ctx context.Context, arg ScheduleWaitingB
 	return err
 }
 
-const setManualBuildCutoff = `-- name: SetManualBuildCutoff :exec
-UPDATE github_branch_progress SET manual_cutoff=?,manual_attempt=?,candidate_run_id=0,candidate_attempt=0,candidate_run_number=0,candidate_sha='' WHERE environment_id=?
+const setHandledBranchHead = `-- name: SetHandledBranchHead :exec
+UPDATE github_branch_progress SET handled_sha=? WHERE environment_id=?
 `
 
-type SetManualBuildCutoffParams struct {
-	ManualCutoff  int64
-	ManualAttempt int64
+type SetHandledBranchHeadParams struct {
+	HandledSha    string
 	EnvironmentID string
 }
 
-func (q *Queries) SetManualBuildCutoff(ctx context.Context, arg SetManualBuildCutoffParams) error {
-	_, err := q.db.ExecContext(ctx, setManualBuildCutoff, arg.ManualCutoff, arg.ManualAttempt, arg.EnvironmentID)
+func (q *Queries) SetHandledBranchHead(ctx context.Context, arg SetHandledBranchHeadParams) error {
+	_, err := q.db.ExecContext(ctx, setHandledBranchHead, arg.HandledSha, arg.EnvironmentID)
 	return err
 }
 
@@ -449,47 +350,6 @@ type SetWaitingBuildJobParams struct {
 func (q *Queries) SetWaitingBuildJob(ctx context.Context, arg SetWaitingBuildJobParams) error {
 	_, err := q.db.ExecContext(ctx, setWaitingBuildJob, arg.RiverJobID, arg.ID)
 	return err
-}
-
-const setWaitingBuildRun = `-- name: SetWaitingBuildRun :exec
-UPDATE waiting_builds SET state='waiting',run_id=?,run_attempt=?,run_number=?,discovery_page=1,failures=0,updated_at=? WHERE id=? AND state IN ('waiting','dispatch_unknown')
-`
-
-type SetWaitingBuildRunParams struct {
-	RunID      int64
-	RunAttempt int64
-	RunNumber  int64
-	UpdatedAt  int64
-	ID         string
-}
-
-func (q *Queries) SetWaitingBuildRun(ctx context.Context, arg SetWaitingBuildRunParams) error {
-	_, err := q.db.ExecContext(ctx, setWaitingBuildRun,
-		arg.RunID,
-		arg.RunAttempt,
-		arg.RunNumber,
-		arg.UpdatedAt,
-		arg.ID,
-	)
-	return err
-}
-
-const startWaitingBuildDispatch = `-- name: StartWaitingBuildDispatch :execrows
-UPDATE waiting_builds SET state='dispatch_unknown',dispatch_started_at=?,discovery_page=1,updated_at=? WHERE id=? AND state='waiting' AND dispatch_started_at=0
-`
-
-type StartWaitingBuildDispatchParams struct {
-	DispatchStartedAt int64
-	UpdatedAt         int64
-	ID                string
-}
-
-func (q *Queries) StartWaitingBuildDispatch(ctx context.Context, arg StartWaitingBuildDispatchParams) (int64, error) {
-	result, err := q.db.ExecContext(ctx, startWaitingBuildDispatch, arg.DispatchStartedAt, arg.UpdatedAt, arg.ID)
-	if err != nil {
-		return 0, err
-	}
-	return result.RowsAffected()
 }
 
 const supersedeDisabledWaitingBuilds = `-- name: SupersedeDisabledWaitingBuilds :exec

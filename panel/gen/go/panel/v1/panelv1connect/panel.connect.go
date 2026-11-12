@@ -106,9 +106,6 @@ const (
 	// GitHubServiceListRepositoriesProcedure is the fully-qualified name of the GitHubService's
 	// ListRepositories RPC.
 	GitHubServiceListRepositoriesProcedure = "/panel.v1.GitHubService/ListRepositories"
-	// GitHubServiceListWorkflowsProcedure is the fully-qualified name of the GitHubService's
-	// ListWorkflows RPC.
-	GitHubServiceListWorkflowsProcedure = "/panel.v1.GitHubService/ListWorkflows"
 	// GitHubServiceSelectRepositoriesProcedure is the fully-qualified name of the GitHubService's
 	// SelectRepositories RPC.
 	GitHubServiceSelectRepositoriesProcedure = "/panel.v1.GitHubService/SelectRepositories"
@@ -717,7 +714,6 @@ type GitHubServiceClient interface {
 	BeginInstallation(context.Context, *connect.Request[v1.BeginInstallationRequest]) (*connect.Response[v1.BeginInstallationResponse], error)
 	GetIntegration(context.Context, *connect.Request[v1.GetIntegrationRequest]) (*connect.Response[v1.GetIntegrationResponse], error)
 	ListRepositories(context.Context, *connect.Request[v1.ListRepositoriesRequest]) (*connect.Response[v1.ListRepositoriesResponse], error)
-	ListWorkflows(context.Context, *connect.Request[v1.ListWorkflowsRequest]) (*connect.Response[v1.ListWorkflowsResponse], error)
 	SelectRepositories(context.Context, *connect.Request[v1.SelectRepositoriesRequest]) (*connect.Response[v1.SelectRepositoriesResponse], error)
 	SaveRegistryCredential(context.Context, *connect.Request[v1.SaveRegistryCredentialRequest]) (*connect.Response[v1.SaveRegistryCredentialResponse], error)
 }
@@ -759,13 +755,6 @@ func NewGitHubServiceClient(httpClient connect.HTTPClient, baseURL string, opts 
 			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
-		listWorkflows: connect.NewClient[v1.ListWorkflowsRequest, v1.ListWorkflowsResponse](
-			httpClient,
-			baseURL+GitHubServiceListWorkflowsProcedure,
-			connect.WithSchema(gitHubServiceMethods.ByName("ListWorkflows")),
-			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
-			connect.WithClientOptions(opts...),
-		),
 		selectRepositories: connect.NewClient[v1.SelectRepositoriesRequest, v1.SelectRepositoriesResponse](
 			httpClient,
 			baseURL+GitHubServiceSelectRepositoriesProcedure,
@@ -787,7 +776,6 @@ type gitHubServiceClient struct {
 	beginInstallation      *connect.Client[v1.BeginInstallationRequest, v1.BeginInstallationResponse]
 	getIntegration         *connect.Client[v1.GetIntegrationRequest, v1.GetIntegrationResponse]
 	listRepositories       *connect.Client[v1.ListRepositoriesRequest, v1.ListRepositoriesResponse]
-	listWorkflows          *connect.Client[v1.ListWorkflowsRequest, v1.ListWorkflowsResponse]
 	selectRepositories     *connect.Client[v1.SelectRepositoriesRequest, v1.SelectRepositoriesResponse]
 	saveRegistryCredential *connect.Client[v1.SaveRegistryCredentialRequest, v1.SaveRegistryCredentialResponse]
 }
@@ -812,11 +800,6 @@ func (c *gitHubServiceClient) ListRepositories(ctx context.Context, req *connect
 	return c.listRepositories.CallUnary(ctx, req)
 }
 
-// ListWorkflows calls panel.v1.GitHubService.ListWorkflows.
-func (c *gitHubServiceClient) ListWorkflows(ctx context.Context, req *connect.Request[v1.ListWorkflowsRequest]) (*connect.Response[v1.ListWorkflowsResponse], error) {
-	return c.listWorkflows.CallUnary(ctx, req)
-}
-
 // SelectRepositories calls panel.v1.GitHubService.SelectRepositories.
 func (c *gitHubServiceClient) SelectRepositories(ctx context.Context, req *connect.Request[v1.SelectRepositoriesRequest]) (*connect.Response[v1.SelectRepositoriesResponse], error) {
 	return c.selectRepositories.CallUnary(ctx, req)
@@ -833,7 +816,6 @@ type GitHubServiceHandler interface {
 	BeginInstallation(context.Context, *connect.Request[v1.BeginInstallationRequest]) (*connect.Response[v1.BeginInstallationResponse], error)
 	GetIntegration(context.Context, *connect.Request[v1.GetIntegrationRequest]) (*connect.Response[v1.GetIntegrationResponse], error)
 	ListRepositories(context.Context, *connect.Request[v1.ListRepositoriesRequest]) (*connect.Response[v1.ListRepositoriesResponse], error)
-	ListWorkflows(context.Context, *connect.Request[v1.ListWorkflowsRequest]) (*connect.Response[v1.ListWorkflowsResponse], error)
 	SelectRepositories(context.Context, *connect.Request[v1.SelectRepositoriesRequest]) (*connect.Response[v1.SelectRepositoriesResponse], error)
 	SaveRegistryCredential(context.Context, *connect.Request[v1.SaveRegistryCredentialRequest]) (*connect.Response[v1.SaveRegistryCredentialResponse], error)
 }
@@ -871,13 +853,6 @@ func NewGitHubServiceHandler(svc GitHubServiceHandler, opts ...connect.HandlerOp
 		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
-	gitHubServiceListWorkflowsHandler := connect.NewUnaryHandler(
-		GitHubServiceListWorkflowsProcedure,
-		svc.ListWorkflows,
-		connect.WithSchema(gitHubServiceMethods.ByName("ListWorkflows")),
-		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
-		connect.WithHandlerOptions(opts...),
-	)
 	gitHubServiceSelectRepositoriesHandler := connect.NewUnaryHandler(
 		GitHubServiceSelectRepositoriesProcedure,
 		svc.SelectRepositories,
@@ -900,8 +875,6 @@ func NewGitHubServiceHandler(svc GitHubServiceHandler, opts ...connect.HandlerOp
 			gitHubServiceGetIntegrationHandler.ServeHTTP(w, r)
 		case GitHubServiceListRepositoriesProcedure:
 			gitHubServiceListRepositoriesHandler.ServeHTTP(w, r)
-		case GitHubServiceListWorkflowsProcedure:
-			gitHubServiceListWorkflowsHandler.ServeHTTP(w, r)
 		case GitHubServiceSelectRepositoriesProcedure:
 			gitHubServiceSelectRepositoriesHandler.ServeHTTP(w, r)
 		case GitHubServiceSaveRegistryCredentialProcedure:
@@ -929,10 +902,6 @@ func (UnimplementedGitHubServiceHandler) GetIntegration(context.Context, *connec
 
 func (UnimplementedGitHubServiceHandler) ListRepositories(context.Context, *connect.Request[v1.ListRepositoriesRequest]) (*connect.Response[v1.ListRepositoriesResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("panel.v1.GitHubService.ListRepositories is not implemented"))
-}
-
-func (UnimplementedGitHubServiceHandler) ListWorkflows(context.Context, *connect.Request[v1.ListWorkflowsRequest]) (*connect.Response[v1.ListWorkflowsResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("panel.v1.GitHubService.ListWorkflows is not implemented"))
 }
 
 func (UnimplementedGitHubServiceHandler) SelectRepositories(context.Context, *connect.Request[v1.SelectRepositoriesRequest]) (*connect.Response[v1.SelectRepositoriesResponse], error) {

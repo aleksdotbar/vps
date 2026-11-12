@@ -52,7 +52,7 @@ func TestParseArtifactRejectsAmbiguousOrUnsafeMetadata(t *testing.T) {
 		{"wrong schema type", strings.Replace(validArtifact, `"schema_version": 1`, `"schema_version": "1"`, 1)},
 		{"unsupported schema", strings.Replace(validArtifact, `"schema_version": 1`, `"schema_version": 2`, 1)},
 		{"null image", strings.Replace(validArtifact, `"image_variable": "APP_IMAGE"`, `"image_variable": null`, 1)},
-		{"missing service field", strings.Replace(validArtifact, `"image_variable": "APP_IMAGE",`, ``, 1)},
+		{"missing image", strings.Replace(validArtifact, `"image": "ghcr.io/example/stateless-app`, `"other": "ghcr.io/example/stateless-app`, 1)},
 		{"shared image variable", strings.Replace(validArtifact, `"WORKER_IMAGE"`, `"APP_IMAGE"`, 1)},
 		{"mutable image", strings.Replace(validArtifact, `@sha256:`+strings.Repeat("1", 64), `:latest`, 1)},
 		{"foreign registry", strings.Replace(validArtifact, `ghcr.io/`, `ghcr.io.attacker.test/`, 1)},
@@ -103,5 +103,13 @@ func TestParseArtifactEnforcesSourceAndWorkBounds(t *testing.T) {
 		if (count == 64 && err != nil) || (count != 64 && !errors.Is(err, ErrInvalidArtifact)) {
 			t.Fatalf("incorrect service-count admission at %d services: %v", count, err)
 		}
+	}
+}
+
+func TestParseArtifactAcceptsResolvedSetWithoutImageVariables(t *testing.T) {
+	data := `{"schema_version":1,"source_sha":"` + artifactSource + `","services":{"app":{"image":"ghcr.io/example/app@sha256:` + strings.Repeat("1", 64) + `"},"worker":{"image":"ghcr.io/example/worker@sha256:` + strings.Repeat("2", 64) + `"}}}`
+	artifact, err := ParseArtifact([]byte(data), artifactSource)
+	if err != nil || artifact.Services["app"].ImageVariable != "" || artifact.Services["worker"].Image != "ghcr.io/example/worker@sha256:"+strings.Repeat("2", 64) {
+		t.Fatalf("resolved digest set rejected: %v", err)
 	}
 }

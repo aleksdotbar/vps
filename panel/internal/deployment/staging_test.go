@@ -32,14 +32,10 @@ func stageFixture(t *testing.T, repeated ...int) (StageRequest, validationTool) 
 	if err != nil {
 		t.Fatal(err)
 	}
-	artifactData, err := os.ReadFile("../../../examples/stateless/release.json")
-	if err != nil {
-		t.Fatal(err)
-	}
-	artifact, err := releases.ParseArtifact(artifactData, "0123456789abcdef0123456789abcdef01234567")
-	if err != nil {
-		t.Fatal(err)
-	}
+	artifact := releases.Artifact{SchemaVersion: 1, SourceSHA: "0123456789abcdef0123456789abcdef01234567", Services: map[string]releases.ArtifactService{
+		"app":    {Image: "ghcr.io/example/stateless-app@sha256:" + strings.Repeat("1", 64)},
+		"worker": {Image: "ghcr.io/example/stateless-worker@sha256:" + strings.Repeat("2", 64)},
+	}}
 	tree := t.TempDir()
 	sourceRoot, err := os.OpenRoot("../../../examples/stateless")
 	if err != nil {

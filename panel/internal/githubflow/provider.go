@@ -116,7 +116,6 @@ func (s *Service) appClient(ctx context.Context) (*github.Client, store.GithubIn
 
 type tokenScope struct {
 	RepositoryID, InstallationID, CredentialVersion int64
-	Write                                           bool
 }
 type installationToken struct {
 	value   string
@@ -124,7 +123,7 @@ type installationToken struct {
 }
 
 func (s *Service) clearTokens() { s.tokenMu.Lock(); clear(s.tokens); s.tokenMu.Unlock() }
-func (s *Service) installationClient(ctx context.Context, repositoryIDs []int64, write bool) (*github.Client, error) {
+func (s *Service) installationClient(ctx context.Context, repositoryIDs []int64) (*github.Client, error) {
 	if len(repositoryIDs) != 1 || repositoryIDs[0] < 1 {
 		return nil, ErrInvalid
 	}
@@ -132,7 +131,7 @@ func (s *Service) installationClient(ctx context.Context, repositoryIDs []int64,
 	if err != nil || integration.InstallationID < 1 {
 		return nil, ErrSetup
 	}
-	scope := tokenScope{RepositoryID: repositoryIDs[0], InstallationID: integration.InstallationID, CredentialVersion: integration.CredentialVersion, Write: write}
+	scope := tokenScope{RepositoryID: repositoryIDs[0], InstallationID: integration.InstallationID, CredentialVersion: integration.CredentialVersion}
 	s.tokenMu.Lock()
 	cached, found := s.tokens[scope]
 	s.tokenMu.Unlock()
@@ -143,12 +142,8 @@ func (s *Service) installationClient(ctx context.Context, repositoryIDs []int64,
 	if err != nil {
 		return nil, err
 	}
-	actions := "read"
-	if write {
-		actions = "write"
-	}
 	readPermission := "read"
-	token, response, err := app.Apps.CreateInstallationToken(ctx, integration.InstallationID, &github.InstallationTokenOptions{RepositoryIDs: repositoryIDs, Permissions: &github.InstallationPermissions{Contents: &readPermission, Actions: &actions}})
+	token, response, err := app.Apps.CreateInstallationToken(ctx, integration.InstallationID, &github.InstallationTokenOptions{RepositoryIDs: repositoryIDs, Permissions: &github.InstallationPermissions{Contents: &readPermission}})
 	if err != nil || token == nil || token.GetToken() == "" {
 		return nil, s.failure(ctx, response, err)
 	}

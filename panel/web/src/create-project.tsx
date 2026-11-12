@@ -13,18 +13,10 @@ const route = getRouteApi("/_private/projects/new");
 
 export function NewProjectRoute() {
   const search = route.useSearch();
-  return (
-    <CreateProject repositoryId={search.repository} cursor={search.workflows} />
-  );
+  return <CreateProject repositoryId={search.repository} />;
 }
 
-export function CreateProject({
-  repositoryId,
-  cursor,
-}: {
-  repositoryId: string;
-  cursor: string;
-}) {
+export function CreateProject({ repositoryId }: { repositoryId: string }) {
   const integration = useSuspenseQuery(integrationQuery()).data;
   return (
     <>
@@ -33,10 +25,10 @@ export function CreateProject({
       </Link>
       <PageTitle
         title="New project"
-        description="Connect a repository and its build workflow."
+        description="Connect a repository whose CI pushes images tagged with each commit SHA."
       />
       {integration.installed ? (
-        <RepositoryPicker repositoryId={repositoryId} cursor={cursor} />
+        <RepositoryPicker repositoryId={repositoryId} />
       ) : (
         <Empty title="Connect GitHub first">
           Register and install your App in <Link to="/settings">Settings</Link>.
@@ -46,13 +38,7 @@ export function CreateProject({
   );
 }
 
-function RepositoryPicker({
-  repositoryId,
-  cursor,
-}: {
-  repositoryId: string;
-  cursor: string;
-}) {
+function RepositoryPicker({ repositoryId }: { repositoryId: string }) {
   const router = useRouter();
   const { data, error } = useSuspenseQuery(repositoriesQuery());
   const [creationRepository, setCreationRepository] = useState<Repository>();
@@ -74,7 +60,7 @@ function RepositoryPicker({
     )
       void router.navigate({
         to: "/projects/new",
-        search: { repository: value, workflows: "" },
+        search: { repository: value },
       });
   }
 
@@ -140,7 +126,6 @@ function RepositoryPicker({
         <ProjectForm
           key={String(repository.githubRepositoryId)}
           repository={repository}
-          cursor={cursor}
           onLockChange={(value) =>
             setCreationRepository(value ? repository : undefined)
           }

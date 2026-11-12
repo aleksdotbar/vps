@@ -32,7 +32,7 @@ func TestAuthenticatedMetadataEditsKeepSecretsPendingAndReplaySafely(t *testing.
 		t.Fatal(err)
 	}
 	client := panelv1connect.NewPanelServiceClient(installation.client, installation.origin)
-	projectRequest := connect.NewRequest(&panelv1.CreateProjectRequest{Mutation: &panelv1.Mutation{RequestId: uuid.NewString()}, Name: "generic", Repository: &panelv1.Repository{GithubRepositoryId: 1, Owner: "example", Name: "generic"}, GithubWorkflowId: 2})
+	projectRequest := connect.NewRequest(&panelv1.CreateProjectRequest{Mutation: &panelv1.Mutation{RequestId: uuid.NewString()}, Name: "generic", Repository: &panelv1.Repository{GithubRepositoryId: 1, Owner: "example", Name: "generic"}})
 	projectRequest.Header().Set("Origin", installation.origin)
 	if _, err := client.CreateProject(ctx, projectRequest); connect.CodeOf(err) != connect.CodeUnauthenticated {
 		t.Fatalf("unauthenticated metadata mutation accepted: %v", err)

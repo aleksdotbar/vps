@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"strings"
 	"time"
 
 	"connectrpc.com/connect"
@@ -68,7 +69,14 @@ func operationMessage(operation store.Operation) *panelv1.Operation {
 
 func waitingOperation(value store.WaitingBuild) *panelv1.Operation {
 	states := map[string]panelv1.OperationState{"waiting": panelv1.OperationState_OPERATION_STATE_WAITING_FOR_BUILD, "dispatch_unknown": panelv1.OperationState_OPERATION_STATE_WAITING_FOR_BUILD, "queued": panelv1.OperationState_OPERATION_STATE_QUEUED, "failed": panelv1.OperationState_OPERATION_STATE_FAILED, "superseded": panelv1.OperationState_OPERATION_STATE_SUPERSEDED, "needs_attention": panelv1.OperationState_OPERATION_STATE_NEEDS_ATTENTION}
-	messages := map[string]string{"": "Waiting for a verified GitHub build.", "discovery_limit": "Exact build search exceeded the supported history window.", "dispatch_outcome_unknown": "Build dispatch outcome is unknown; submit a fresh explicit deployment to retry safely.", "build_timeout": "Build wait deadline exceeded.", "polling_exhausted": "Build polling exhausted; submit a fresh explicit deployment.", "incompatible_build": "Build artifact or Compose configuration is incompatible.", "route_ownership_conflict": "Captured hostname ownership conflicts with another environment or retained route identity.", "route_setup_required": "Public routes require a connected account, selected zone and provisioned server Tunnel.", "route_capacity": "Retained hostname ownership capacity reached.", "provider_rejected": "GitHub rejected the build request; check installation and workflow access.", "build_failed": "GitHub build failed.", "branch_head_changed": "Selected source is no longer branch head; no build was dispatched.", "untrusted_build": "GitHub build identity did not match the selected source.", "manual_intent": "Build request superseded by explicit deployment.", "newer_build": "Build request superseded by a newer successful build.", "binding_changed": "Build request superseded because environment binding changed.", "automatic_deploy_disabled": "Automatic build request superseded because automation was disabled."}
+	messages := map[string]string{"": "Waiting for the commit's images.", "build_timeout": "Image wait deadline exceeded.", "polling_exhausted": "Image polling exhausted; submit a fresh explicit deployment.", "incompatible_build": "Compose configuration or source files are incompatible.", "incompatible_image": "An image exists but is not a linux/amd64 image.", "route_ownership_conflict": "Captured hostname ownership conflicts with another environment or retained route identity.", "route_setup_required": "Public routes require a connected account, selected zone and provisioned server Tunnel.", "route_capacity": "Retained hostname ownership capacity reached.", "provider_rejected": "GitHub rejected the source request; check installation access.", "manual_intent": "Deployment request superseded by explicit deployment.", "newer_build": "Deployment request superseded by a newer branch head.", "binding_changed": "Deployment request superseded because environment binding changed.", "automatic_deploy_disabled": "Automatic deployment request superseded because automation was disabled.", "invalid_persisted_selection": "Stored deployment request is invalid."}
+	message := messages[value.Reason]
+	// Image reasons carry the awaited reference, validated before it was stored.
+	if image, ok := strings.CutPrefix(value.Reason, "waiting_for_image:"); ok {
+		message = "Waiting for image " + image + "."
+	} else if image, ok := strings.CutPrefix(value.Reason, "image_not_found:"); ok {
+		message = "Image " + image + " was not found or is not public; push a build for this commit."
+	}
 	outcome := panelv1.OperationOutcome_OPERATION_OUTCOME_PENDING
 	if value.State == "failed" {
 		outcome = panelv1.OperationOutcome_OPERATION_OUTCOME_CONFIRMED_FAILURE
@@ -76,7 +84,7 @@ func waitingOperation(value store.WaitingBuild) *panelv1.Operation {
 	if value.State == "needs_attention" {
 		outcome = panelv1.OperationOutcome_OPERATION_OUTCOME_UNKNOWN
 	}
-	return &panelv1.Operation{Id: value.ID, Kind: panelv1.OperationKind_OPERATION_KIND_DEPLOY, State: states[value.State], ServerId: value.ServerID, EnvironmentId: value.EnvironmentID, CreatedAt: timestamppb.New(time.UnixMilli(value.CreatedAt)), UpdatedAt: timestamppb.New(time.UnixMilli(value.UpdatedAt)), Message: messages[value.Reason], Outcome: outcome}
+	return &panelv1.Operation{Id: value.ID, Kind: panelv1.OperationKind_OPERATION_KIND_DEPLOY, State: states[value.State], ServerId: value.ServerID, EnvironmentId: value.EnvironmentID, CreatedAt: timestamppb.New(time.UnixMilli(value.CreatedAt)), UpdatedAt: timestamppb.New(time.UnixMilli(value.UpdatedAt)), Message: message, Outcome: outcome}
 }
 func (h *handler) DeployEnvironment(ctx context.Context, request *connect.Request[panelv1.DeployEnvironmentRequest]) (*connect.Response[panelv1.DeployEnvironmentResponse], error) {
 	if h.builds == nil {

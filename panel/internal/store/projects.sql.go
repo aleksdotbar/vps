@@ -68,7 +68,7 @@ func (q *Queries) CreateMetadataMutation(ctx context.Context, arg CreateMetadata
 }
 
 const createProject = `-- name: CreateProject :exec
-INSERT INTO projects(id,name,repository_id,repository_owner,repository_name,workflow_id,created_at) VALUES(?,?,?,?,?,?,?)
+INSERT INTO projects(id,name,repository_id,repository_owner,repository_name,created_at) VALUES(?,?,?,?,?,?)
 `
 
 type CreateProjectParams struct {
@@ -77,7 +77,6 @@ type CreateProjectParams struct {
 	RepositoryID    int64
 	RepositoryOwner string
 	RepositoryName  string
-	WorkflowID      int64
 	CreatedAt       int64
 }
 
@@ -88,14 +87,13 @@ func (q *Queries) CreateProject(ctx context.Context, arg CreateProjectParams) er
 		arg.RepositoryID,
 		arg.RepositoryOwner,
 		arg.RepositoryName,
-		arg.WorkflowID,
 		arg.CreatedAt,
 	)
 	return err
 }
 
 const createRelease = `-- name: CreateRelease :exec
-INSERT INTO releases(id,environment_id,server_id,repository_id,workflow_id,run_id,run_attempt,branch,source_sha,environment_version,binding_version,images_json,domains_json,secret_version,compose_config,secret_bindings_json,config_sha256,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+INSERT INTO releases(id,environment_id,server_id,repository_id,branch,source_sha,environment_version,binding_version,images_json,domains_json,secret_version,compose_config,secret_bindings_json,config_sha256,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
 `
 
 type CreateReleaseParams struct {
@@ -103,9 +101,6 @@ type CreateReleaseParams struct {
 	EnvironmentID      string
 	ServerID           string
 	RepositoryID       int64
-	WorkflowID         int64
-	RunID              int64
-	RunAttempt         int64
 	Branch             string
 	SourceSha          string
 	EnvironmentVersion int64
@@ -125,9 +120,6 @@ func (q *Queries) CreateRelease(ctx context.Context, arg CreateReleaseParams) er
 		arg.EnvironmentID,
 		arg.ServerID,
 		arg.RepositoryID,
-		arg.WorkflowID,
-		arg.RunID,
-		arg.RunAttempt,
 		arg.Branch,
 		arg.SourceSha,
 		arg.EnvironmentVersion,
@@ -223,7 +215,7 @@ func (q *Queries) GetEnvironment(ctx context.Context, id string) (Environment, e
 }
 
 const getLatestRelease = `-- name: GetLatestRelease :one
-SELECT id,environment_id,server_id,repository_id,workflow_id,run_id,run_attempt,branch,source_sha,environment_version,binding_version,images_json,domains_json,secret_version,config_sha256,created_at FROM releases WHERE environment_id=? ORDER BY created_at DESC,id DESC LIMIT 1
+SELECT id,environment_id,server_id,repository_id,branch,source_sha,environment_version,binding_version,images_json,domains_json,secret_version,config_sha256,created_at FROM releases WHERE environment_id=? ORDER BY created_at DESC,id DESC LIMIT 1
 `
 
 type GetLatestReleaseRow struct {
@@ -231,9 +223,6 @@ type GetLatestReleaseRow struct {
 	EnvironmentID      string
 	ServerID           string
 	RepositoryID       int64
-	WorkflowID         int64
-	RunID              int64
-	RunAttempt         int64
 	Branch             string
 	SourceSha          string
 	EnvironmentVersion int64
@@ -253,9 +242,6 @@ func (q *Queries) GetLatestRelease(ctx context.Context, environmentID string) (G
 		&i.EnvironmentID,
 		&i.ServerID,
 		&i.RepositoryID,
-		&i.WorkflowID,
-		&i.RunID,
-		&i.RunAttempt,
 		&i.Branch,
 		&i.SourceSha,
 		&i.EnvironmentVersion,
@@ -287,7 +273,7 @@ func (q *Queries) GetMetadataMutation(ctx context.Context, requestID string) (Me
 }
 
 const getProject = `-- name: GetProject :one
-SELECT id, name, repository_id, repository_owner, repository_name, workflow_id, created_at FROM projects WHERE id=?
+SELECT id, name, repository_id, repository_owner, repository_name, created_at FROM projects WHERE id=?
 `
 
 func (q *Queries) GetProject(ctx context.Context, id string) (Project, error) {
@@ -299,14 +285,13 @@ func (q *Queries) GetProject(ctx context.Context, id string) (Project, error) {
 		&i.RepositoryID,
 		&i.RepositoryOwner,
 		&i.RepositoryName,
-		&i.WorkflowID,
 		&i.CreatedAt,
 	)
 	return i, err
 }
 
 const getRelease = `-- name: GetRelease :one
-SELECT id, environment_id, server_id, repository_id, workflow_id, run_id, run_attempt, branch, source_sha, environment_version, binding_version, images_json, domains_json, secret_kind, secret_version, compose_config, secret_bindings_json, config_sha256, created_at FROM releases WHERE id=?
+SELECT id, environment_id, server_id, repository_id, branch, source_sha, environment_version, binding_version, images_json, domains_json, secret_kind, secret_version, compose_config, secret_bindings_json, config_sha256, created_at FROM releases WHERE id=?
 `
 
 func (q *Queries) GetRelease(ctx context.Context, id string) (Release, error) {
@@ -317,9 +302,6 @@ func (q *Queries) GetRelease(ctx context.Context, id string) (Release, error) {
 		&i.EnvironmentID,
 		&i.ServerID,
 		&i.RepositoryID,
-		&i.WorkflowID,
-		&i.RunID,
-		&i.RunAttempt,
 		&i.Branch,
 		&i.SourceSha,
 		&i.EnvironmentVersion,
@@ -337,7 +319,7 @@ func (q *Queries) GetRelease(ctx context.Context, id string) (Release, error) {
 }
 
 const getReleaseMetadata = `-- name: GetReleaseMetadata :one
-SELECT id,environment_id,server_id,repository_id,workflow_id,run_id,run_attempt,branch,source_sha,environment_version,binding_version,images_json,domains_json,secret_version,config_sha256,created_at FROM releases WHERE id=?
+SELECT id,environment_id,server_id,repository_id,branch,source_sha,environment_version,binding_version,images_json,domains_json,secret_version,config_sha256,created_at FROM releases WHERE id=?
 `
 
 type GetReleaseMetadataRow struct {
@@ -345,9 +327,6 @@ type GetReleaseMetadataRow struct {
 	EnvironmentID      string
 	ServerID           string
 	RepositoryID       int64
-	WorkflowID         int64
-	RunID              int64
-	RunAttempt         int64
 	Branch             string
 	SourceSha          string
 	EnvironmentVersion int64
@@ -367,9 +346,6 @@ func (q *Queries) GetReleaseMetadata(ctx context.Context, id string) (GetRelease
 		&i.EnvironmentID,
 		&i.ServerID,
 		&i.RepositoryID,
-		&i.WorkflowID,
-		&i.RunID,
-		&i.RunAttempt,
 		&i.Branch,
 		&i.SourceSha,
 		&i.EnvironmentVersion,
@@ -462,7 +438,7 @@ func (q *Queries) ListEnvironments(ctx context.Context, arg ListEnvironmentsPara
 }
 
 const listProjects = `-- name: ListProjects :many
-SELECT id, name, repository_id, repository_owner, repository_name, workflow_id, created_at FROM projects WHERE (created_at,id)<(?1,CAST(?2 AS TEXT)) ORDER BY created_at DESC,id DESC LIMIT ?3
+SELECT id, name, repository_id, repository_owner, repository_name, created_at FROM projects WHERE (created_at,id)<(?1,CAST(?2 AS TEXT)) ORDER BY created_at DESC,id DESC LIMIT ?3
 `
 
 type ListProjectsParams struct {
@@ -486,7 +462,6 @@ func (q *Queries) ListProjects(ctx context.Context, arg ListProjectsParams) ([]P
 			&i.RepositoryID,
 			&i.RepositoryOwner,
 			&i.RepositoryName,
-			&i.WorkflowID,
 			&i.CreatedAt,
 		); err != nil {
 			return nil, err
@@ -536,7 +511,7 @@ func (q *Queries) ListReleaseServices(ctx context.Context, arg ListReleaseServic
 }
 
 const listReleases = `-- name: ListReleases :many
-SELECT id,environment_id,server_id,repository_id,workflow_id,run_id,run_attempt,branch,source_sha,environment_version,binding_version,images_json,domains_json,secret_version,config_sha256,created_at FROM releases WHERE environment_id=?1 AND (created_at,id)<(?2,CAST(?3 AS TEXT)) ORDER BY created_at DESC,id DESC LIMIT ?4
+SELECT id,environment_id,server_id,repository_id,branch,source_sha,environment_version,binding_version,images_json,domains_json,secret_version,config_sha256,created_at FROM releases WHERE environment_id=?1 AND (created_at,id)<(?2,CAST(?3 AS TEXT)) ORDER BY created_at DESC,id DESC LIMIT ?4
 `
 
 type ListReleasesParams struct {
@@ -551,9 +526,6 @@ type ListReleasesRow struct {
 	EnvironmentID      string
 	ServerID           string
 	RepositoryID       int64
-	WorkflowID         int64
-	RunID              int64
-	RunAttempt         int64
 	Branch             string
 	SourceSha          string
 	EnvironmentVersion int64
@@ -584,9 +556,6 @@ func (q *Queries) ListReleases(ctx context.Context, arg ListReleasesParams) ([]L
 			&i.EnvironmentID,
 			&i.ServerID,
 			&i.RepositoryID,
-			&i.WorkflowID,
-			&i.RunID,
-			&i.RunAttempt,
 			&i.Branch,
 			&i.SourceSha,
 			&i.EnvironmentVersion,

@@ -74,14 +74,6 @@ function ReleaseSnapshot({
         <Detail label="GitHub repository ID">
           {build?.githubRepositoryId.toString() || "Unavailable"}
         </Detail>
-        <Detail label="Workflow ID">
-          {build?.githubWorkflowId.toString() || "Unavailable"}
-        </Detail>
-        <Detail label="Actions run / attempt">
-          {build
-            ? `${build.githubRunId} / ${build.githubRunAttempt}`
-            : "Unavailable"}
-        </Detail>
         <Detail label="Settings version">
           {release.environmentVersion.toString()}
         </Detail>
@@ -111,9 +103,6 @@ function ReleaseSnapshot({
               <li key={image.service}>
                 <div>
                   <strong>{image.service}</strong>
-                  <p>
-                    Compose image variable: <code>{image.imageVariable}</code>
-                  </p>
                   <code className="digest">{image.imageDigest}</code>
                 </div>
               </li>

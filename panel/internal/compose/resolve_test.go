@@ -50,14 +50,11 @@ func fixture(t *testing.T) ([]byte, []byte, releases.Artifact) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	metadata, err := os.ReadFile("../../../examples/stateless/release.json")
-	if err != nil {
-		t.Fatal(err)
-	}
-	artifact, err := releases.ParseArtifact(metadata, "0123456789abcdef0123456789abcdef01234567")
-	if err != nil {
-		t.Fatal(err)
-	}
+	// Digests the panel would resolve for the example's GIT_SHA tags.
+	artifact := releases.Artifact{SchemaVersion: 1, SourceSHA: "0123456789abcdef0123456789abcdef01234567", Services: map[string]releases.ArtifactService{
+		"app":    {Image: "ghcr.io/example/stateless-app@sha256:" + strings.Repeat("1", 64)},
+		"worker": {Image: "ghcr.io/example/stateless-worker@sha256:" + strings.Repeat("2", 64)},
+	}}
 	return base, override, artifact
 }
 func native(t *testing.T) *Resolver {

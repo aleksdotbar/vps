@@ -7,8 +7,6 @@ import (
 	"math"
 	"time"
 
-	"github.com/google/go-github/v93/github"
-
 	panelv1 "github.com/aleksdotbar/vps/panel/gen/go/panel/v1"
 	"github.com/aleksdotbar/vps/panel/internal/operations"
 	"github.com/aleksdotbar/vps/panel/internal/projects"
@@ -51,26 +49,11 @@ func (b *Builds) RequestRollback(ctx context.Context, request *panelv1.RollbackE
 	if err != nil {
 		return "", err
 	}
-	client, repository, err := b.integration.selectedClient(ctx, project.RepositoryID, false)
+	// The current branch head must not immediately redeploy over this rollback;
+	// only a newer push is eligible for automatic deployment again.
+	head, err := b.branchHead(ctx, project.RepositoryID, environment.Branch)
 	if err != nil {
 		return "", err
-	}
-	if err := b.integration.verifyWorkflow(ctx, client, repository, project.WorkflowID); err != nil {
-		return "", err
-	}
-	// Include unfinished and other-branch runs: any already existing run must not
-	// become an older automatic candidate that immediately undoes this rollback.
-	runs, response, err := client.Actions.ListWorkflowRunsByID(ctx, repository.Owner, repository.Name, project.WorkflowID, &github.ListWorkflowRunsOptions{ListOptions: github.ListOptions{PerPage: 1, Page: 1}})
-	if err != nil || runs == nil {
-		return "", b.integration.failure(ctx, response, err)
-	}
-	cutoff, attempt := int64(0), int64(0)
-	if len(runs.WorkflowRuns) > 0 {
-		run := runs.WorkflowRuns[0]
-		if run.GetRunNumber() < 1 || run.GetRunAttempt() < 1 || run.GetWorkflowID() != project.WorkflowID || run.GetRepository().GetID() != project.RepositoryID {
-			return "", ErrProvider
-		}
-		cutoff, attempt = int64(run.GetRunNumber()), int64(run.GetRunAttempt())
 	}
 	tx, err = b.integration.database.BeginTx(ctx, nil)
 	if err != nil {
@@ -103,12 +86,8 @@ func (b *Builds) RequestRollback(ctx context.Context, request *panelv1.RollbackE
 		if err := queries.ResetBranchProgress(ctx, store.ResetBranchProgressParams{EnvironmentID: current.ID, BindingVersion: current.BindingVersion}); err != nil {
 			return "", err
 		}
-		progress.ManualCutoff, progress.ManualAttempt = 0, 0
 	}
-	if cutoff < progress.ManualCutoff || (cutoff == progress.ManualCutoff && attempt < progress.ManualAttempt) {
-		cutoff, attempt = progress.ManualCutoff, progress.ManualAttempt
-	}
-	if err := queries.SetManualBuildCutoff(ctx, store.SetManualBuildCutoffParams{EnvironmentID: current.ID, ManualCutoff: cutoff, ManualAttempt: attempt}); err != nil {
+	if err := queries.SetHandledBranchHead(ctx, store.SetHandledBranchHeadParams{EnvironmentID: current.ID, HandledSha: head}); err != nil {
 		return "", err
 	}
 	// Build waiting has no target effects. Like explicit Deploy, a new explicit

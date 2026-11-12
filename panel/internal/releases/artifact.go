@@ -14,14 +14,19 @@ const MaxArtifactBytes = 64 << 10
 
 var ErrInvalidArtifact = errors.New("invalid release artifact")
 
+// Artifact is the immutable service→image digest set of one release. The panel
+// builds it by resolving each service's GIT_SHA tag; it is also exchanged with
+// the host helper and retained beside deployed material.
 type Artifact struct {
 	SchemaVersion int                        `json:"schema_version"`
 	SourceSHA     string                     `json:"source_sha"`
 	Services      map[string]ArtifactService `json:"services"`
 }
 
+// ImageVariable is set only on releases recorded before images were resolved
+// from GIT_SHA tags; such retained material must stay readable for rollback.
 type ArtifactService struct {
-	ImageVariable string `json:"image_variable"`
+	ImageVariable string `json:"image_variable,omitempty"`
 	Image         string `json:"image"`
 }
 
@@ -32,8 +37,8 @@ var (
 	artifactImage    = regexp.MustCompile(`^ghcr\.io/[a-z0-9]+([._-][a-z0-9]+)*(/[a-z0-9]+([._-][a-z0-9]+)*)+@sha256:[0-9a-f]{64}$`)
 )
 
-// ParseArtifact admits transport metadata only. The caller separately verifies
-// provider authority, bounds the download/extraction and matches native Compose.
+// ParseArtifact strictly re-admits a serialized digest set, e.g. one retained on
+// a host or rebuilt from stored release images.
 func ParseArtifact(data []byte, expectedSourceSHA string) (Artifact, error) {
 	if len(data) > MaxArtifactBytes || !utf8.Valid(data) {
 		return Artifact{}, invalidArtifact("metadata must be valid UTF-8 within 64 KiB")
@@ -77,10 +82,12 @@ func ParseArtifact(data []byte, expectedSourceSHA string) (Artifact, error) {
 		if err != nil {
 			return Artifact{}, err
 		}
-		if _, exists := variables[service.ImageVariable]; exists {
-			return Artifact{}, invalidArtifact("image variables must be unique")
+		if service.ImageVariable != "" {
+			if _, exists := variables[service.ImageVariable]; exists {
+				return Artifact{}, invalidArtifact("image variables must be unique")
+			}
+			variables[service.ImageVariable] = struct{}{}
 		}
-		variables[service.ImageVariable] = struct{}{}
 		artifact.Services[name] = service
 	}
 	return artifact, nil
@@ -93,12 +100,14 @@ func parseArtifactService(data []byte) (ArtifactService, error) {
 	}
 	variableData, hasVariable := fields["image_variable"]
 	imageData, hasImage := fields["image"]
-	if len(fields) != 2 || !hasVariable || !hasImage {
+	if !hasImage || (len(fields) == 2 && !hasVariable) {
 		return ArtifactService{}, invalidArtifact("service fields must match schema")
 	}
 	var service ArtifactService
-	if err := json.Unmarshal(variableData, &service.ImageVariable); err != nil || len(service.ImageVariable) > 64 || !artifactVariable.MatchString(service.ImageVariable) {
-		return ArtifactService{}, invalidArtifact("invalid image variable")
+	if hasVariable {
+		if err := json.Unmarshal(variableData, &service.ImageVariable); err != nil || len(service.ImageVariable) > 64 || !artifactVariable.MatchString(service.ImageVariable) {
+			return ArtifactService{}, invalidArtifact("invalid image variable")
+		}
 	}
 	if err := json.Unmarshal(imageData, &service.Image); err != nil || len(service.Image) > 512 || !artifactImage.MatchString(service.Image) {
 		return ArtifactService{}, invalidArtifact("image must be a GHCR digest reference")

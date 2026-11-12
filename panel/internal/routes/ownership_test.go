@@ -49,7 +49,7 @@ func setupOwnership(t *testing.T) *ownershipFixture {
 	run(`INSERT INTO cloudflare_zones(id,name) VALUES(?,'example.com'),(?,'sub.example.com')`, ownershipParentZone, ownershipChildZone)
 	run(`INSERT INTO server_tunnels(server_id,request_id,installation_id,account_id,credential_version,name,phase,create_attempted,create_attempted_at,tunnel_id,config_sha256,observed_at,created_at,updated_at) VALUES(?,?,?,?,1,'fixture','ready',TRUE,1,?,?,1,1,1)`, f.server, uuid.NewString(), f.installation, ownershipAccount, f.tunnel, strings.Repeat("a", 64))
 	project := uuid.NewString()
-	run(`INSERT INTO projects(id,name,repository_id,repository_owner,repository_name,workflow_id,created_at) VALUES(?,'fixture',1,'example','fixture',2,1)`, project)
+	run(`INSERT INTO projects(id,name,repository_id,repository_owner,repository_name,created_at) VALUES(?,'fixture',1,'example','fixture',1)`, project)
 	run(`INSERT INTO encrypted_versions(kind,owner_id,version,ciphertext) VALUES('environment',?,1,?)`, f.environment, []byte("fixture"))
 	run(`INSERT INTO environments(id,project_id,name,server_id,branch,override_path,domains_json,auto_deploy,version,binding_version,secret_version,secret_names_json,bridge_name,created_at) VALUES(?,?,'staging',?,'main','compose.staging.yaml','[]',FALSE,1,1,1,'[]','fixture',1)`, f.environment, project, f.server)
 	return f
@@ -61,7 +61,7 @@ func (f *ownershipFixture) operation(t *testing.T, domains []*panelv1.Domain) (s
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = f.queries.CreateRelease(t.Context(), store.CreateReleaseParams{ID: releaseID, EnvironmentID: f.environment, ServerID: f.server, RepositoryID: 1, WorkflowID: 2, RunID: 3, RunAttempt: 1, Branch: "main", SourceSha: strings.Repeat("a", 40), EnvironmentVersion: 1, BindingVersion: 1, ImagesJson: []byte("[]"), DomainsJson: data, SecretVersion: 1, ComposeConfig: []byte(`{"services":{}}`), SecretBindingsJson: []byte("[]"), ConfigSha256: strings.Repeat("a", 64), CreatedAt: time.Now().UnixMilli()})
+	err = f.queries.CreateRelease(t.Context(), store.CreateReleaseParams{ID: releaseID, EnvironmentID: f.environment, ServerID: f.server, RepositoryID: 1, Branch: "main", SourceSha: strings.Repeat("a", 40), EnvironmentVersion: 1, BindingVersion: 1, ImagesJson: []byte("[]"), DomainsJson: data, SecretVersion: 1, ComposeConfig: []byte(`{"services":{}}`), SecretBindingsJson: []byte("[]"), ConfigSha256: strings.Repeat("a", 64), CreatedAt: time.Now().UnixMilli()})
 	if err != nil {
 		t.Fatal(err)
 	}

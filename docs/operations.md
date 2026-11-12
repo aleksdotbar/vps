@@ -17,7 +17,7 @@
 ## Project setup
 
 1. Connect the installation-owned GitHub App and grant selected-repository access.
-2. Commit the [application workflow and Compose example](../examples/stateless/README.md) to the application repository, adapting its real image builds and healthchecks.
+2. Commit a build workflow and Compose files to the application repository, following the [example](../examples/stateless/README.md): each service image is tagged with the full commit SHA and referenced as `ghcr.io/<owner>/<name>:${GIT_SHA}`.
 3. Create the project and bind each environment to its server, branch and Compose override.
 4. Enter environment secrets and hostname/service/port mappings in the panel.
 5. Publish application images publicly in GHCR. Private images are outside MVP.

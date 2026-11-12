@@ -816,178 +816,6 @@ func (x *ListRepositoriesResponse) GetSelectedRepositoryIds() []int64 {
 	return nil
 }
 
-type GitHubWorkflow struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            int64                  `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
-	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
-	Path          string                 `protobuf:"bytes,3,opt,name=path,proto3" json:"path,omitempty"`
-	State         string                 `protobuf:"bytes,4,opt,name=state,proto3" json:"state,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *GitHubWorkflow) Reset() {
-	*x = GitHubWorkflow{}
-	mi := &file_panel_v1_panel_proto_msgTypes[6]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *GitHubWorkflow) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*GitHubWorkflow) ProtoMessage() {}
-
-func (x *GitHubWorkflow) ProtoReflect() protoreflect.Message {
-	mi := &file_panel_v1_panel_proto_msgTypes[6]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use GitHubWorkflow.ProtoReflect.Descriptor instead.
-func (*GitHubWorkflow) Descriptor() ([]byte, []int) {
-	return file_panel_v1_panel_proto_rawDescGZIP(), []int{6}
-}
-
-func (x *GitHubWorkflow) GetId() int64 {
-	if x != nil {
-		return x.Id
-	}
-	return 0
-}
-
-func (x *GitHubWorkflow) GetName() string {
-	if x != nil {
-		return x.Name
-	}
-	return ""
-}
-
-func (x *GitHubWorkflow) GetPath() string {
-	if x != nil {
-		return x.Path
-	}
-	return ""
-}
-
-func (x *GitHubWorkflow) GetState() string {
-	if x != nil {
-		return x.State
-	}
-	return ""
-}
-
-type ListWorkflowsRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	RepositoryId  int64                  `protobuf:"varint,1,opt,name=repository_id,json=repositoryId,proto3" json:"repository_id,omitempty"`
-	Page          *PageRequest           `protobuf:"bytes,2,opt,name=page,proto3" json:"page,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *ListWorkflowsRequest) Reset() {
-	*x = ListWorkflowsRequest{}
-	mi := &file_panel_v1_panel_proto_msgTypes[7]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *ListWorkflowsRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*ListWorkflowsRequest) ProtoMessage() {}
-
-func (x *ListWorkflowsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_panel_v1_panel_proto_msgTypes[7]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use ListWorkflowsRequest.ProtoReflect.Descriptor instead.
-func (*ListWorkflowsRequest) Descriptor() ([]byte, []int) {
-	return file_panel_v1_panel_proto_rawDescGZIP(), []int{7}
-}
-
-func (x *ListWorkflowsRequest) GetRepositoryId() int64 {
-	if x != nil {
-		return x.RepositoryId
-	}
-	return 0
-}
-
-func (x *ListWorkflowsRequest) GetPage() *PageRequest {
-	if x != nil {
-		return x.Page
-	}
-	return nil
-}
-
-type ListWorkflowsResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Workflows     []*GitHubWorkflow      `protobuf:"bytes,1,rep,name=workflows,proto3" json:"workflows,omitempty"`
-	Page          *PageResponse          `protobuf:"bytes,2,opt,name=page,proto3" json:"page,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *ListWorkflowsResponse) Reset() {
-	*x = ListWorkflowsResponse{}
-	mi := &file_panel_v1_panel_proto_msgTypes[8]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *ListWorkflowsResponse) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*ListWorkflowsResponse) ProtoMessage() {}
-
-func (x *ListWorkflowsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_panel_v1_panel_proto_msgTypes[8]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use ListWorkflowsResponse.ProtoReflect.Descriptor instead.
-func (*ListWorkflowsResponse) Descriptor() ([]byte, []int) {
-	return file_panel_v1_panel_proto_rawDescGZIP(), []int{8}
-}
-
-func (x *ListWorkflowsResponse) GetWorkflows() []*GitHubWorkflow {
-	if x != nil {
-		return x.Workflows
-	}
-	return nil
-}
-
-func (x *ListWorkflowsResponse) GetPage() *PageResponse {
-	if x != nil {
-		return x.Page
-	}
-	return nil
-}
-
 type SelectRepositoriesRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Mutation      *Mutation              `protobuf:"bytes,1,opt,name=mutation,proto3" json:"mutation,omitempty"`
@@ -998,7 +826,7 @@ type SelectRepositoriesRequest struct {
 
 func (x *SelectRepositoriesRequest) Reset() {
 	*x = SelectRepositoriesRequest{}
-	mi := &file_panel_v1_panel_proto_msgTypes[9]
+	mi := &file_panel_v1_panel_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1010,7 +838,7 @@ func (x *SelectRepositoriesRequest) String() string {
 func (*SelectRepositoriesRequest) ProtoMessage() {}
 
 func (x *SelectRepositoriesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_panel_v1_panel_proto_msgTypes[9]
+	mi := &file_panel_v1_panel_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1023,7 +851,7 @@ func (x *SelectRepositoriesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SelectRepositoriesRequest.ProtoReflect.Descriptor instead.
 func (*SelectRepositoriesRequest) Descriptor() ([]byte, []int) {
-	return file_panel_v1_panel_proto_rawDescGZIP(), []int{9}
+	return file_panel_v1_panel_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *SelectRepositoriesRequest) GetMutation() *Mutation {
@@ -1049,7 +877,7 @@ type SelectRepositoriesResponse struct {
 
 func (x *SelectRepositoriesResponse) Reset() {
 	*x = SelectRepositoriesResponse{}
-	mi := &file_panel_v1_panel_proto_msgTypes[10]
+	mi := &file_panel_v1_panel_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1061,7 +889,7 @@ func (x *SelectRepositoriesResponse) String() string {
 func (*SelectRepositoriesResponse) ProtoMessage() {}
 
 func (x *SelectRepositoriesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_panel_v1_panel_proto_msgTypes[10]
+	mi := &file_panel_v1_panel_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1074,7 +902,7 @@ func (x *SelectRepositoriesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SelectRepositoriesResponse.ProtoReflect.Descriptor instead.
 func (*SelectRepositoriesResponse) Descriptor() ([]byte, []int) {
-	return file_panel_v1_panel_proto_rawDescGZIP(), []int{10}
+	return file_panel_v1_panel_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *SelectRepositoriesResponse) GetRepositories() []*Repository {
@@ -1096,7 +924,7 @@ type SaveRegistryCredentialRequest struct {
 
 func (x *SaveRegistryCredentialRequest) Reset() {
 	*x = SaveRegistryCredentialRequest{}
-	mi := &file_panel_v1_panel_proto_msgTypes[11]
+	mi := &file_panel_v1_panel_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1108,7 +936,7 @@ func (x *SaveRegistryCredentialRequest) String() string {
 func (*SaveRegistryCredentialRequest) ProtoMessage() {}
 
 func (x *SaveRegistryCredentialRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_panel_v1_panel_proto_msgTypes[11]
+	mi := &file_panel_v1_panel_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1121,7 +949,7 @@ func (x *SaveRegistryCredentialRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SaveRegistryCredentialRequest.ProtoReflect.Descriptor instead.
 func (*SaveRegistryCredentialRequest) Descriptor() ([]byte, []int) {
-	return file_panel_v1_panel_proto_rawDescGZIP(), []int{11}
+	return file_panel_v1_panel_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *SaveRegistryCredentialRequest) GetMutation() *Mutation {
@@ -1161,7 +989,7 @@ type SaveRegistryCredentialResponse struct {
 
 func (x *SaveRegistryCredentialResponse) Reset() {
 	*x = SaveRegistryCredentialResponse{}
-	mi := &file_panel_v1_panel_proto_msgTypes[12]
+	mi := &file_panel_v1_panel_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1173,7 +1001,7 @@ func (x *SaveRegistryCredentialResponse) String() string {
 func (*SaveRegistryCredentialResponse) ProtoMessage() {}
 
 func (x *SaveRegistryCredentialResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_panel_v1_panel_proto_msgTypes[12]
+	mi := &file_panel_v1_panel_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1186,7 +1014,7 @@ func (x *SaveRegistryCredentialResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SaveRegistryCredentialResponse.ProtoReflect.Descriptor instead.
 func (*SaveRegistryCredentialResponse) Descriptor() ([]byte, []int) {
-	return file_panel_v1_panel_proto_rawDescGZIP(), []int{12}
+	return file_panel_v1_panel_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *SaveRegistryCredentialResponse) GetVersion() uint64 {
@@ -1205,7 +1033,7 @@ type LoginRequest struct {
 
 func (x *LoginRequest) Reset() {
 	*x = LoginRequest{}
-	mi := &file_panel_v1_panel_proto_msgTypes[13]
+	mi := &file_panel_v1_panel_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1217,7 +1045,7 @@ func (x *LoginRequest) String() string {
 func (*LoginRequest) ProtoMessage() {}
 
 func (x *LoginRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_panel_v1_panel_proto_msgTypes[13]
+	mi := &file_panel_v1_panel_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1230,7 +1058,7 @@ func (x *LoginRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LoginRequest.ProtoReflect.Descriptor instead.
 func (*LoginRequest) Descriptor() ([]byte, []int) {
-	return file_panel_v1_panel_proto_rawDescGZIP(), []int{13}
+	return file_panel_v1_panel_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *LoginRequest) GetPassword() string {
@@ -1249,7 +1077,7 @@ type LoginResponse struct {
 
 func (x *LoginResponse) Reset() {
 	*x = LoginResponse{}
-	mi := &file_panel_v1_panel_proto_msgTypes[14]
+	mi := &file_panel_v1_panel_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1261,7 +1089,7 @@ func (x *LoginResponse) String() string {
 func (*LoginResponse) ProtoMessage() {}
 
 func (x *LoginResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_panel_v1_panel_proto_msgTypes[14]
+	mi := &file_panel_v1_panel_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1274,7 +1102,7 @@ func (x *LoginResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LoginResponse.ProtoReflect.Descriptor instead.
 func (*LoginResponse) Descriptor() ([]byte, []int) {
-	return file_panel_v1_panel_proto_rawDescGZIP(), []int{14}
+	return file_panel_v1_panel_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *LoginResponse) GetAuthenticated() bool {
@@ -1292,7 +1120,7 @@ type LogoutRequest struct {
 
 func (x *LogoutRequest) Reset() {
 	*x = LogoutRequest{}
-	mi := &file_panel_v1_panel_proto_msgTypes[15]
+	mi := &file_panel_v1_panel_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1304,7 +1132,7 @@ func (x *LogoutRequest) String() string {
 func (*LogoutRequest) ProtoMessage() {}
 
 func (x *LogoutRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_panel_v1_panel_proto_msgTypes[15]
+	mi := &file_panel_v1_panel_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1317,7 +1145,7 @@ func (x *LogoutRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LogoutRequest.ProtoReflect.Descriptor instead.
 func (*LogoutRequest) Descriptor() ([]byte, []int) {
-	return file_panel_v1_panel_proto_rawDescGZIP(), []int{15}
+	return file_panel_v1_panel_proto_rawDescGZIP(), []int{12}
 }
 
 type LogoutResponse struct {
@@ -1328,7 +1156,7 @@ type LogoutResponse struct {
 
 func (x *LogoutResponse) Reset() {
 	*x = LogoutResponse{}
-	mi := &file_panel_v1_panel_proto_msgTypes[16]
+	mi := &file_panel_v1_panel_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1340,7 +1168,7 @@ func (x *LogoutResponse) String() string {
 func (*LogoutResponse) ProtoMessage() {}
 
 func (x *LogoutResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_panel_v1_panel_proto_msgTypes[16]
+	mi := &file_panel_v1_panel_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1353,7 +1181,7 @@ func (x *LogoutResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LogoutResponse.ProtoReflect.Descriptor instead.
 func (*LogoutResponse) Descriptor() ([]byte, []int) {
-	return file_panel_v1_panel_proto_rawDescGZIP(), []int{16}
+	return file_panel_v1_panel_proto_rawDescGZIP(), []int{13}
 }
 
 type GetSessionRequest struct {
@@ -1364,7 +1192,7 @@ type GetSessionRequest struct {
 
 func (x *GetSessionRequest) Reset() {
 	*x = GetSessionRequest{}
-	mi := &file_panel_v1_panel_proto_msgTypes[17]
+	mi := &file_panel_v1_panel_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1376,7 +1204,7 @@ func (x *GetSessionRequest) String() string {
 func (*GetSessionRequest) ProtoMessage() {}
 
 func (x *GetSessionRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_panel_v1_panel_proto_msgTypes[17]
+	mi := &file_panel_v1_panel_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1389,7 +1217,7 @@ func (x *GetSessionRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetSessionRequest.ProtoReflect.Descriptor instead.
 func (*GetSessionRequest) Descriptor() ([]byte, []int) {
-	return file_panel_v1_panel_proto_rawDescGZIP(), []int{17}
+	return file_panel_v1_panel_proto_rawDescGZIP(), []int{14}
 }
 
 type GetSessionResponse struct {
@@ -1401,7 +1229,7 @@ type GetSessionResponse struct {
 
 func (x *GetSessionResponse) Reset() {
 	*x = GetSessionResponse{}
-	mi := &file_panel_v1_panel_proto_msgTypes[18]
+	mi := &file_panel_v1_panel_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1413,7 +1241,7 @@ func (x *GetSessionResponse) String() string {
 func (*GetSessionResponse) ProtoMessage() {}
 
 func (x *GetSessionResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_panel_v1_panel_proto_msgTypes[18]
+	mi := &file_panel_v1_panel_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1426,7 +1254,7 @@ func (x *GetSessionResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetSessionResponse.ProtoReflect.Descriptor instead.
 func (*GetSessionResponse) Descriptor() ([]byte, []int) {
-	return file_panel_v1_panel_proto_rawDescGZIP(), []int{18}
+	return file_panel_v1_panel_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *GetSessionResponse) GetAuthenticated() bool {
@@ -1450,7 +1278,7 @@ type ErrorDetail struct {
 
 func (x *ErrorDetail) Reset() {
 	*x = ErrorDetail{}
-	mi := &file_panel_v1_panel_proto_msgTypes[19]
+	mi := &file_panel_v1_panel_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1462,7 +1290,7 @@ func (x *ErrorDetail) String() string {
 func (*ErrorDetail) ProtoMessage() {}
 
 func (x *ErrorDetail) ProtoReflect() protoreflect.Message {
-	mi := &file_panel_v1_panel_proto_msgTypes[19]
+	mi := &file_panel_v1_panel_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1475,7 +1303,7 @@ func (x *ErrorDetail) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ErrorDetail.ProtoReflect.Descriptor instead.
 func (*ErrorDetail) Descriptor() ([]byte, []int) {
-	return file_panel_v1_panel_proto_rawDescGZIP(), []int{19}
+	return file_panel_v1_panel_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *ErrorDetail) GetReason() ErrorReason {
@@ -1515,7 +1343,7 @@ type Mutation struct {
 
 func (x *Mutation) Reset() {
 	*x = Mutation{}
-	mi := &file_panel_v1_panel_proto_msgTypes[20]
+	mi := &file_panel_v1_panel_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1527,7 +1355,7 @@ func (x *Mutation) String() string {
 func (*Mutation) ProtoMessage() {}
 
 func (x *Mutation) ProtoReflect() protoreflect.Message {
-	mi := &file_panel_v1_panel_proto_msgTypes[20]
+	mi := &file_panel_v1_panel_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1540,7 +1368,7 @@ func (x *Mutation) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Mutation.ProtoReflect.Descriptor instead.
 func (*Mutation) Descriptor() ([]byte, []int) {
-	return file_panel_v1_panel_proto_rawDescGZIP(), []int{20}
+	return file_panel_v1_panel_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *Mutation) GetRequestId() string {
@@ -1562,7 +1390,7 @@ type PageRequest struct {
 
 func (x *PageRequest) Reset() {
 	*x = PageRequest{}
-	mi := &file_panel_v1_panel_proto_msgTypes[21]
+	mi := &file_panel_v1_panel_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1574,7 +1402,7 @@ func (x *PageRequest) String() string {
 func (*PageRequest) ProtoMessage() {}
 
 func (x *PageRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_panel_v1_panel_proto_msgTypes[21]
+	mi := &file_panel_v1_panel_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1587,7 +1415,7 @@ func (x *PageRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PageRequest.ProtoReflect.Descriptor instead.
 func (*PageRequest) Descriptor() ([]byte, []int) {
-	return file_panel_v1_panel_proto_rawDescGZIP(), []int{21}
+	return file_panel_v1_panel_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *PageRequest) GetPageSize() uint32 {
@@ -1613,7 +1441,7 @@ type PageResponse struct {
 
 func (x *PageResponse) Reset() {
 	*x = PageResponse{}
-	mi := &file_panel_v1_panel_proto_msgTypes[22]
+	mi := &file_panel_v1_panel_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1625,7 +1453,7 @@ func (x *PageResponse) String() string {
 func (*PageResponse) ProtoMessage() {}
 
 func (x *PageResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_panel_v1_panel_proto_msgTypes[22]
+	mi := &file_panel_v1_panel_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1638,7 +1466,7 @@ func (x *PageResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PageResponse.ProtoReflect.Descriptor instead.
 func (*PageResponse) Descriptor() ([]byte, []int) {
-	return file_panel_v1_panel_proto_rawDescGZIP(), []int{22}
+	return file_panel_v1_panel_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *PageResponse) GetNextPageToken() string {
@@ -1663,7 +1491,7 @@ type Server struct {
 
 func (x *Server) Reset() {
 	*x = Server{}
-	mi := &file_panel_v1_panel_proto_msgTypes[23]
+	mi := &file_panel_v1_panel_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1675,7 +1503,7 @@ func (x *Server) String() string {
 func (*Server) ProtoMessage() {}
 
 func (x *Server) ProtoReflect() protoreflect.Message {
-	mi := &file_panel_v1_panel_proto_msgTypes[23]
+	mi := &file_panel_v1_panel_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1688,7 +1516,7 @@ func (x *Server) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Server.ProtoReflect.Descriptor instead.
 func (*Server) Descriptor() ([]byte, []int) {
-	return file_panel_v1_panel_proto_rawDescGZIP(), []int{23}
+	return file_panel_v1_panel_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *Server) GetId() string {
@@ -1751,7 +1579,7 @@ type Repository struct {
 
 func (x *Repository) Reset() {
 	*x = Repository{}
-	mi := &file_panel_v1_panel_proto_msgTypes[24]
+	mi := &file_panel_v1_panel_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1763,7 +1591,7 @@ func (x *Repository) String() string {
 func (*Repository) ProtoMessage() {}
 
 func (x *Repository) ProtoReflect() protoreflect.Message {
-	mi := &file_panel_v1_panel_proto_msgTypes[24]
+	mi := &file_panel_v1_panel_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1776,7 +1604,7 @@ func (x *Repository) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Repository.ProtoReflect.Descriptor instead.
 func (*Repository) Descriptor() ([]byte, []int) {
-	return file_panel_v1_panel_proto_rawDescGZIP(), []int{24}
+	return file_panel_v1_panel_proto_rawDescGZIP(), []int{21}
 }
 
 func (x *Repository) GetGithubRepositoryId() int64 {
@@ -1801,19 +1629,18 @@ func (x *Repository) GetName() string {
 }
 
 type Project struct {
-	state            protoimpl.MessageState `protogen:"open.v1"`
-	Id               string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	Name             string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
-	Repository       *Repository            `protobuf:"bytes,3,opt,name=repository,proto3" json:"repository,omitempty"`
-	GithubWorkflowId int64                  `protobuf:"varint,4,opt,name=github_workflow_id,json=githubWorkflowId,proto3" json:"github_workflow_id,omitempty"`
-	CreatedAt        *timestamppb.Timestamp `protobuf:"bytes,5,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	Repository    *Repository            `protobuf:"bytes,3,opt,name=repository,proto3" json:"repository,omitempty"`
+	CreatedAt     *timestamppb.Timestamp `protobuf:"bytes,5,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *Project) Reset() {
 	*x = Project{}
-	mi := &file_panel_v1_panel_proto_msgTypes[25]
+	mi := &file_panel_v1_panel_proto_msgTypes[22]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1825,7 +1652,7 @@ func (x *Project) String() string {
 func (*Project) ProtoMessage() {}
 
 func (x *Project) ProtoReflect() protoreflect.Message {
-	mi := &file_panel_v1_panel_proto_msgTypes[25]
+	mi := &file_panel_v1_panel_proto_msgTypes[22]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1838,7 +1665,7 @@ func (x *Project) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Project.ProtoReflect.Descriptor instead.
 func (*Project) Descriptor() ([]byte, []int) {
-	return file_panel_v1_panel_proto_rawDescGZIP(), []int{25}
+	return file_panel_v1_panel_proto_rawDescGZIP(), []int{22}
 }
 
 func (x *Project) GetId() string {
@@ -1860,13 +1687,6 @@ func (x *Project) GetRepository() *Repository {
 		return x.Repository
 	}
 	return nil
-}
-
-func (x *Project) GetGithubWorkflowId() int64 {
-	if x != nil {
-		return x.GithubWorkflowId
-	}
-	return 0
 }
 
 func (x *Project) GetCreatedAt() *timestamppb.Timestamp {
@@ -1897,7 +1717,7 @@ type Environment struct {
 
 func (x *Environment) Reset() {
 	*x = Environment{}
-	mi := &file_panel_v1_panel_proto_msgTypes[26]
+	mi := &file_panel_v1_panel_proto_msgTypes[23]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1909,7 +1729,7 @@ func (x *Environment) String() string {
 func (*Environment) ProtoMessage() {}
 
 func (x *Environment) ProtoReflect() protoreflect.Message {
-	mi := &file_panel_v1_panel_proto_msgTypes[26]
+	mi := &file_panel_v1_panel_proto_msgTypes[23]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1922,7 +1742,7 @@ func (x *Environment) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Environment.ProtoReflect.Descriptor instead.
 func (*Environment) Descriptor() ([]byte, []int) {
-	return file_panel_v1_panel_proto_rawDescGZIP(), []int{26}
+	return file_panel_v1_panel_proto_rawDescGZIP(), []int{23}
 }
 
 func (x *Environment) GetId() string {
@@ -2010,7 +1830,7 @@ type EnvironmentSettings struct {
 
 func (x *EnvironmentSettings) Reset() {
 	*x = EnvironmentSettings{}
-	mi := &file_panel_v1_panel_proto_msgTypes[27]
+	mi := &file_panel_v1_panel_proto_msgTypes[24]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2022,7 +1842,7 @@ func (x *EnvironmentSettings) String() string {
 func (*EnvironmentSettings) ProtoMessage() {}
 
 func (x *EnvironmentSettings) ProtoReflect() protoreflect.Message {
-	mi := &file_panel_v1_panel_proto_msgTypes[27]
+	mi := &file_panel_v1_panel_proto_msgTypes[24]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2035,7 +1855,7 @@ func (x *EnvironmentSettings) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EnvironmentSettings.ProtoReflect.Descriptor instead.
 func (*EnvironmentSettings) Descriptor() ([]byte, []int) {
-	return file_panel_v1_panel_proto_rawDescGZIP(), []int{27}
+	return file_panel_v1_panel_proto_rawDescGZIP(), []int{24}
 }
 
 func (x *EnvironmentSettings) GetName() string {
@@ -2092,7 +1912,7 @@ type Domain struct {
 
 func (x *Domain) Reset() {
 	*x = Domain{}
-	mi := &file_panel_v1_panel_proto_msgTypes[28]
+	mi := &file_panel_v1_panel_proto_msgTypes[25]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2104,7 +1924,7 @@ func (x *Domain) String() string {
 func (*Domain) ProtoMessage() {}
 
 func (x *Domain) ProtoReflect() protoreflect.Message {
-	mi := &file_panel_v1_panel_proto_msgTypes[28]
+	mi := &file_panel_v1_panel_proto_msgTypes[25]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2117,7 +1937,7 @@ func (x *Domain) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Domain.ProtoReflect.Descriptor instead.
 func (*Domain) Descriptor() ([]byte, []int) {
-	return file_panel_v1_panel_proto_rawDescGZIP(), []int{28}
+	return file_panel_v1_panel_proto_rawDescGZIP(), []int{25}
 }
 
 func (x *Domain) GetHostname() string {
@@ -2156,7 +1976,7 @@ type Service struct {
 
 func (x *Service) Reset() {
 	*x = Service{}
-	mi := &file_panel_v1_panel_proto_msgTypes[29]
+	mi := &file_panel_v1_panel_proto_msgTypes[26]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2168,7 +1988,7 @@ func (x *Service) String() string {
 func (*Service) ProtoMessage() {}
 
 func (x *Service) ProtoReflect() protoreflect.Message {
-	mi := &file_panel_v1_panel_proto_msgTypes[29]
+	mi := &file_panel_v1_panel_proto_msgTypes[26]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2181,7 +2001,7 @@ func (x *Service) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Service.ProtoReflect.Descriptor instead.
 func (*Service) Descriptor() ([]byte, []int) {
-	return file_panel_v1_panel_proto_rawDescGZIP(), []int{29}
+	return file_panel_v1_panel_proto_rawDescGZIP(), []int{26}
 }
 
 func (x *Service) GetName() string {
@@ -2233,12 +2053,10 @@ func (x *Service) GetObservedAt() *timestamppb.Timestamp {
 	return nil
 }
 
+// Images are resolved from the GIT_SHA tags of source_sha; no build run is recorded.
 type BuildIdentity struct {
 	state              protoimpl.MessageState `protogen:"open.v1"`
 	GithubRepositoryId int64                  `protobuf:"varint,1,opt,name=github_repository_id,json=githubRepositoryId,proto3" json:"github_repository_id,omitempty"`
-	GithubWorkflowId   int64                  `protobuf:"varint,2,opt,name=github_workflow_id,json=githubWorkflowId,proto3" json:"github_workflow_id,omitempty"`
-	GithubRunId        int64                  `protobuf:"varint,3,opt,name=github_run_id,json=githubRunId,proto3" json:"github_run_id,omitempty"`
-	GithubRunAttempt   uint32                 `protobuf:"varint,4,opt,name=github_run_attempt,json=githubRunAttempt,proto3" json:"github_run_attempt,omitempty"`
 	Branch             string                 `protobuf:"bytes,5,opt,name=branch,proto3" json:"branch,omitempty"`
 	SourceSha          string                 `protobuf:"bytes,6,opt,name=source_sha,json=sourceSha,proto3" json:"source_sha,omitempty"`
 	unknownFields      protoimpl.UnknownFields
@@ -2247,7 +2065,7 @@ type BuildIdentity struct {
 
 func (x *BuildIdentity) Reset() {
 	*x = BuildIdentity{}
-	mi := &file_panel_v1_panel_proto_msgTypes[30]
+	mi := &file_panel_v1_panel_proto_msgTypes[27]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2259,7 +2077,7 @@ func (x *BuildIdentity) String() string {
 func (*BuildIdentity) ProtoMessage() {}
 
 func (x *BuildIdentity) ProtoReflect() protoreflect.Message {
-	mi := &file_panel_v1_panel_proto_msgTypes[30]
+	mi := &file_panel_v1_panel_proto_msgTypes[27]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2272,33 +2090,12 @@ func (x *BuildIdentity) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use BuildIdentity.ProtoReflect.Descriptor instead.
 func (*BuildIdentity) Descriptor() ([]byte, []int) {
-	return file_panel_v1_panel_proto_rawDescGZIP(), []int{30}
+	return file_panel_v1_panel_proto_rawDescGZIP(), []int{27}
 }
 
 func (x *BuildIdentity) GetGithubRepositoryId() int64 {
 	if x != nil {
 		return x.GithubRepositoryId
-	}
-	return 0
-}
-
-func (x *BuildIdentity) GetGithubWorkflowId() int64 {
-	if x != nil {
-		return x.GithubWorkflowId
-	}
-	return 0
-}
-
-func (x *BuildIdentity) GetGithubRunId() int64 {
-	if x != nil {
-		return x.GithubRunId
-	}
-	return 0
-}
-
-func (x *BuildIdentity) GetGithubRunAttempt() uint32 {
-	if x != nil {
-		return x.GithubRunAttempt
 	}
 	return 0
 }
@@ -2320,7 +2117,6 @@ func (x *BuildIdentity) GetSourceSha() string {
 type ServiceImage struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Service       string                 `protobuf:"bytes,1,opt,name=service,proto3" json:"service,omitempty"`
-	ImageVariable string                 `protobuf:"bytes,2,opt,name=image_variable,json=imageVariable,proto3" json:"image_variable,omitempty"`
 	ImageDigest   string                 `protobuf:"bytes,3,opt,name=image_digest,json=imageDigest,proto3" json:"image_digest,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -2328,7 +2124,7 @@ type ServiceImage struct {
 
 func (x *ServiceImage) Reset() {
 	*x = ServiceImage{}
-	mi := &file_panel_v1_panel_proto_msgTypes[31]
+	mi := &file_panel_v1_panel_proto_msgTypes[28]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2340,7 +2136,7 @@ func (x *ServiceImage) String() string {
 func (*ServiceImage) ProtoMessage() {}
 
 func (x *ServiceImage) ProtoReflect() protoreflect.Message {
-	mi := &file_panel_v1_panel_proto_msgTypes[31]
+	mi := &file_panel_v1_panel_proto_msgTypes[28]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2353,19 +2149,12 @@ func (x *ServiceImage) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ServiceImage.ProtoReflect.Descriptor instead.
 func (*ServiceImage) Descriptor() ([]byte, []int) {
-	return file_panel_v1_panel_proto_rawDescGZIP(), []int{31}
+	return file_panel_v1_panel_proto_rawDescGZIP(), []int{28}
 }
 
 func (x *ServiceImage) GetService() string {
 	if x != nil {
 		return x.Service
-	}
-	return ""
-}
-
-func (x *ServiceImage) GetImageVariable() string {
-	if x != nil {
-		return x.ImageVariable
 	}
 	return ""
 }
@@ -2396,7 +2185,7 @@ type Release struct {
 
 func (x *Release) Reset() {
 	*x = Release{}
-	mi := &file_panel_v1_panel_proto_msgTypes[32]
+	mi := &file_panel_v1_panel_proto_msgTypes[29]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2408,7 +2197,7 @@ func (x *Release) String() string {
 func (*Release) ProtoMessage() {}
 
 func (x *Release) ProtoReflect() protoreflect.Message {
-	mi := &file_panel_v1_panel_proto_msgTypes[32]
+	mi := &file_panel_v1_panel_proto_msgTypes[29]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2421,7 +2210,7 @@ func (x *Release) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Release.ProtoReflect.Descriptor instead.
 func (*Release) Descriptor() ([]byte, []int) {
-	return file_panel_v1_panel_proto_rawDescGZIP(), []int{32}
+	return file_panel_v1_panel_proto_rawDescGZIP(), []int{29}
 }
 
 func (x *Release) GetId() string {
@@ -2519,7 +2308,7 @@ type Operation struct {
 
 func (x *Operation) Reset() {
 	*x = Operation{}
-	mi := &file_panel_v1_panel_proto_msgTypes[33]
+	mi := &file_panel_v1_panel_proto_msgTypes[30]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2531,7 +2320,7 @@ func (x *Operation) String() string {
 func (*Operation) ProtoMessage() {}
 
 func (x *Operation) ProtoReflect() protoreflect.Message {
-	mi := &file_panel_v1_panel_proto_msgTypes[33]
+	mi := &file_panel_v1_panel_proto_msgTypes[30]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2544,7 +2333,7 @@ func (x *Operation) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Operation.ProtoReflect.Descriptor instead.
 func (*Operation) Descriptor() ([]byte, []int) {
-	return file_panel_v1_panel_proto_rawDescGZIP(), []int{33}
+	return file_panel_v1_panel_proto_rawDescGZIP(), []int{30}
 }
 
 func (x *Operation) GetId() string {
@@ -2647,7 +2436,7 @@ type ServiceDiagnostic struct {
 
 func (x *ServiceDiagnostic) Reset() {
 	*x = ServiceDiagnostic{}
-	mi := &file_panel_v1_panel_proto_msgTypes[34]
+	mi := &file_panel_v1_panel_proto_msgTypes[31]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2659,7 +2448,7 @@ func (x *ServiceDiagnostic) String() string {
 func (*ServiceDiagnostic) ProtoMessage() {}
 
 func (x *ServiceDiagnostic) ProtoReflect() protoreflect.Message {
-	mi := &file_panel_v1_panel_proto_msgTypes[34]
+	mi := &file_panel_v1_panel_proto_msgTypes[31]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2672,7 +2461,7 @@ func (x *ServiceDiagnostic) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ServiceDiagnostic.ProtoReflect.Descriptor instead.
 func (*ServiceDiagnostic) Descriptor() ([]byte, []int) {
-	return file_panel_v1_panel_proto_rawDescGZIP(), []int{34}
+	return file_panel_v1_panel_proto_rawDescGZIP(), []int{31}
 }
 
 func (x *ServiceDiagnostic) GetService() string {
@@ -2719,7 +2508,7 @@ type ListServersRequest struct {
 
 func (x *ListServersRequest) Reset() {
 	*x = ListServersRequest{}
-	mi := &file_panel_v1_panel_proto_msgTypes[35]
+	mi := &file_panel_v1_panel_proto_msgTypes[32]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2731,7 +2520,7 @@ func (x *ListServersRequest) String() string {
 func (*ListServersRequest) ProtoMessage() {}
 
 func (x *ListServersRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_panel_v1_panel_proto_msgTypes[35]
+	mi := &file_panel_v1_panel_proto_msgTypes[32]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2744,7 +2533,7 @@ func (x *ListServersRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListServersRequest.ProtoReflect.Descriptor instead.
 func (*ListServersRequest) Descriptor() ([]byte, []int) {
-	return file_panel_v1_panel_proto_rawDescGZIP(), []int{35}
+	return file_panel_v1_panel_proto_rawDescGZIP(), []int{32}
 }
 
 func (x *ListServersRequest) GetPage() *PageRequest {
@@ -2764,7 +2553,7 @@ type ListServersResponse struct {
 
 func (x *ListServersResponse) Reset() {
 	*x = ListServersResponse{}
-	mi := &file_panel_v1_panel_proto_msgTypes[36]
+	mi := &file_panel_v1_panel_proto_msgTypes[33]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2776,7 +2565,7 @@ func (x *ListServersResponse) String() string {
 func (*ListServersResponse) ProtoMessage() {}
 
 func (x *ListServersResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_panel_v1_panel_proto_msgTypes[36]
+	mi := &file_panel_v1_panel_proto_msgTypes[33]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2789,7 +2578,7 @@ func (x *ListServersResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListServersResponse.ProtoReflect.Descriptor instead.
 func (*ListServersResponse) Descriptor() ([]byte, []int) {
-	return file_panel_v1_panel_proto_rawDescGZIP(), []int{36}
+	return file_panel_v1_panel_proto_rawDescGZIP(), []int{33}
 }
 
 func (x *ListServersResponse) GetServers() []*Server {
@@ -2815,7 +2604,7 @@ type GetServerRequest struct {
 
 func (x *GetServerRequest) Reset() {
 	*x = GetServerRequest{}
-	mi := &file_panel_v1_panel_proto_msgTypes[37]
+	mi := &file_panel_v1_panel_proto_msgTypes[34]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2827,7 +2616,7 @@ func (x *GetServerRequest) String() string {
 func (*GetServerRequest) ProtoMessage() {}
 
 func (x *GetServerRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_panel_v1_panel_proto_msgTypes[37]
+	mi := &file_panel_v1_panel_proto_msgTypes[34]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2840,7 +2629,7 @@ func (x *GetServerRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetServerRequest.ProtoReflect.Descriptor instead.
 func (*GetServerRequest) Descriptor() ([]byte, []int) {
-	return file_panel_v1_panel_proto_rawDescGZIP(), []int{37}
+	return file_panel_v1_panel_proto_rawDescGZIP(), []int{34}
 }
 
 func (x *GetServerRequest) GetId() string {
@@ -2859,7 +2648,7 @@ type GetServerResponse struct {
 
 func (x *GetServerResponse) Reset() {
 	*x = GetServerResponse{}
-	mi := &file_panel_v1_panel_proto_msgTypes[38]
+	mi := &file_panel_v1_panel_proto_msgTypes[35]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2871,7 +2660,7 @@ func (x *GetServerResponse) String() string {
 func (*GetServerResponse) ProtoMessage() {}
 
 func (x *GetServerResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_panel_v1_panel_proto_msgTypes[38]
+	mi := &file_panel_v1_panel_proto_msgTypes[35]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2884,7 +2673,7 @@ func (x *GetServerResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetServerResponse.ProtoReflect.Descriptor instead.
 func (*GetServerResponse) Descriptor() ([]byte, []int) {
-	return file_panel_v1_panel_proto_rawDescGZIP(), []int{38}
+	return file_panel_v1_panel_proto_rawDescGZIP(), []int{35}
 }
 
 func (x *GetServerResponse) GetServer() *Server {
@@ -2909,7 +2698,7 @@ type EnrollServerRequest struct {
 
 func (x *EnrollServerRequest) Reset() {
 	*x = EnrollServerRequest{}
-	mi := &file_panel_v1_panel_proto_msgTypes[39]
+	mi := &file_panel_v1_panel_proto_msgTypes[36]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2921,7 +2710,7 @@ func (x *EnrollServerRequest) String() string {
 func (*EnrollServerRequest) ProtoMessage() {}
 
 func (x *EnrollServerRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_panel_v1_panel_proto_msgTypes[39]
+	mi := &file_panel_v1_panel_proto_msgTypes[36]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2934,7 +2723,7 @@ func (x *EnrollServerRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EnrollServerRequest.ProtoReflect.Descriptor instead.
 func (*EnrollServerRequest) Descriptor() ([]byte, []int) {
-	return file_panel_v1_panel_proto_rawDescGZIP(), []int{39}
+	return file_panel_v1_panel_proto_rawDescGZIP(), []int{36}
 }
 
 func (x *EnrollServerRequest) GetMutation() *Mutation {
@@ -2989,7 +2778,7 @@ type EnrollServerResponse struct {
 
 func (x *EnrollServerResponse) Reset() {
 	*x = EnrollServerResponse{}
-	mi := &file_panel_v1_panel_proto_msgTypes[40]
+	mi := &file_panel_v1_panel_proto_msgTypes[37]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3001,7 +2790,7 @@ func (x *EnrollServerResponse) String() string {
 func (*EnrollServerResponse) ProtoMessage() {}
 
 func (x *EnrollServerResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_panel_v1_panel_proto_msgTypes[40]
+	mi := &file_panel_v1_panel_proto_msgTypes[37]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3014,7 +2803,7 @@ func (x *EnrollServerResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EnrollServerResponse.ProtoReflect.Descriptor instead.
 func (*EnrollServerResponse) Descriptor() ([]byte, []int) {
-	return file_panel_v1_panel_proto_rawDescGZIP(), []int{40}
+	return file_panel_v1_panel_proto_rawDescGZIP(), []int{37}
 }
 
 func (x *EnrollServerResponse) GetServer() *Server {
@@ -3041,7 +2830,7 @@ type RemoveServerRequest struct {
 
 func (x *RemoveServerRequest) Reset() {
 	*x = RemoveServerRequest{}
-	mi := &file_panel_v1_panel_proto_msgTypes[41]
+	mi := &file_panel_v1_panel_proto_msgTypes[38]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3053,7 +2842,7 @@ func (x *RemoveServerRequest) String() string {
 func (*RemoveServerRequest) ProtoMessage() {}
 
 func (x *RemoveServerRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_panel_v1_panel_proto_msgTypes[41]
+	mi := &file_panel_v1_panel_proto_msgTypes[38]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3066,7 +2855,7 @@ func (x *RemoveServerRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RemoveServerRequest.ProtoReflect.Descriptor instead.
 func (*RemoveServerRequest) Descriptor() ([]byte, []int) {
-	return file_panel_v1_panel_proto_rawDescGZIP(), []int{41}
+	return file_panel_v1_panel_proto_rawDescGZIP(), []int{38}
 }
 
 func (x *RemoveServerRequest) GetMutation() *Mutation {
@@ -3091,7 +2880,7 @@ type RemoveServerResponse struct {
 
 func (x *RemoveServerResponse) Reset() {
 	*x = RemoveServerResponse{}
-	mi := &file_panel_v1_panel_proto_msgTypes[42]
+	mi := &file_panel_v1_panel_proto_msgTypes[39]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3103,7 +2892,7 @@ func (x *RemoveServerResponse) String() string {
 func (*RemoveServerResponse) ProtoMessage() {}
 
 func (x *RemoveServerResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_panel_v1_panel_proto_msgTypes[42]
+	mi := &file_panel_v1_panel_proto_msgTypes[39]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3116,7 +2905,7 @@ func (x *RemoveServerResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RemoveServerResponse.ProtoReflect.Descriptor instead.
 func (*RemoveServerResponse) Descriptor() ([]byte, []int) {
-	return file_panel_v1_panel_proto_rawDescGZIP(), []int{42}
+	return file_panel_v1_panel_proto_rawDescGZIP(), []int{39}
 }
 
 type ListProjectsRequest struct {
@@ -3128,7 +2917,7 @@ type ListProjectsRequest struct {
 
 func (x *ListProjectsRequest) Reset() {
 	*x = ListProjectsRequest{}
-	mi := &file_panel_v1_panel_proto_msgTypes[43]
+	mi := &file_panel_v1_panel_proto_msgTypes[40]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3140,7 +2929,7 @@ func (x *ListProjectsRequest) String() string {
 func (*ListProjectsRequest) ProtoMessage() {}
 
 func (x *ListProjectsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_panel_v1_panel_proto_msgTypes[43]
+	mi := &file_panel_v1_panel_proto_msgTypes[40]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3153,7 +2942,7 @@ func (x *ListProjectsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListProjectsRequest.ProtoReflect.Descriptor instead.
 func (*ListProjectsRequest) Descriptor() ([]byte, []int) {
-	return file_panel_v1_panel_proto_rawDescGZIP(), []int{43}
+	return file_panel_v1_panel_proto_rawDescGZIP(), []int{40}
 }
 
 func (x *ListProjectsRequest) GetPage() *PageRequest {
@@ -3173,7 +2962,7 @@ type ListProjectsResponse struct {
 
 func (x *ListProjectsResponse) Reset() {
 	*x = ListProjectsResponse{}
-	mi := &file_panel_v1_panel_proto_msgTypes[44]
+	mi := &file_panel_v1_panel_proto_msgTypes[41]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3185,7 +2974,7 @@ func (x *ListProjectsResponse) String() string {
 func (*ListProjectsResponse) ProtoMessage() {}
 
 func (x *ListProjectsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_panel_v1_panel_proto_msgTypes[44]
+	mi := &file_panel_v1_panel_proto_msgTypes[41]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3198,7 +2987,7 @@ func (x *ListProjectsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListProjectsResponse.ProtoReflect.Descriptor instead.
 func (*ListProjectsResponse) Descriptor() ([]byte, []int) {
-	return file_panel_v1_panel_proto_rawDescGZIP(), []int{44}
+	return file_panel_v1_panel_proto_rawDescGZIP(), []int{41}
 }
 
 func (x *ListProjectsResponse) GetProjects() []*Project {
@@ -3224,7 +3013,7 @@ type GetProjectRequest struct {
 
 func (x *GetProjectRequest) Reset() {
 	*x = GetProjectRequest{}
-	mi := &file_panel_v1_panel_proto_msgTypes[45]
+	mi := &file_panel_v1_panel_proto_msgTypes[42]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3236,7 +3025,7 @@ func (x *GetProjectRequest) String() string {
 func (*GetProjectRequest) ProtoMessage() {}
 
 func (x *GetProjectRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_panel_v1_panel_proto_msgTypes[45]
+	mi := &file_panel_v1_panel_proto_msgTypes[42]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3249,7 +3038,7 @@ func (x *GetProjectRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetProjectRequest.ProtoReflect.Descriptor instead.
 func (*GetProjectRequest) Descriptor() ([]byte, []int) {
-	return file_panel_v1_panel_proto_rawDescGZIP(), []int{45}
+	return file_panel_v1_panel_proto_rawDescGZIP(), []int{42}
 }
 
 func (x *GetProjectRequest) GetId() string {
@@ -3268,7 +3057,7 @@ type GetProjectResponse struct {
 
 func (x *GetProjectResponse) Reset() {
 	*x = GetProjectResponse{}
-	mi := &file_panel_v1_panel_proto_msgTypes[46]
+	mi := &file_panel_v1_panel_proto_msgTypes[43]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3280,7 +3069,7 @@ func (x *GetProjectResponse) String() string {
 func (*GetProjectResponse) ProtoMessage() {}
 
 func (x *GetProjectResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_panel_v1_panel_proto_msgTypes[46]
+	mi := &file_panel_v1_panel_proto_msgTypes[43]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3293,7 +3082,7 @@ func (x *GetProjectResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetProjectResponse.ProtoReflect.Descriptor instead.
 func (*GetProjectResponse) Descriptor() ([]byte, []int) {
-	return file_panel_v1_panel_proto_rawDescGZIP(), []int{46}
+	return file_panel_v1_panel_proto_rawDescGZIP(), []int{43}
 }
 
 func (x *GetProjectResponse) GetProject() *Project {
@@ -3304,18 +3093,17 @@ func (x *GetProjectResponse) GetProject() *Project {
 }
 
 type CreateProjectRequest struct {
-	state            protoimpl.MessageState `protogen:"open.v1"`
-	Mutation         *Mutation              `protobuf:"bytes,1,opt,name=mutation,proto3" json:"mutation,omitempty"`
-	Name             string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
-	Repository       *Repository            `protobuf:"bytes,3,opt,name=repository,proto3" json:"repository,omitempty"`
-	GithubWorkflowId int64                  `protobuf:"varint,4,opt,name=github_workflow_id,json=githubWorkflowId,proto3" json:"github_workflow_id,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Mutation      *Mutation              `protobuf:"bytes,1,opt,name=mutation,proto3" json:"mutation,omitempty"`
+	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	Repository    *Repository            `protobuf:"bytes,3,opt,name=repository,proto3" json:"repository,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *CreateProjectRequest) Reset() {
 	*x = CreateProjectRequest{}
-	mi := &file_panel_v1_panel_proto_msgTypes[47]
+	mi := &file_panel_v1_panel_proto_msgTypes[44]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3327,7 +3115,7 @@ func (x *CreateProjectRequest) String() string {
 func (*CreateProjectRequest) ProtoMessage() {}
 
 func (x *CreateProjectRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_panel_v1_panel_proto_msgTypes[47]
+	mi := &file_panel_v1_panel_proto_msgTypes[44]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3340,7 +3128,7 @@ func (x *CreateProjectRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateProjectRequest.ProtoReflect.Descriptor instead.
 func (*CreateProjectRequest) Descriptor() ([]byte, []int) {
-	return file_panel_v1_panel_proto_rawDescGZIP(), []int{47}
+	return file_panel_v1_panel_proto_rawDescGZIP(), []int{44}
 }
 
 func (x *CreateProjectRequest) GetMutation() *Mutation {
@@ -3364,13 +3152,6 @@ func (x *CreateProjectRequest) GetRepository() *Repository {
 	return nil
 }
 
-func (x *CreateProjectRequest) GetGithubWorkflowId() int64 {
-	if x != nil {
-		return x.GithubWorkflowId
-	}
-	return 0
-}
-
 type CreateProjectResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Project       *Project               `protobuf:"bytes,1,opt,name=project,proto3" json:"project,omitempty"`
@@ -3380,7 +3161,7 @@ type CreateProjectResponse struct {
 
 func (x *CreateProjectResponse) Reset() {
 	*x = CreateProjectResponse{}
-	mi := &file_panel_v1_panel_proto_msgTypes[48]
+	mi := &file_panel_v1_panel_proto_msgTypes[45]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3392,7 +3173,7 @@ func (x *CreateProjectResponse) String() string {
 func (*CreateProjectResponse) ProtoMessage() {}
 
 func (x *CreateProjectResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_panel_v1_panel_proto_msgTypes[48]
+	mi := &file_panel_v1_panel_proto_msgTypes[45]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3405,7 +3186,7 @@ func (x *CreateProjectResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateProjectResponse.ProtoReflect.Descriptor instead.
 func (*CreateProjectResponse) Descriptor() ([]byte, []int) {
-	return file_panel_v1_panel_proto_rawDescGZIP(), []int{48}
+	return file_panel_v1_panel_proto_rawDescGZIP(), []int{45}
 }
 
 func (x *CreateProjectResponse) GetProject() *Project {
@@ -3425,7 +3206,7 @@ type ListEnvironmentsRequest struct {
 
 func (x *ListEnvironmentsRequest) Reset() {
 	*x = ListEnvironmentsRequest{}
-	mi := &file_panel_v1_panel_proto_msgTypes[49]
+	mi := &file_panel_v1_panel_proto_msgTypes[46]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3437,7 +3218,7 @@ func (x *ListEnvironmentsRequest) String() string {
 func (*ListEnvironmentsRequest) ProtoMessage() {}
 
 func (x *ListEnvironmentsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_panel_v1_panel_proto_msgTypes[49]
+	mi := &file_panel_v1_panel_proto_msgTypes[46]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3450,7 +3231,7 @@ func (x *ListEnvironmentsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListEnvironmentsRequest.ProtoReflect.Descriptor instead.
 func (*ListEnvironmentsRequest) Descriptor() ([]byte, []int) {
-	return file_panel_v1_panel_proto_rawDescGZIP(), []int{49}
+	return file_panel_v1_panel_proto_rawDescGZIP(), []int{46}
 }
 
 func (x *ListEnvironmentsRequest) GetProjectId() string {
@@ -3477,7 +3258,7 @@ type ListEnvironmentsResponse struct {
 
 func (x *ListEnvironmentsResponse) Reset() {
 	*x = ListEnvironmentsResponse{}
-	mi := &file_panel_v1_panel_proto_msgTypes[50]
+	mi := &file_panel_v1_panel_proto_msgTypes[47]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3489,7 +3270,7 @@ func (x *ListEnvironmentsResponse) String() string {
 func (*ListEnvironmentsResponse) ProtoMessage() {}
 
 func (x *ListEnvironmentsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_panel_v1_panel_proto_msgTypes[50]
+	mi := &file_panel_v1_panel_proto_msgTypes[47]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3502,7 +3283,7 @@ func (x *ListEnvironmentsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListEnvironmentsResponse.ProtoReflect.Descriptor instead.
 func (*ListEnvironmentsResponse) Descriptor() ([]byte, []int) {
-	return file_panel_v1_panel_proto_rawDescGZIP(), []int{50}
+	return file_panel_v1_panel_proto_rawDescGZIP(), []int{47}
 }
 
 func (x *ListEnvironmentsResponse) GetEnvironments() []*Environment {
@@ -3528,7 +3309,7 @@ type GetEnvironmentRequest struct {
 
 func (x *GetEnvironmentRequest) Reset() {
 	*x = GetEnvironmentRequest{}
-	mi := &file_panel_v1_panel_proto_msgTypes[51]
+	mi := &file_panel_v1_panel_proto_msgTypes[48]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3540,7 +3321,7 @@ func (x *GetEnvironmentRequest) String() string {
 func (*GetEnvironmentRequest) ProtoMessage() {}
 
 func (x *GetEnvironmentRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_panel_v1_panel_proto_msgTypes[51]
+	mi := &file_panel_v1_panel_proto_msgTypes[48]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3553,7 +3334,7 @@ func (x *GetEnvironmentRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetEnvironmentRequest.ProtoReflect.Descriptor instead.
 func (*GetEnvironmentRequest) Descriptor() ([]byte, []int) {
-	return file_panel_v1_panel_proto_rawDescGZIP(), []int{51}
+	return file_panel_v1_panel_proto_rawDescGZIP(), []int{48}
 }
 
 func (x *GetEnvironmentRequest) GetId() string {
@@ -3572,7 +3353,7 @@ type GetEnvironmentResponse struct {
 
 func (x *GetEnvironmentResponse) Reset() {
 	*x = GetEnvironmentResponse{}
-	mi := &file_panel_v1_panel_proto_msgTypes[52]
+	mi := &file_panel_v1_panel_proto_msgTypes[49]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3584,7 +3365,7 @@ func (x *GetEnvironmentResponse) String() string {
 func (*GetEnvironmentResponse) ProtoMessage() {}
 
 func (x *GetEnvironmentResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_panel_v1_panel_proto_msgTypes[52]
+	mi := &file_panel_v1_panel_proto_msgTypes[49]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3597,7 +3378,7 @@ func (x *GetEnvironmentResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetEnvironmentResponse.ProtoReflect.Descriptor instead.
 func (*GetEnvironmentResponse) Descriptor() ([]byte, []int) {
-	return file_panel_v1_panel_proto_rawDescGZIP(), []int{52}
+	return file_panel_v1_panel_proto_rawDescGZIP(), []int{49}
 }
 
 func (x *GetEnvironmentResponse) GetEnvironment() *Environment {
@@ -3618,7 +3399,7 @@ type CreateEnvironmentRequest struct {
 
 func (x *CreateEnvironmentRequest) Reset() {
 	*x = CreateEnvironmentRequest{}
-	mi := &file_panel_v1_panel_proto_msgTypes[53]
+	mi := &file_panel_v1_panel_proto_msgTypes[50]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3630,7 +3411,7 @@ func (x *CreateEnvironmentRequest) String() string {
 func (*CreateEnvironmentRequest) ProtoMessage() {}
 
 func (x *CreateEnvironmentRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_panel_v1_panel_proto_msgTypes[53]
+	mi := &file_panel_v1_panel_proto_msgTypes[50]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3643,7 +3424,7 @@ func (x *CreateEnvironmentRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateEnvironmentRequest.ProtoReflect.Descriptor instead.
 func (*CreateEnvironmentRequest) Descriptor() ([]byte, []int) {
-	return file_panel_v1_panel_proto_rawDescGZIP(), []int{53}
+	return file_panel_v1_panel_proto_rawDescGZIP(), []int{50}
 }
 
 func (x *CreateEnvironmentRequest) GetMutation() *Mutation {
@@ -3676,7 +3457,7 @@ type CreateEnvironmentResponse struct {
 
 func (x *CreateEnvironmentResponse) Reset() {
 	*x = CreateEnvironmentResponse{}
-	mi := &file_panel_v1_panel_proto_msgTypes[54]
+	mi := &file_panel_v1_panel_proto_msgTypes[51]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3688,7 +3469,7 @@ func (x *CreateEnvironmentResponse) String() string {
 func (*CreateEnvironmentResponse) ProtoMessage() {}
 
 func (x *CreateEnvironmentResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_panel_v1_panel_proto_msgTypes[54]
+	mi := &file_panel_v1_panel_proto_msgTypes[51]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3701,7 +3482,7 @@ func (x *CreateEnvironmentResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateEnvironmentResponse.ProtoReflect.Descriptor instead.
 func (*CreateEnvironmentResponse) Descriptor() ([]byte, []int) {
-	return file_panel_v1_panel_proto_rawDescGZIP(), []int{54}
+	return file_panel_v1_panel_proto_rawDescGZIP(), []int{51}
 }
 
 func (x *CreateEnvironmentResponse) GetEnvironment() *Environment {
@@ -3723,7 +3504,7 @@ type UpdateEnvironmentRequest struct {
 
 func (x *UpdateEnvironmentRequest) Reset() {
 	*x = UpdateEnvironmentRequest{}
-	mi := &file_panel_v1_panel_proto_msgTypes[55]
+	mi := &file_panel_v1_panel_proto_msgTypes[52]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3735,7 +3516,7 @@ func (x *UpdateEnvironmentRequest) String() string {
 func (*UpdateEnvironmentRequest) ProtoMessage() {}
 
 func (x *UpdateEnvironmentRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_panel_v1_panel_proto_msgTypes[55]
+	mi := &file_panel_v1_panel_proto_msgTypes[52]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3748,7 +3529,7 @@ func (x *UpdateEnvironmentRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateEnvironmentRequest.ProtoReflect.Descriptor instead.
 func (*UpdateEnvironmentRequest) Descriptor() ([]byte, []int) {
-	return file_panel_v1_panel_proto_rawDescGZIP(), []int{55}
+	return file_panel_v1_panel_proto_rawDescGZIP(), []int{52}
 }
 
 func (x *UpdateEnvironmentRequest) GetMutation() *Mutation {
@@ -3788,7 +3569,7 @@ type UpdateEnvironmentResponse struct {
 
 func (x *UpdateEnvironmentResponse) Reset() {
 	*x = UpdateEnvironmentResponse{}
-	mi := &file_panel_v1_panel_proto_msgTypes[56]
+	mi := &file_panel_v1_panel_proto_msgTypes[53]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3800,7 +3581,7 @@ func (x *UpdateEnvironmentResponse) String() string {
 func (*UpdateEnvironmentResponse) ProtoMessage() {}
 
 func (x *UpdateEnvironmentResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_panel_v1_panel_proto_msgTypes[56]
+	mi := &file_panel_v1_panel_proto_msgTypes[53]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3813,7 +3594,7 @@ func (x *UpdateEnvironmentResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateEnvironmentResponse.ProtoReflect.Descriptor instead.
 func (*UpdateEnvironmentResponse) Descriptor() ([]byte, []int) {
-	return file_panel_v1_panel_proto_rawDescGZIP(), []int{56}
+	return file_panel_v1_panel_proto_rawDescGZIP(), []int{53}
 }
 
 func (x *UpdateEnvironmentResponse) GetEnvironment() *Environment {
@@ -3833,7 +3614,7 @@ type SecretValue struct {
 
 func (x *SecretValue) Reset() {
 	*x = SecretValue{}
-	mi := &file_panel_v1_panel_proto_msgTypes[57]
+	mi := &file_panel_v1_panel_proto_msgTypes[54]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3845,7 +3626,7 @@ func (x *SecretValue) String() string {
 func (*SecretValue) ProtoMessage() {}
 
 func (x *SecretValue) ProtoReflect() protoreflect.Message {
-	mi := &file_panel_v1_panel_proto_msgTypes[57]
+	mi := &file_panel_v1_panel_proto_msgTypes[54]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3858,7 +3639,7 @@ func (x *SecretValue) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SecretValue.ProtoReflect.Descriptor instead.
 func (*SecretValue) Descriptor() ([]byte, []int) {
-	return file_panel_v1_panel_proto_rawDescGZIP(), []int{57}
+	return file_panel_v1_panel_proto_rawDescGZIP(), []int{54}
 }
 
 func (x *SecretValue) GetName() string {
@@ -3891,7 +3672,7 @@ type SaveEnvironmentSecretsRequest struct {
 
 func (x *SaveEnvironmentSecretsRequest) Reset() {
 	*x = SaveEnvironmentSecretsRequest{}
-	mi := &file_panel_v1_panel_proto_msgTypes[58]
+	mi := &file_panel_v1_panel_proto_msgTypes[55]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3903,7 +3684,7 @@ func (x *SaveEnvironmentSecretsRequest) String() string {
 func (*SaveEnvironmentSecretsRequest) ProtoMessage() {}
 
 func (x *SaveEnvironmentSecretsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_panel_v1_panel_proto_msgTypes[58]
+	mi := &file_panel_v1_panel_proto_msgTypes[55]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3916,7 +3697,7 @@ func (x *SaveEnvironmentSecretsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SaveEnvironmentSecretsRequest.ProtoReflect.Descriptor instead.
 func (*SaveEnvironmentSecretsRequest) Descriptor() ([]byte, []int) {
-	return file_panel_v1_panel_proto_rawDescGZIP(), []int{58}
+	return file_panel_v1_panel_proto_rawDescGZIP(), []int{55}
 }
 
 func (x *SaveEnvironmentSecretsRequest) GetMutation() *Mutation {
@@ -3963,7 +3744,7 @@ type SaveEnvironmentSecretsResponse struct {
 
 func (x *SaveEnvironmentSecretsResponse) Reset() {
 	*x = SaveEnvironmentSecretsResponse{}
-	mi := &file_panel_v1_panel_proto_msgTypes[59]
+	mi := &file_panel_v1_panel_proto_msgTypes[56]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3975,7 +3756,7 @@ func (x *SaveEnvironmentSecretsResponse) String() string {
 func (*SaveEnvironmentSecretsResponse) ProtoMessage() {}
 
 func (x *SaveEnvironmentSecretsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_panel_v1_panel_proto_msgTypes[59]
+	mi := &file_panel_v1_panel_proto_msgTypes[56]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3988,7 +3769,7 @@ func (x *SaveEnvironmentSecretsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SaveEnvironmentSecretsResponse.ProtoReflect.Descriptor instead.
 func (*SaveEnvironmentSecretsResponse) Descriptor() ([]byte, []int) {
-	return file_panel_v1_panel_proto_rawDescGZIP(), []int{59}
+	return file_panel_v1_panel_proto_rawDescGZIP(), []int{56}
 }
 
 func (x *SaveEnvironmentSecretsResponse) GetEnvironment() *Environment {
@@ -4008,7 +3789,7 @@ type ListServicesRequest struct {
 
 func (x *ListServicesRequest) Reset() {
 	*x = ListServicesRequest{}
-	mi := &file_panel_v1_panel_proto_msgTypes[60]
+	mi := &file_panel_v1_panel_proto_msgTypes[57]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4020,7 +3801,7 @@ func (x *ListServicesRequest) String() string {
 func (*ListServicesRequest) ProtoMessage() {}
 
 func (x *ListServicesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_panel_v1_panel_proto_msgTypes[60]
+	mi := &file_panel_v1_panel_proto_msgTypes[57]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4033,7 +3814,7 @@ func (x *ListServicesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListServicesRequest.ProtoReflect.Descriptor instead.
 func (*ListServicesRequest) Descriptor() ([]byte, []int) {
-	return file_panel_v1_panel_proto_rawDescGZIP(), []int{60}
+	return file_panel_v1_panel_proto_rawDescGZIP(), []int{57}
 }
 
 func (x *ListServicesRequest) GetEnvironmentId() string {
@@ -4060,7 +3841,7 @@ type ListServicesResponse struct {
 
 func (x *ListServicesResponse) Reset() {
 	*x = ListServicesResponse{}
-	mi := &file_panel_v1_panel_proto_msgTypes[61]
+	mi := &file_panel_v1_panel_proto_msgTypes[58]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4072,7 +3853,7 @@ func (x *ListServicesResponse) String() string {
 func (*ListServicesResponse) ProtoMessage() {}
 
 func (x *ListServicesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_panel_v1_panel_proto_msgTypes[61]
+	mi := &file_panel_v1_panel_proto_msgTypes[58]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4085,7 +3866,7 @@ func (x *ListServicesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListServicesResponse.ProtoReflect.Descriptor instead.
 func (*ListServicesResponse) Descriptor() ([]byte, []int) {
-	return file_panel_v1_panel_proto_rawDescGZIP(), []int{61}
+	return file_panel_v1_panel_proto_rawDescGZIP(), []int{58}
 }
 
 func (x *ListServicesResponse) GetServices() []*Service {
@@ -4112,7 +3893,7 @@ type ListReleasesRequest struct {
 
 func (x *ListReleasesRequest) Reset() {
 	*x = ListReleasesRequest{}
-	mi := &file_panel_v1_panel_proto_msgTypes[62]
+	mi := &file_panel_v1_panel_proto_msgTypes[59]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4124,7 +3905,7 @@ func (x *ListReleasesRequest) String() string {
 func (*ListReleasesRequest) ProtoMessage() {}
 
 func (x *ListReleasesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_panel_v1_panel_proto_msgTypes[62]
+	mi := &file_panel_v1_panel_proto_msgTypes[59]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4137,7 +3918,7 @@ func (x *ListReleasesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListReleasesRequest.ProtoReflect.Descriptor instead.
 func (*ListReleasesRequest) Descriptor() ([]byte, []int) {
-	return file_panel_v1_panel_proto_rawDescGZIP(), []int{62}
+	return file_panel_v1_panel_proto_rawDescGZIP(), []int{59}
 }
 
 func (x *ListReleasesRequest) GetEnvironmentId() string {
@@ -4164,7 +3945,7 @@ type ListReleasesResponse struct {
 
 func (x *ListReleasesResponse) Reset() {
 	*x = ListReleasesResponse{}
-	mi := &file_panel_v1_panel_proto_msgTypes[63]
+	mi := &file_panel_v1_panel_proto_msgTypes[60]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4176,7 +3957,7 @@ func (x *ListReleasesResponse) String() string {
 func (*ListReleasesResponse) ProtoMessage() {}
 
 func (x *ListReleasesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_panel_v1_panel_proto_msgTypes[63]
+	mi := &file_panel_v1_panel_proto_msgTypes[60]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4189,7 +3970,7 @@ func (x *ListReleasesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListReleasesResponse.ProtoReflect.Descriptor instead.
 func (*ListReleasesResponse) Descriptor() ([]byte, []int) {
-	return file_panel_v1_panel_proto_rawDescGZIP(), []int{63}
+	return file_panel_v1_panel_proto_rawDescGZIP(), []int{60}
 }
 
 func (x *ListReleasesResponse) GetReleases() []*Release {
@@ -4215,7 +3996,7 @@ type GetReleaseRequest struct {
 
 func (x *GetReleaseRequest) Reset() {
 	*x = GetReleaseRequest{}
-	mi := &file_panel_v1_panel_proto_msgTypes[64]
+	mi := &file_panel_v1_panel_proto_msgTypes[61]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4227,7 +4008,7 @@ func (x *GetReleaseRequest) String() string {
 func (*GetReleaseRequest) ProtoMessage() {}
 
 func (x *GetReleaseRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_panel_v1_panel_proto_msgTypes[64]
+	mi := &file_panel_v1_panel_proto_msgTypes[61]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4240,7 +4021,7 @@ func (x *GetReleaseRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetReleaseRequest.ProtoReflect.Descriptor instead.
 func (*GetReleaseRequest) Descriptor() ([]byte, []int) {
-	return file_panel_v1_panel_proto_rawDescGZIP(), []int{64}
+	return file_panel_v1_panel_proto_rawDescGZIP(), []int{61}
 }
 
 func (x *GetReleaseRequest) GetId() string {
@@ -4259,7 +4040,7 @@ type GetReleaseResponse struct {
 
 func (x *GetReleaseResponse) Reset() {
 	*x = GetReleaseResponse{}
-	mi := &file_panel_v1_panel_proto_msgTypes[65]
+	mi := &file_panel_v1_panel_proto_msgTypes[62]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4271,7 +4052,7 @@ func (x *GetReleaseResponse) String() string {
 func (*GetReleaseResponse) ProtoMessage() {}
 
 func (x *GetReleaseResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_panel_v1_panel_proto_msgTypes[65]
+	mi := &file_panel_v1_panel_proto_msgTypes[62]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4284,7 +4065,7 @@ func (x *GetReleaseResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetReleaseResponse.ProtoReflect.Descriptor instead.
 func (*GetReleaseResponse) Descriptor() ([]byte, []int) {
-	return file_panel_v1_panel_proto_rawDescGZIP(), []int{65}
+	return file_panel_v1_panel_proto_rawDescGZIP(), []int{62}
 }
 
 func (x *GetReleaseResponse) GetRelease() *Release {
@@ -4306,7 +4087,7 @@ type DeployEnvironmentRequest struct {
 
 func (x *DeployEnvironmentRequest) Reset() {
 	*x = DeployEnvironmentRequest{}
-	mi := &file_panel_v1_panel_proto_msgTypes[66]
+	mi := &file_panel_v1_panel_proto_msgTypes[63]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4318,7 +4099,7 @@ func (x *DeployEnvironmentRequest) String() string {
 func (*DeployEnvironmentRequest) ProtoMessage() {}
 
 func (x *DeployEnvironmentRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_panel_v1_panel_proto_msgTypes[66]
+	mi := &file_panel_v1_panel_proto_msgTypes[63]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4331,7 +4112,7 @@ func (x *DeployEnvironmentRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeployEnvironmentRequest.ProtoReflect.Descriptor instead.
 func (*DeployEnvironmentRequest) Descriptor() ([]byte, []int) {
-	return file_panel_v1_panel_proto_rawDescGZIP(), []int{66}
+	return file_panel_v1_panel_proto_rawDescGZIP(), []int{63}
 }
 
 func (x *DeployEnvironmentRequest) GetMutation() *Mutation {
@@ -4371,7 +4152,7 @@ type DeployEnvironmentResponse struct {
 
 func (x *DeployEnvironmentResponse) Reset() {
 	*x = DeployEnvironmentResponse{}
-	mi := &file_panel_v1_panel_proto_msgTypes[67]
+	mi := &file_panel_v1_panel_proto_msgTypes[64]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4383,7 +4164,7 @@ func (x *DeployEnvironmentResponse) String() string {
 func (*DeployEnvironmentResponse) ProtoMessage() {}
 
 func (x *DeployEnvironmentResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_panel_v1_panel_proto_msgTypes[67]
+	mi := &file_panel_v1_panel_proto_msgTypes[64]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4396,7 +4177,7 @@ func (x *DeployEnvironmentResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeployEnvironmentResponse.ProtoReflect.Descriptor instead.
 func (*DeployEnvironmentResponse) Descriptor() ([]byte, []int) {
-	return file_panel_v1_panel_proto_rawDescGZIP(), []int{67}
+	return file_panel_v1_panel_proto_rawDescGZIP(), []int{64}
 }
 
 func (x *DeployEnvironmentResponse) GetOperation() *Operation {
@@ -4419,7 +4200,7 @@ type RollbackEnvironmentRequest struct {
 
 func (x *RollbackEnvironmentRequest) Reset() {
 	*x = RollbackEnvironmentRequest{}
-	mi := &file_panel_v1_panel_proto_msgTypes[68]
+	mi := &file_panel_v1_panel_proto_msgTypes[65]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4431,7 +4212,7 @@ func (x *RollbackEnvironmentRequest) String() string {
 func (*RollbackEnvironmentRequest) ProtoMessage() {}
 
 func (x *RollbackEnvironmentRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_panel_v1_panel_proto_msgTypes[68]
+	mi := &file_panel_v1_panel_proto_msgTypes[65]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4444,7 +4225,7 @@ func (x *RollbackEnvironmentRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RollbackEnvironmentRequest.ProtoReflect.Descriptor instead.
 func (*RollbackEnvironmentRequest) Descriptor() ([]byte, []int) {
-	return file_panel_v1_panel_proto_rawDescGZIP(), []int{68}
+	return file_panel_v1_panel_proto_rawDescGZIP(), []int{65}
 }
 
 func (x *RollbackEnvironmentRequest) GetMutation() *Mutation {
@@ -4484,7 +4265,7 @@ type RollbackEnvironmentResponse struct {
 
 func (x *RollbackEnvironmentResponse) Reset() {
 	*x = RollbackEnvironmentResponse{}
-	mi := &file_panel_v1_panel_proto_msgTypes[69]
+	mi := &file_panel_v1_panel_proto_msgTypes[66]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4496,7 +4277,7 @@ func (x *RollbackEnvironmentResponse) String() string {
 func (*RollbackEnvironmentResponse) ProtoMessage() {}
 
 func (x *RollbackEnvironmentResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_panel_v1_panel_proto_msgTypes[69]
+	mi := &file_panel_v1_panel_proto_msgTypes[66]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4509,7 +4290,7 @@ func (x *RollbackEnvironmentResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RollbackEnvironmentResponse.ProtoReflect.Descriptor instead.
 func (*RollbackEnvironmentResponse) Descriptor() ([]byte, []int) {
-	return file_panel_v1_panel_proto_rawDescGZIP(), []int{69}
+	return file_panel_v1_panel_proto_rawDescGZIP(), []int{66}
 }
 
 func (x *RollbackEnvironmentResponse) GetOperation() *Operation {
@@ -4531,7 +4312,7 @@ type ListOperationsRequest struct {
 
 func (x *ListOperationsRequest) Reset() {
 	*x = ListOperationsRequest{}
-	mi := &file_panel_v1_panel_proto_msgTypes[70]
+	mi := &file_panel_v1_panel_proto_msgTypes[67]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4543,7 +4324,7 @@ func (x *ListOperationsRequest) String() string {
 func (*ListOperationsRequest) ProtoMessage() {}
 
 func (x *ListOperationsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_panel_v1_panel_proto_msgTypes[70]
+	mi := &file_panel_v1_panel_proto_msgTypes[67]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4556,7 +4337,7 @@ func (x *ListOperationsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListOperationsRequest.ProtoReflect.Descriptor instead.
 func (*ListOperationsRequest) Descriptor() ([]byte, []int) {
-	return file_panel_v1_panel_proto_rawDescGZIP(), []int{70}
+	return file_panel_v1_panel_proto_rawDescGZIP(), []int{67}
 }
 
 func (x *ListOperationsRequest) GetEnvironmentId() string {
@@ -4590,7 +4371,7 @@ type ListOperationsResponse struct {
 
 func (x *ListOperationsResponse) Reset() {
 	*x = ListOperationsResponse{}
-	mi := &file_panel_v1_panel_proto_msgTypes[71]
+	mi := &file_panel_v1_panel_proto_msgTypes[68]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4602,7 +4383,7 @@ func (x *ListOperationsResponse) String() string {
 func (*ListOperationsResponse) ProtoMessage() {}
 
 func (x *ListOperationsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_panel_v1_panel_proto_msgTypes[71]
+	mi := &file_panel_v1_panel_proto_msgTypes[68]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4615,7 +4396,7 @@ func (x *ListOperationsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListOperationsResponse.ProtoReflect.Descriptor instead.
 func (*ListOperationsResponse) Descriptor() ([]byte, []int) {
-	return file_panel_v1_panel_proto_rawDescGZIP(), []int{71}
+	return file_panel_v1_panel_proto_rawDescGZIP(), []int{68}
 }
 
 func (x *ListOperationsResponse) GetOperations() []*Operation {
@@ -4641,7 +4422,7 @@ type GetOperationRequest struct {
 
 func (x *GetOperationRequest) Reset() {
 	*x = GetOperationRequest{}
-	mi := &file_panel_v1_panel_proto_msgTypes[72]
+	mi := &file_panel_v1_panel_proto_msgTypes[69]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4653,7 +4434,7 @@ func (x *GetOperationRequest) String() string {
 func (*GetOperationRequest) ProtoMessage() {}
 
 func (x *GetOperationRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_panel_v1_panel_proto_msgTypes[72]
+	mi := &file_panel_v1_panel_proto_msgTypes[69]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4666,7 +4447,7 @@ func (x *GetOperationRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetOperationRequest.ProtoReflect.Descriptor instead.
 func (*GetOperationRequest) Descriptor() ([]byte, []int) {
-	return file_panel_v1_panel_proto_rawDescGZIP(), []int{72}
+	return file_panel_v1_panel_proto_rawDescGZIP(), []int{69}
 }
 
 func (x *GetOperationRequest) GetId() string {
@@ -4685,7 +4466,7 @@ type GetOperationResponse struct {
 
 func (x *GetOperationResponse) Reset() {
 	*x = GetOperationResponse{}
-	mi := &file_panel_v1_panel_proto_msgTypes[73]
+	mi := &file_panel_v1_panel_proto_msgTypes[70]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4697,7 +4478,7 @@ func (x *GetOperationResponse) String() string {
 func (*GetOperationResponse) ProtoMessage() {}
 
 func (x *GetOperationResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_panel_v1_panel_proto_msgTypes[73]
+	mi := &file_panel_v1_panel_proto_msgTypes[70]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4710,7 +4491,7 @@ func (x *GetOperationResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetOperationResponse.ProtoReflect.Descriptor instead.
 func (*GetOperationResponse) Descriptor() ([]byte, []int) {
-	return file_panel_v1_panel_proto_rawDescGZIP(), []int{73}
+	return file_panel_v1_panel_proto_rawDescGZIP(), []int{70}
 }
 
 func (x *GetOperationResponse) GetOperation() *Operation {
@@ -4729,7 +4510,7 @@ type BeginInstallationRequest struct {
 
 func (x *BeginInstallationRequest) Reset() {
 	*x = BeginInstallationRequest{}
-	mi := &file_panel_v1_panel_proto_msgTypes[74]
+	mi := &file_panel_v1_panel_proto_msgTypes[71]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4741,7 +4522,7 @@ func (x *BeginInstallationRequest) String() string {
 func (*BeginInstallationRequest) ProtoMessage() {}
 
 func (x *BeginInstallationRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_panel_v1_panel_proto_msgTypes[74]
+	mi := &file_panel_v1_panel_proto_msgTypes[71]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4754,7 +4535,7 @@ func (x *BeginInstallationRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use BeginInstallationRequest.ProtoReflect.Descriptor instead.
 func (*BeginInstallationRequest) Descriptor() ([]byte, []int) {
-	return file_panel_v1_panel_proto_rawDescGZIP(), []int{74}
+	return file_panel_v1_panel_proto_rawDescGZIP(), []int{71}
 }
 
 func (x *BeginInstallationRequest) GetMutation() *Mutation {
@@ -4773,7 +4554,7 @@ type BeginInstallationResponse struct {
 
 func (x *BeginInstallationResponse) Reset() {
 	*x = BeginInstallationResponse{}
-	mi := &file_panel_v1_panel_proto_msgTypes[75]
+	mi := &file_panel_v1_panel_proto_msgTypes[72]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4785,7 +4566,7 @@ func (x *BeginInstallationResponse) String() string {
 func (*BeginInstallationResponse) ProtoMessage() {}
 
 func (x *BeginInstallationResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_panel_v1_panel_proto_msgTypes[75]
+	mi := &file_panel_v1_panel_proto_msgTypes[72]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4798,7 +4579,7 @@ func (x *BeginInstallationResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use BeginInstallationResponse.ProtoReflect.Descriptor instead.
 func (*BeginInstallationResponse) Descriptor() ([]byte, []int) {
-	return file_panel_v1_panel_proto_rawDescGZIP(), []int{75}
+	return file_panel_v1_panel_proto_rawDescGZIP(), []int{72}
 }
 
 func (x *BeginInstallationResponse) GetInstallationUrl() string {
@@ -4818,7 +4599,7 @@ type GetDeploymentSourceRequest struct {
 
 func (x *GetDeploymentSourceRequest) Reset() {
 	*x = GetDeploymentSourceRequest{}
-	mi := &file_panel_v1_panel_proto_msgTypes[76]
+	mi := &file_panel_v1_panel_proto_msgTypes[73]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4830,7 +4611,7 @@ func (x *GetDeploymentSourceRequest) String() string {
 func (*GetDeploymentSourceRequest) ProtoMessage() {}
 
 func (x *GetDeploymentSourceRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_panel_v1_panel_proto_msgTypes[76]
+	mi := &file_panel_v1_panel_proto_msgTypes[73]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4843,7 +4624,7 @@ func (x *GetDeploymentSourceRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetDeploymentSourceRequest.ProtoReflect.Descriptor instead.
 func (*GetDeploymentSourceRequest) Descriptor() ([]byte, []int) {
-	return file_panel_v1_panel_proto_rawDescGZIP(), []int{76}
+	return file_panel_v1_panel_proto_rawDescGZIP(), []int{73}
 }
 
 func (x *GetDeploymentSourceRequest) GetEnvironmentId() string {
@@ -4871,7 +4652,7 @@ type GetDeploymentSourceResponse struct {
 
 func (x *GetDeploymentSourceResponse) Reset() {
 	*x = GetDeploymentSourceResponse{}
-	mi := &file_panel_v1_panel_proto_msgTypes[77]
+	mi := &file_panel_v1_panel_proto_msgTypes[74]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4883,7 +4664,7 @@ func (x *GetDeploymentSourceResponse) String() string {
 func (*GetDeploymentSourceResponse) ProtoMessage() {}
 
 func (x *GetDeploymentSourceResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_panel_v1_panel_proto_msgTypes[77]
+	mi := &file_panel_v1_panel_proto_msgTypes[74]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4896,7 +4677,7 @@ func (x *GetDeploymentSourceResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetDeploymentSourceResponse.ProtoReflect.Descriptor instead.
 func (*GetDeploymentSourceResponse) Descriptor() ([]byte, []int) {
-	return file_panel_v1_panel_proto_rawDescGZIP(), []int{77}
+	return file_panel_v1_panel_proto_rawDescGZIP(), []int{74}
 }
 
 func (x *GetDeploymentSourceResponse) GetSourceSha() string {
@@ -4951,18 +4732,7 @@ const file_panel_v1_panel_proto_rawDesc = "" +
 	"\x18ListRepositoriesResponse\x128\n" +
 	"\frepositories\x18\x01 \x03(\v2\x14.panel.v1.RepositoryR\frepositories\x12*\n" +
 	"\x04page\x18\x02 \x01(\v2\x16.panel.v1.PageResponseR\x04page\x126\n" +
-	"\x17selected_repository_ids\x18\x03 \x03(\x03R\x15selectedRepositoryIds\"^\n" +
-	"\x0eGitHubWorkflow\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\x03R\x02id\x12\x12\n" +
-	"\x04name\x18\x02 \x01(\tR\x04name\x12\x12\n" +
-	"\x04path\x18\x03 \x01(\tR\x04path\x12\x14\n" +
-	"\x05state\x18\x04 \x01(\tR\x05state\"w\n" +
-	"\x14ListWorkflowsRequest\x12,\n" +
-	"\rrepository_id\x18\x01 \x01(\x03B\a\xbaH\x04\"\x02 \x00R\frepositoryId\x121\n" +
-	"\x04page\x18\x02 \x01(\v2\x15.panel.v1.PageRequestB\x06\xbaH\x03\xc8\x01\x01R\x04page\"{\n" +
-	"\x15ListWorkflowsResponse\x126\n" +
-	"\tworkflows\x18\x01 \x03(\v2\x18.panel.v1.GitHubWorkflowR\tworkflows\x12*\n" +
-	"\x04page\x18\x02 \x01(\v2\x16.panel.v1.PageResponseR\x04page\"\x8e\x01\n" +
+	"\x17selected_repository_ids\x18\x03 \x03(\x03R\x15selectedRepositoryIds\"\x8e\x01\n" +
 	"\x19SelectRepositoriesRequest\x126\n" +
 	"\bmutation\x18\x01 \x01(\v2\x12.panel.v1.MutationB\x06\xbaH\x03\xc8\x01\x01R\bmutation\x129\n" +
 	"\x0erepository_ids\x18\x02 \x03(\x03B\x12\xbaH\x0f\x92\x01\f\b\x01\x10d\x18\x01\"\x04\"\x02 \x00R\rrepositoryIds\"V\n" +
@@ -5014,16 +4784,15 @@ const file_panel_v1_panel_proto_rawDesc = "" +
 	"Repository\x129\n" +
 	"\x14github_repository_id\x18\x01 \x01(\x03B\a\xbaH\x04\"\x02 \x00R\x12githubRepositoryId\x12\x1f\n" +
 	"\x05owner\x18\x02 \x01(\tB\t\xbaH\x06r\x04\x10\x01\x18dR\x05owner\x12\x1d\n" +
-	"\x04name\x18\x03 \x01(\tB\t\xbaH\x06r\x04\x10\x01\x18dR\x04name\"\xcc\x01\n" +
+	"\x04name\x18\x03 \x01(\tB\t\xbaH\x06r\x04\x10\x01\x18dR\x04name\"\xb8\x01\n" +
 	"\aProject\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x124\n" +
 	"\n" +
 	"repository\x18\x03 \x01(\v2\x14.panel.v1.RepositoryR\n" +
-	"repository\x12,\n" +
-	"\x12github_workflow_id\x18\x04 \x01(\x03R\x10githubWorkflowId\x129\n" +
+	"repository\x129\n" +
 	"\n" +
-	"created_at\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\"\x9d\x03\n" +
+	"created_at\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAtJ\x04\b\x04\x10\x05R\x12github_workflow_id\"\x9d\x03\n" +
 	"\vEnvironment\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1d\n" +
 	"\n" +
@@ -5059,19 +4828,15 @@ const file_panel_v1_panel_proto_rawDesc = "" +
 	"\x15observed_image_digest\x18\x05 \x01(\tR\x13observedImageDigest\x12.\n" +
 	"\x13observed_release_id\x18\x06 \x01(\tR\x11observedReleaseId\x12;\n" +
 	"\vobserved_at\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\n" +
-	"observedAt\"\xf8\x01\n" +
+	"observedAt\"\xc1\x01\n" +
 	"\rBuildIdentity\x120\n" +
-	"\x14github_repository_id\x18\x01 \x01(\x03R\x12githubRepositoryId\x12,\n" +
-	"\x12github_workflow_id\x18\x02 \x01(\x03R\x10githubWorkflowId\x12\"\n" +
-	"\rgithub_run_id\x18\x03 \x01(\x03R\vgithubRunId\x12,\n" +
-	"\x12github_run_attempt\x18\x04 \x01(\rR\x10githubRunAttempt\x12\x16\n" +
+	"\x14github_repository_id\x18\x01 \x01(\x03R\x12githubRepositoryId\x12\x16\n" +
 	"\x06branch\x18\x05 \x01(\tR\x06branch\x12\x1d\n" +
 	"\n" +
-	"source_sha\x18\x06 \x01(\tR\tsourceSha\"r\n" +
+	"source_sha\x18\x06 \x01(\tR\tsourceShaJ\x04\b\x02\x10\x03J\x04\b\x03\x10\x04J\x04\b\x04\x10\x05R\x12github_workflow_idR\rgithub_run_idR\x12github_run_attempt\"a\n" +
 	"\fServiceImage\x12\x18\n" +
-	"\aservice\x18\x01 \x01(\tR\aservice\x12%\n" +
-	"\x0eimage_variable\x18\x02 \x01(\tR\rimageVariable\x12!\n" +
-	"\fimage_digest\x18\x03 \x01(\tR\vimageDigest\"\xbf\x03\n" +
+	"\aservice\x18\x01 \x01(\tR\aservice\x12!\n" +
+	"\fimage_digest\x18\x03 \x01(\tR\vimageDigestJ\x04\b\x02\x10\x03R\x0eimage_variable\"\xbf\x03\n" +
 	"\aRelease\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12%\n" +
 	"\x0eenvironment_id\x18\x02 \x01(\tR\renvironmentId\x12-\n" +
@@ -5140,14 +4905,13 @@ const file_panel_v1_panel_proto_rawDesc = "" +
 	"\x11GetProjectRequest\x12\x18\n" +
 	"\x02id\x18\x01 \x01(\tB\b\xbaH\x05r\x03\xb0\x01\x01R\x02id\"A\n" +
 	"\x12GetProjectResponse\x12+\n" +
-	"\aproject\x18\x01 \x01(\v2\x11.panel.v1.ProjectR\aproject\"\xe2\x01\n" +
+	"\aproject\x18\x01 \x01(\v2\x11.panel.v1.ProjectR\aproject\"\xc5\x01\n" +
 	"\x14CreateProjectRequest\x126\n" +
 	"\bmutation\x18\x01 \x01(\v2\x12.panel.v1.MutationB\x06\xbaH\x03\xc8\x01\x01R\bmutation\x12\x1d\n" +
 	"\x04name\x18\x02 \x01(\tB\t\xbaH\x06r\x04\x10\x01\x18dR\x04name\x12<\n" +
 	"\n" +
 	"repository\x18\x03 \x01(\v2\x14.panel.v1.RepositoryB\x06\xbaH\x03\xc8\x01\x01R\n" +
-	"repository\x125\n" +
-	"\x12github_workflow_id\x18\x04 \x01(\x03B\a\xbaH\x04\"\x02 \x00R\x10githubWorkflowId\"D\n" +
+	"repositoryJ\x04\b\x04\x10\x05R\x12github_workflow_id\"D\n" +
 	"\x15CreateProjectResponse\x12+\n" +
 	"\aproject\x18\x01 \x01(\v2\x11.panel.v1.ProjectR\aproject\"u\n" +
 	"\x17ListEnvironmentsRequest\x12'\n" +
@@ -5327,14 +5091,13 @@ const file_panel_v1_panel_proto_rawDesc = "" +
 	"\x11DeployEnvironment\x12\".panel.v1.DeployEnvironmentRequest\x1a#.panel.v1.DeployEnvironmentResponse\x12b\n" +
 	"\x13RollbackEnvironment\x12$.panel.v1.RollbackEnvironmentRequest\x1a%.panel.v1.RollbackEnvironmentResponse\x12X\n" +
 	"\x0eListOperations\x12\x1f.panel.v1.ListOperationsRequest\x1a .panel.v1.ListOperationsResponse\"\x03\x90\x02\x01\x12R\n" +
-	"\fGetOperation\x12\x1d.panel.v1.GetOperationRequest\x1a\x1e.panel.v1.GetOperationResponse\"\x03\x90\x02\x012\x95\x05\n" +
+	"\fGetOperation\x12\x1d.panel.v1.GetOperationRequest\x1a\x1e.panel.v1.GetOperationResponse\"\x03\x90\x02\x012\xbe\x04\n" +
 	"\rGitHubService\x12G\n" +
 	"\n" +
 	"BeginSetup\x12\x1b.panel.v1.BeginSetupRequest\x1a\x1c.panel.v1.BeginSetupResponse\x12\\\n" +
 	"\x11BeginInstallation\x12\".panel.v1.BeginInstallationRequest\x1a#.panel.v1.BeginInstallationResponse\x12X\n" +
 	"\x0eGetIntegration\x12\x1f.panel.v1.GetIntegrationRequest\x1a .panel.v1.GetIntegrationResponse\"\x03\x90\x02\x01\x12^\n" +
-	"\x10ListRepositories\x12!.panel.v1.ListRepositoriesRequest\x1a\".panel.v1.ListRepositoriesResponse\"\x03\x90\x02\x01\x12U\n" +
-	"\rListWorkflows\x12\x1e.panel.v1.ListWorkflowsRequest\x1a\x1f.panel.v1.ListWorkflowsResponse\"\x03\x90\x02\x01\x12_\n" +
+	"\x10ListRepositories\x12!.panel.v1.ListRepositoriesRequest\x1a\".panel.v1.ListRepositoriesResponse\"\x03\x90\x02\x01\x12_\n" +
 	"\x12SelectRepositories\x12#.panel.v1.SelectRepositoriesRequest\x1a$.panel.v1.SelectRepositoriesResponse\x12k\n" +
 	"\x16SaveRegistryCredential\x12'.panel.v1.SaveRegistryCredentialRequest\x1a(.panel.v1.SaveRegistryCredentialResponse2\xd2\x01\n" +
 	"\vAuthService\x128\n" +
@@ -5356,7 +5119,7 @@ func file_panel_v1_panel_proto_rawDescGZIP() []byte {
 }
 
 var file_panel_v1_panel_proto_enumTypes = make([]protoimpl.EnumInfo, 7)
-var file_panel_v1_panel_proto_msgTypes = make([]protoimpl.MessageInfo, 78)
+var file_panel_v1_panel_proto_msgTypes = make([]protoimpl.MessageInfo, 75)
 var file_panel_v1_panel_proto_goTypes = []any{
 	(ErrorReason)(0),                       // 0: panel.v1.ErrorReason
 	(ServerReadiness)(0),                   // 1: panel.v1.ServerReadiness
@@ -5371,220 +5134,212 @@ var file_panel_v1_panel_proto_goTypes = []any{
 	(*GetIntegrationResponse)(nil),         // 10: panel.v1.GetIntegrationResponse
 	(*ListRepositoriesRequest)(nil),        // 11: panel.v1.ListRepositoriesRequest
 	(*ListRepositoriesResponse)(nil),       // 12: panel.v1.ListRepositoriesResponse
-	(*GitHubWorkflow)(nil),                 // 13: panel.v1.GitHubWorkflow
-	(*ListWorkflowsRequest)(nil),           // 14: panel.v1.ListWorkflowsRequest
-	(*ListWorkflowsResponse)(nil),          // 15: panel.v1.ListWorkflowsResponse
-	(*SelectRepositoriesRequest)(nil),      // 16: panel.v1.SelectRepositoriesRequest
-	(*SelectRepositoriesResponse)(nil),     // 17: panel.v1.SelectRepositoriesResponse
-	(*SaveRegistryCredentialRequest)(nil),  // 18: panel.v1.SaveRegistryCredentialRequest
-	(*SaveRegistryCredentialResponse)(nil), // 19: panel.v1.SaveRegistryCredentialResponse
-	(*LoginRequest)(nil),                   // 20: panel.v1.LoginRequest
-	(*LoginResponse)(nil),                  // 21: panel.v1.LoginResponse
-	(*LogoutRequest)(nil),                  // 22: panel.v1.LogoutRequest
-	(*LogoutResponse)(nil),                 // 23: panel.v1.LogoutResponse
-	(*GetSessionRequest)(nil),              // 24: panel.v1.GetSessionRequest
-	(*GetSessionResponse)(nil),             // 25: panel.v1.GetSessionResponse
-	(*ErrorDetail)(nil),                    // 26: panel.v1.ErrorDetail
-	(*Mutation)(nil),                       // 27: panel.v1.Mutation
-	(*PageRequest)(nil),                    // 28: panel.v1.PageRequest
-	(*PageResponse)(nil),                   // 29: panel.v1.PageResponse
-	(*Server)(nil),                         // 30: panel.v1.Server
-	(*Repository)(nil),                     // 31: panel.v1.Repository
-	(*Project)(nil),                        // 32: panel.v1.Project
-	(*Environment)(nil),                    // 33: panel.v1.Environment
-	(*EnvironmentSettings)(nil),            // 34: panel.v1.EnvironmentSettings
-	(*Domain)(nil),                         // 35: panel.v1.Domain
-	(*Service)(nil),                        // 36: panel.v1.Service
-	(*BuildIdentity)(nil),                  // 37: panel.v1.BuildIdentity
-	(*ServiceImage)(nil),                   // 38: panel.v1.ServiceImage
-	(*Release)(nil),                        // 39: panel.v1.Release
-	(*Operation)(nil),                      // 40: panel.v1.Operation
-	(*ServiceDiagnostic)(nil),              // 41: panel.v1.ServiceDiagnostic
-	(*ListServersRequest)(nil),             // 42: panel.v1.ListServersRequest
-	(*ListServersResponse)(nil),            // 43: panel.v1.ListServersResponse
-	(*GetServerRequest)(nil),               // 44: panel.v1.GetServerRequest
-	(*GetServerResponse)(nil),              // 45: panel.v1.GetServerResponse
-	(*EnrollServerRequest)(nil),            // 46: panel.v1.EnrollServerRequest
-	(*EnrollServerResponse)(nil),           // 47: panel.v1.EnrollServerResponse
-	(*RemoveServerRequest)(nil),            // 48: panel.v1.RemoveServerRequest
-	(*RemoveServerResponse)(nil),           // 49: panel.v1.RemoveServerResponse
-	(*ListProjectsRequest)(nil),            // 50: panel.v1.ListProjectsRequest
-	(*ListProjectsResponse)(nil),           // 51: panel.v1.ListProjectsResponse
-	(*GetProjectRequest)(nil),              // 52: panel.v1.GetProjectRequest
-	(*GetProjectResponse)(nil),             // 53: panel.v1.GetProjectResponse
-	(*CreateProjectRequest)(nil),           // 54: panel.v1.CreateProjectRequest
-	(*CreateProjectResponse)(nil),          // 55: panel.v1.CreateProjectResponse
-	(*ListEnvironmentsRequest)(nil),        // 56: panel.v1.ListEnvironmentsRequest
-	(*ListEnvironmentsResponse)(nil),       // 57: panel.v1.ListEnvironmentsResponse
-	(*GetEnvironmentRequest)(nil),          // 58: panel.v1.GetEnvironmentRequest
-	(*GetEnvironmentResponse)(nil),         // 59: panel.v1.GetEnvironmentResponse
-	(*CreateEnvironmentRequest)(nil),       // 60: panel.v1.CreateEnvironmentRequest
-	(*CreateEnvironmentResponse)(nil),      // 61: panel.v1.CreateEnvironmentResponse
-	(*UpdateEnvironmentRequest)(nil),       // 62: panel.v1.UpdateEnvironmentRequest
-	(*UpdateEnvironmentResponse)(nil),      // 63: panel.v1.UpdateEnvironmentResponse
-	(*SecretValue)(nil),                    // 64: panel.v1.SecretValue
-	(*SaveEnvironmentSecretsRequest)(nil),  // 65: panel.v1.SaveEnvironmentSecretsRequest
-	(*SaveEnvironmentSecretsResponse)(nil), // 66: panel.v1.SaveEnvironmentSecretsResponse
-	(*ListServicesRequest)(nil),            // 67: panel.v1.ListServicesRequest
-	(*ListServicesResponse)(nil),           // 68: panel.v1.ListServicesResponse
-	(*ListReleasesRequest)(nil),            // 69: panel.v1.ListReleasesRequest
-	(*ListReleasesResponse)(nil),           // 70: panel.v1.ListReleasesResponse
-	(*GetReleaseRequest)(nil),              // 71: panel.v1.GetReleaseRequest
-	(*GetReleaseResponse)(nil),             // 72: panel.v1.GetReleaseResponse
-	(*DeployEnvironmentRequest)(nil),       // 73: panel.v1.DeployEnvironmentRequest
-	(*DeployEnvironmentResponse)(nil),      // 74: panel.v1.DeployEnvironmentResponse
-	(*RollbackEnvironmentRequest)(nil),     // 75: panel.v1.RollbackEnvironmentRequest
-	(*RollbackEnvironmentResponse)(nil),    // 76: panel.v1.RollbackEnvironmentResponse
-	(*ListOperationsRequest)(nil),          // 77: panel.v1.ListOperationsRequest
-	(*ListOperationsResponse)(nil),         // 78: panel.v1.ListOperationsResponse
-	(*GetOperationRequest)(nil),            // 79: panel.v1.GetOperationRequest
-	(*GetOperationResponse)(nil),           // 80: panel.v1.GetOperationResponse
-	(*BeginInstallationRequest)(nil),       // 81: panel.v1.BeginInstallationRequest
-	(*BeginInstallationResponse)(nil),      // 82: panel.v1.BeginInstallationResponse
-	(*GetDeploymentSourceRequest)(nil),     // 83: panel.v1.GetDeploymentSourceRequest
-	(*GetDeploymentSourceResponse)(nil),    // 84: panel.v1.GetDeploymentSourceResponse
-	(*timestamppb.Timestamp)(nil),          // 85: google.protobuf.Timestamp
+	(*SelectRepositoriesRequest)(nil),      // 13: panel.v1.SelectRepositoriesRequest
+	(*SelectRepositoriesResponse)(nil),     // 14: panel.v1.SelectRepositoriesResponse
+	(*SaveRegistryCredentialRequest)(nil),  // 15: panel.v1.SaveRegistryCredentialRequest
+	(*SaveRegistryCredentialResponse)(nil), // 16: panel.v1.SaveRegistryCredentialResponse
+	(*LoginRequest)(nil),                   // 17: panel.v1.LoginRequest
+	(*LoginResponse)(nil),                  // 18: panel.v1.LoginResponse
+	(*LogoutRequest)(nil),                  // 19: panel.v1.LogoutRequest
+	(*LogoutResponse)(nil),                 // 20: panel.v1.LogoutResponse
+	(*GetSessionRequest)(nil),              // 21: panel.v1.GetSessionRequest
+	(*GetSessionResponse)(nil),             // 22: panel.v1.GetSessionResponse
+	(*ErrorDetail)(nil),                    // 23: panel.v1.ErrorDetail
+	(*Mutation)(nil),                       // 24: panel.v1.Mutation
+	(*PageRequest)(nil),                    // 25: panel.v1.PageRequest
+	(*PageResponse)(nil),                   // 26: panel.v1.PageResponse
+	(*Server)(nil),                         // 27: panel.v1.Server
+	(*Repository)(nil),                     // 28: panel.v1.Repository
+	(*Project)(nil),                        // 29: panel.v1.Project
+	(*Environment)(nil),                    // 30: panel.v1.Environment
+	(*EnvironmentSettings)(nil),            // 31: panel.v1.EnvironmentSettings
+	(*Domain)(nil),                         // 32: panel.v1.Domain
+	(*Service)(nil),                        // 33: panel.v1.Service
+	(*BuildIdentity)(nil),                  // 34: panel.v1.BuildIdentity
+	(*ServiceImage)(nil),                   // 35: panel.v1.ServiceImage
+	(*Release)(nil),                        // 36: panel.v1.Release
+	(*Operation)(nil),                      // 37: panel.v1.Operation
+	(*ServiceDiagnostic)(nil),              // 38: panel.v1.ServiceDiagnostic
+	(*ListServersRequest)(nil),             // 39: panel.v1.ListServersRequest
+	(*ListServersResponse)(nil),            // 40: panel.v1.ListServersResponse
+	(*GetServerRequest)(nil),               // 41: panel.v1.GetServerRequest
+	(*GetServerResponse)(nil),              // 42: panel.v1.GetServerResponse
+	(*EnrollServerRequest)(nil),            // 43: panel.v1.EnrollServerRequest
+	(*EnrollServerResponse)(nil),           // 44: panel.v1.EnrollServerResponse
+	(*RemoveServerRequest)(nil),            // 45: panel.v1.RemoveServerRequest
+	(*RemoveServerResponse)(nil),           // 46: panel.v1.RemoveServerResponse
+	(*ListProjectsRequest)(nil),            // 47: panel.v1.ListProjectsRequest
+	(*ListProjectsResponse)(nil),           // 48: panel.v1.ListProjectsResponse
+	(*GetProjectRequest)(nil),              // 49: panel.v1.GetProjectRequest
+	(*GetProjectResponse)(nil),             // 50: panel.v1.GetProjectResponse
+	(*CreateProjectRequest)(nil),           // 51: panel.v1.CreateProjectRequest
+	(*CreateProjectResponse)(nil),          // 52: panel.v1.CreateProjectResponse
+	(*ListEnvironmentsRequest)(nil),        // 53: panel.v1.ListEnvironmentsRequest
+	(*ListEnvironmentsResponse)(nil),       // 54: panel.v1.ListEnvironmentsResponse
+	(*GetEnvironmentRequest)(nil),          // 55: panel.v1.GetEnvironmentRequest
+	(*GetEnvironmentResponse)(nil),         // 56: panel.v1.GetEnvironmentResponse
+	(*CreateEnvironmentRequest)(nil),       // 57: panel.v1.CreateEnvironmentRequest
+	(*CreateEnvironmentResponse)(nil),      // 58: panel.v1.CreateEnvironmentResponse
+	(*UpdateEnvironmentRequest)(nil),       // 59: panel.v1.UpdateEnvironmentRequest
+	(*UpdateEnvironmentResponse)(nil),      // 60: panel.v1.UpdateEnvironmentResponse
+	(*SecretValue)(nil),                    // 61: panel.v1.SecretValue
+	(*SaveEnvironmentSecretsRequest)(nil),  // 62: panel.v1.SaveEnvironmentSecretsRequest
+	(*SaveEnvironmentSecretsResponse)(nil), // 63: panel.v1.SaveEnvironmentSecretsResponse
+	(*ListServicesRequest)(nil),            // 64: panel.v1.ListServicesRequest
+	(*ListServicesResponse)(nil),           // 65: panel.v1.ListServicesResponse
+	(*ListReleasesRequest)(nil),            // 66: panel.v1.ListReleasesRequest
+	(*ListReleasesResponse)(nil),           // 67: panel.v1.ListReleasesResponse
+	(*GetReleaseRequest)(nil),              // 68: panel.v1.GetReleaseRequest
+	(*GetReleaseResponse)(nil),             // 69: panel.v1.GetReleaseResponse
+	(*DeployEnvironmentRequest)(nil),       // 70: panel.v1.DeployEnvironmentRequest
+	(*DeployEnvironmentResponse)(nil),      // 71: panel.v1.DeployEnvironmentResponse
+	(*RollbackEnvironmentRequest)(nil),     // 72: panel.v1.RollbackEnvironmentRequest
+	(*RollbackEnvironmentResponse)(nil),    // 73: panel.v1.RollbackEnvironmentResponse
+	(*ListOperationsRequest)(nil),          // 74: panel.v1.ListOperationsRequest
+	(*ListOperationsResponse)(nil),         // 75: panel.v1.ListOperationsResponse
+	(*GetOperationRequest)(nil),            // 76: panel.v1.GetOperationRequest
+	(*GetOperationResponse)(nil),           // 77: panel.v1.GetOperationResponse
+	(*BeginInstallationRequest)(nil),       // 78: panel.v1.BeginInstallationRequest
+	(*BeginInstallationResponse)(nil),      // 79: panel.v1.BeginInstallationResponse
+	(*GetDeploymentSourceRequest)(nil),     // 80: panel.v1.GetDeploymentSourceRequest
+	(*GetDeploymentSourceResponse)(nil),    // 81: panel.v1.GetDeploymentSourceResponse
+	(*timestamppb.Timestamp)(nil),          // 82: google.protobuf.Timestamp
 }
 var file_panel_v1_panel_proto_depIdxs = []int32{
-	27,  // 0: panel.v1.BeginSetupRequest.mutation:type_name -> panel.v1.Mutation
-	28,  // 1: panel.v1.ListRepositoriesRequest.page:type_name -> panel.v1.PageRequest
-	31,  // 2: panel.v1.ListRepositoriesResponse.repositories:type_name -> panel.v1.Repository
-	29,  // 3: panel.v1.ListRepositoriesResponse.page:type_name -> panel.v1.PageResponse
-	28,  // 4: panel.v1.ListWorkflowsRequest.page:type_name -> panel.v1.PageRequest
-	13,  // 5: panel.v1.ListWorkflowsResponse.workflows:type_name -> panel.v1.GitHubWorkflow
-	29,  // 6: panel.v1.ListWorkflowsResponse.page:type_name -> panel.v1.PageResponse
-	27,  // 7: panel.v1.SelectRepositoriesRequest.mutation:type_name -> panel.v1.Mutation
-	31,  // 8: panel.v1.SelectRepositoriesResponse.repositories:type_name -> panel.v1.Repository
-	27,  // 9: panel.v1.SaveRegistryCredentialRequest.mutation:type_name -> panel.v1.Mutation
-	0,   // 10: panel.v1.ErrorDetail.reason:type_name -> panel.v1.ErrorReason
-	1,   // 11: panel.v1.Server.readiness:type_name -> panel.v1.ServerReadiness
-	85,  // 12: panel.v1.Server.observed_at:type_name -> google.protobuf.Timestamp
-	31,  // 13: panel.v1.Project.repository:type_name -> panel.v1.Repository
-	85,  // 14: panel.v1.Project.created_at:type_name -> google.protobuf.Timestamp
-	34,  // 15: panel.v1.Environment.settings:type_name -> panel.v1.EnvironmentSettings
-	35,  // 16: panel.v1.EnvironmentSettings.domains:type_name -> panel.v1.Domain
-	2,   // 17: panel.v1.Service.state:type_name -> panel.v1.ServiceState
-	3,   // 18: panel.v1.Service.health:type_name -> panel.v1.ServiceHealth
-	85,  // 19: panel.v1.Service.observed_at:type_name -> google.protobuf.Timestamp
-	37,  // 20: panel.v1.Release.build:type_name -> panel.v1.BuildIdentity
-	38,  // 21: panel.v1.Release.images:type_name -> panel.v1.ServiceImage
-	35,  // 22: panel.v1.Release.domains:type_name -> panel.v1.Domain
-	85,  // 23: panel.v1.Release.created_at:type_name -> google.protobuf.Timestamp
-	4,   // 24: panel.v1.Operation.kind:type_name -> panel.v1.OperationKind
-	5,   // 25: panel.v1.Operation.state:type_name -> panel.v1.OperationState
-	85,  // 26: panel.v1.Operation.created_at:type_name -> google.protobuf.Timestamp
-	85,  // 27: panel.v1.Operation.updated_at:type_name -> google.protobuf.Timestamp
-	6,   // 28: panel.v1.Operation.outcome:type_name -> panel.v1.OperationOutcome
-	41,  // 29: panel.v1.Operation.diagnostics:type_name -> panel.v1.ServiceDiagnostic
-	28,  // 30: panel.v1.ListServersRequest.page:type_name -> panel.v1.PageRequest
-	30,  // 31: panel.v1.ListServersResponse.servers:type_name -> panel.v1.Server
-	29,  // 32: panel.v1.ListServersResponse.page:type_name -> panel.v1.PageResponse
-	30,  // 33: panel.v1.GetServerResponse.server:type_name -> panel.v1.Server
-	27,  // 34: panel.v1.EnrollServerRequest.mutation:type_name -> panel.v1.Mutation
-	30,  // 35: panel.v1.EnrollServerResponse.server:type_name -> panel.v1.Server
-	40,  // 36: panel.v1.EnrollServerResponse.operation:type_name -> panel.v1.Operation
-	27,  // 37: panel.v1.RemoveServerRequest.mutation:type_name -> panel.v1.Mutation
-	28,  // 38: panel.v1.ListProjectsRequest.page:type_name -> panel.v1.PageRequest
-	32,  // 39: panel.v1.ListProjectsResponse.projects:type_name -> panel.v1.Project
-	29,  // 40: panel.v1.ListProjectsResponse.page:type_name -> panel.v1.PageResponse
-	32,  // 41: panel.v1.GetProjectResponse.project:type_name -> panel.v1.Project
-	27,  // 42: panel.v1.CreateProjectRequest.mutation:type_name -> panel.v1.Mutation
-	31,  // 43: panel.v1.CreateProjectRequest.repository:type_name -> panel.v1.Repository
-	32,  // 44: panel.v1.CreateProjectResponse.project:type_name -> panel.v1.Project
-	28,  // 45: panel.v1.ListEnvironmentsRequest.page:type_name -> panel.v1.PageRequest
-	33,  // 46: panel.v1.ListEnvironmentsResponse.environments:type_name -> panel.v1.Environment
-	29,  // 47: panel.v1.ListEnvironmentsResponse.page:type_name -> panel.v1.PageResponse
-	33,  // 48: panel.v1.GetEnvironmentResponse.environment:type_name -> panel.v1.Environment
-	27,  // 49: panel.v1.CreateEnvironmentRequest.mutation:type_name -> panel.v1.Mutation
-	34,  // 50: panel.v1.CreateEnvironmentRequest.settings:type_name -> panel.v1.EnvironmentSettings
-	33,  // 51: panel.v1.CreateEnvironmentResponse.environment:type_name -> panel.v1.Environment
-	27,  // 52: panel.v1.UpdateEnvironmentRequest.mutation:type_name -> panel.v1.Mutation
-	34,  // 53: panel.v1.UpdateEnvironmentRequest.settings:type_name -> panel.v1.EnvironmentSettings
-	33,  // 54: panel.v1.UpdateEnvironmentResponse.environment:type_name -> panel.v1.Environment
-	27,  // 55: panel.v1.SaveEnvironmentSecretsRequest.mutation:type_name -> panel.v1.Mutation
-	64,  // 56: panel.v1.SaveEnvironmentSecretsRequest.upserts:type_name -> panel.v1.SecretValue
-	33,  // 57: panel.v1.SaveEnvironmentSecretsResponse.environment:type_name -> panel.v1.Environment
-	28,  // 58: panel.v1.ListServicesRequest.page:type_name -> panel.v1.PageRequest
-	36,  // 59: panel.v1.ListServicesResponse.services:type_name -> panel.v1.Service
-	29,  // 60: panel.v1.ListServicesResponse.page:type_name -> panel.v1.PageResponse
-	28,  // 61: panel.v1.ListReleasesRequest.page:type_name -> panel.v1.PageRequest
-	39,  // 62: panel.v1.ListReleasesResponse.releases:type_name -> panel.v1.Release
-	29,  // 63: panel.v1.ListReleasesResponse.page:type_name -> panel.v1.PageResponse
-	39,  // 64: panel.v1.GetReleaseResponse.release:type_name -> panel.v1.Release
-	27,  // 65: panel.v1.DeployEnvironmentRequest.mutation:type_name -> panel.v1.Mutation
-	40,  // 66: panel.v1.DeployEnvironmentResponse.operation:type_name -> panel.v1.Operation
-	27,  // 67: panel.v1.RollbackEnvironmentRequest.mutation:type_name -> panel.v1.Mutation
-	40,  // 68: panel.v1.RollbackEnvironmentResponse.operation:type_name -> panel.v1.Operation
-	28,  // 69: panel.v1.ListOperationsRequest.page:type_name -> panel.v1.PageRequest
-	40,  // 70: panel.v1.ListOperationsResponse.operations:type_name -> panel.v1.Operation
-	29,  // 71: panel.v1.ListOperationsResponse.page:type_name -> panel.v1.PageResponse
-	40,  // 72: panel.v1.GetOperationResponse.operation:type_name -> panel.v1.Operation
-	27,  // 73: panel.v1.BeginInstallationRequest.mutation:type_name -> panel.v1.Mutation
-	42,  // 74: panel.v1.PanelService.ListServers:input_type -> panel.v1.ListServersRequest
-	44,  // 75: panel.v1.PanelService.GetServer:input_type -> panel.v1.GetServerRequest
-	46,  // 76: panel.v1.PanelService.EnrollServer:input_type -> panel.v1.EnrollServerRequest
-	48,  // 77: panel.v1.PanelService.RemoveServer:input_type -> panel.v1.RemoveServerRequest
-	50,  // 78: panel.v1.PanelService.ListProjects:input_type -> panel.v1.ListProjectsRequest
-	52,  // 79: panel.v1.PanelService.GetProject:input_type -> panel.v1.GetProjectRequest
-	54,  // 80: panel.v1.PanelService.CreateProject:input_type -> panel.v1.CreateProjectRequest
-	56,  // 81: panel.v1.PanelService.ListEnvironments:input_type -> panel.v1.ListEnvironmentsRequest
-	58,  // 82: panel.v1.PanelService.GetEnvironment:input_type -> panel.v1.GetEnvironmentRequest
-	60,  // 83: panel.v1.PanelService.CreateEnvironment:input_type -> panel.v1.CreateEnvironmentRequest
-	62,  // 84: panel.v1.PanelService.UpdateEnvironment:input_type -> panel.v1.UpdateEnvironmentRequest
-	65,  // 85: panel.v1.PanelService.SaveEnvironmentSecrets:input_type -> panel.v1.SaveEnvironmentSecretsRequest
-	67,  // 86: panel.v1.PanelService.ListServices:input_type -> panel.v1.ListServicesRequest
-	69,  // 87: panel.v1.PanelService.ListReleases:input_type -> panel.v1.ListReleasesRequest
-	71,  // 88: panel.v1.PanelService.GetRelease:input_type -> panel.v1.GetReleaseRequest
-	83,  // 89: panel.v1.PanelService.GetDeploymentSource:input_type -> panel.v1.GetDeploymentSourceRequest
-	73,  // 90: panel.v1.PanelService.DeployEnvironment:input_type -> panel.v1.DeployEnvironmentRequest
-	75,  // 91: panel.v1.PanelService.RollbackEnvironment:input_type -> panel.v1.RollbackEnvironmentRequest
-	77,  // 92: panel.v1.PanelService.ListOperations:input_type -> panel.v1.ListOperationsRequest
-	79,  // 93: panel.v1.PanelService.GetOperation:input_type -> panel.v1.GetOperationRequest
-	7,   // 94: panel.v1.GitHubService.BeginSetup:input_type -> panel.v1.BeginSetupRequest
-	81,  // 95: panel.v1.GitHubService.BeginInstallation:input_type -> panel.v1.BeginInstallationRequest
-	9,   // 96: panel.v1.GitHubService.GetIntegration:input_type -> panel.v1.GetIntegrationRequest
-	11,  // 97: panel.v1.GitHubService.ListRepositories:input_type -> panel.v1.ListRepositoriesRequest
-	14,  // 98: panel.v1.GitHubService.ListWorkflows:input_type -> panel.v1.ListWorkflowsRequest
-	16,  // 99: panel.v1.GitHubService.SelectRepositories:input_type -> panel.v1.SelectRepositoriesRequest
-	18,  // 100: panel.v1.GitHubService.SaveRegistryCredential:input_type -> panel.v1.SaveRegistryCredentialRequest
-	20,  // 101: panel.v1.AuthService.Login:input_type -> panel.v1.LoginRequest
-	22,  // 102: panel.v1.AuthService.Logout:input_type -> panel.v1.LogoutRequest
-	24,  // 103: panel.v1.AuthService.GetSession:input_type -> panel.v1.GetSessionRequest
-	43,  // 104: panel.v1.PanelService.ListServers:output_type -> panel.v1.ListServersResponse
-	45,  // 105: panel.v1.PanelService.GetServer:output_type -> panel.v1.GetServerResponse
-	47,  // 106: panel.v1.PanelService.EnrollServer:output_type -> panel.v1.EnrollServerResponse
-	49,  // 107: panel.v1.PanelService.RemoveServer:output_type -> panel.v1.RemoveServerResponse
-	51,  // 108: panel.v1.PanelService.ListProjects:output_type -> panel.v1.ListProjectsResponse
-	53,  // 109: panel.v1.PanelService.GetProject:output_type -> panel.v1.GetProjectResponse
-	55,  // 110: panel.v1.PanelService.CreateProject:output_type -> panel.v1.CreateProjectResponse
-	57,  // 111: panel.v1.PanelService.ListEnvironments:output_type -> panel.v1.ListEnvironmentsResponse
-	59,  // 112: panel.v1.PanelService.GetEnvironment:output_type -> panel.v1.GetEnvironmentResponse
-	61,  // 113: panel.v1.PanelService.CreateEnvironment:output_type -> panel.v1.CreateEnvironmentResponse
-	63,  // 114: panel.v1.PanelService.UpdateEnvironment:output_type -> panel.v1.UpdateEnvironmentResponse
-	66,  // 115: panel.v1.PanelService.SaveEnvironmentSecrets:output_type -> panel.v1.SaveEnvironmentSecretsResponse
-	68,  // 116: panel.v1.PanelService.ListServices:output_type -> panel.v1.ListServicesResponse
-	70,  // 117: panel.v1.PanelService.ListReleases:output_type -> panel.v1.ListReleasesResponse
-	72,  // 118: panel.v1.PanelService.GetRelease:output_type -> panel.v1.GetReleaseResponse
-	84,  // 119: panel.v1.PanelService.GetDeploymentSource:output_type -> panel.v1.GetDeploymentSourceResponse
-	74,  // 120: panel.v1.PanelService.DeployEnvironment:output_type -> panel.v1.DeployEnvironmentResponse
-	76,  // 121: panel.v1.PanelService.RollbackEnvironment:output_type -> panel.v1.RollbackEnvironmentResponse
-	78,  // 122: panel.v1.PanelService.ListOperations:output_type -> panel.v1.ListOperationsResponse
-	80,  // 123: panel.v1.PanelService.GetOperation:output_type -> panel.v1.GetOperationResponse
-	8,   // 124: panel.v1.GitHubService.BeginSetup:output_type -> panel.v1.BeginSetupResponse
-	82,  // 125: panel.v1.GitHubService.BeginInstallation:output_type -> panel.v1.BeginInstallationResponse
-	10,  // 126: panel.v1.GitHubService.GetIntegration:output_type -> panel.v1.GetIntegrationResponse
-	12,  // 127: panel.v1.GitHubService.ListRepositories:output_type -> panel.v1.ListRepositoriesResponse
-	15,  // 128: panel.v1.GitHubService.ListWorkflows:output_type -> panel.v1.ListWorkflowsResponse
-	17,  // 129: panel.v1.GitHubService.SelectRepositories:output_type -> panel.v1.SelectRepositoriesResponse
-	19,  // 130: panel.v1.GitHubService.SaveRegistryCredential:output_type -> panel.v1.SaveRegistryCredentialResponse
-	21,  // 131: panel.v1.AuthService.Login:output_type -> panel.v1.LoginResponse
-	23,  // 132: panel.v1.AuthService.Logout:output_type -> panel.v1.LogoutResponse
-	25,  // 133: panel.v1.AuthService.GetSession:output_type -> panel.v1.GetSessionResponse
-	104, // [104:134] is the sub-list for method output_type
-	74,  // [74:104] is the sub-list for method input_type
-	74,  // [74:74] is the sub-list for extension type_name
-	74,  // [74:74] is the sub-list for extension extendee
-	0,   // [0:74] is the sub-list for field type_name
+	24,  // 0: panel.v1.BeginSetupRequest.mutation:type_name -> panel.v1.Mutation
+	25,  // 1: panel.v1.ListRepositoriesRequest.page:type_name -> panel.v1.PageRequest
+	28,  // 2: panel.v1.ListRepositoriesResponse.repositories:type_name -> panel.v1.Repository
+	26,  // 3: panel.v1.ListRepositoriesResponse.page:type_name -> panel.v1.PageResponse
+	24,  // 4: panel.v1.SelectRepositoriesRequest.mutation:type_name -> panel.v1.Mutation
+	28,  // 5: panel.v1.SelectRepositoriesResponse.repositories:type_name -> panel.v1.Repository
+	24,  // 6: panel.v1.SaveRegistryCredentialRequest.mutation:type_name -> panel.v1.Mutation
+	0,   // 7: panel.v1.ErrorDetail.reason:type_name -> panel.v1.ErrorReason
+	1,   // 8: panel.v1.Server.readiness:type_name -> panel.v1.ServerReadiness
+	82,  // 9: panel.v1.Server.observed_at:type_name -> google.protobuf.Timestamp
+	28,  // 10: panel.v1.Project.repository:type_name -> panel.v1.Repository
+	82,  // 11: panel.v1.Project.created_at:type_name -> google.protobuf.Timestamp
+	31,  // 12: panel.v1.Environment.settings:type_name -> panel.v1.EnvironmentSettings
+	32,  // 13: panel.v1.EnvironmentSettings.domains:type_name -> panel.v1.Domain
+	2,   // 14: panel.v1.Service.state:type_name -> panel.v1.ServiceState
+	3,   // 15: panel.v1.Service.health:type_name -> panel.v1.ServiceHealth
+	82,  // 16: panel.v1.Service.observed_at:type_name -> google.protobuf.Timestamp
+	34,  // 17: panel.v1.Release.build:type_name -> panel.v1.BuildIdentity
+	35,  // 18: panel.v1.Release.images:type_name -> panel.v1.ServiceImage
+	32,  // 19: panel.v1.Release.domains:type_name -> panel.v1.Domain
+	82,  // 20: panel.v1.Release.created_at:type_name -> google.protobuf.Timestamp
+	4,   // 21: panel.v1.Operation.kind:type_name -> panel.v1.OperationKind
+	5,   // 22: panel.v1.Operation.state:type_name -> panel.v1.OperationState
+	82,  // 23: panel.v1.Operation.created_at:type_name -> google.protobuf.Timestamp
+	82,  // 24: panel.v1.Operation.updated_at:type_name -> google.protobuf.Timestamp
+	6,   // 25: panel.v1.Operation.outcome:type_name -> panel.v1.OperationOutcome
+	38,  // 26: panel.v1.Operation.diagnostics:type_name -> panel.v1.ServiceDiagnostic
+	25,  // 27: panel.v1.ListServersRequest.page:type_name -> panel.v1.PageRequest
+	27,  // 28: panel.v1.ListServersResponse.servers:type_name -> panel.v1.Server
+	26,  // 29: panel.v1.ListServersResponse.page:type_name -> panel.v1.PageResponse
+	27,  // 30: panel.v1.GetServerResponse.server:type_name -> panel.v1.Server
+	24,  // 31: panel.v1.EnrollServerRequest.mutation:type_name -> panel.v1.Mutation
+	27,  // 32: panel.v1.EnrollServerResponse.server:type_name -> panel.v1.Server
+	37,  // 33: panel.v1.EnrollServerResponse.operation:type_name -> panel.v1.Operation
+	24,  // 34: panel.v1.RemoveServerRequest.mutation:type_name -> panel.v1.Mutation
+	25,  // 35: panel.v1.ListProjectsRequest.page:type_name -> panel.v1.PageRequest
+	29,  // 36: panel.v1.ListProjectsResponse.projects:type_name -> panel.v1.Project
+	26,  // 37: panel.v1.ListProjectsResponse.page:type_name -> panel.v1.PageResponse
+	29,  // 38: panel.v1.GetProjectResponse.project:type_name -> panel.v1.Project
+	24,  // 39: panel.v1.CreateProjectRequest.mutation:type_name -> panel.v1.Mutation
+	28,  // 40: panel.v1.CreateProjectRequest.repository:type_name -> panel.v1.Repository
+	29,  // 41: panel.v1.CreateProjectResponse.project:type_name -> panel.v1.Project
+	25,  // 42: panel.v1.ListEnvironmentsRequest.page:type_name -> panel.v1.PageRequest
+	30,  // 43: panel.v1.ListEnvironmentsResponse.environments:type_name -> panel.v1.Environment
+	26,  // 44: panel.v1.ListEnvironmentsResponse.page:type_name -> panel.v1.PageResponse
+	30,  // 45: panel.v1.GetEnvironmentResponse.environment:type_name -> panel.v1.Environment
+	24,  // 46: panel.v1.CreateEnvironmentRequest.mutation:type_name -> panel.v1.Mutation
+	31,  // 47: panel.v1.CreateEnvironmentRequest.settings:type_name -> panel.v1.EnvironmentSettings
+	30,  // 48: panel.v1.CreateEnvironmentResponse.environment:type_name -> panel.v1.Environment
+	24,  // 49: panel.v1.UpdateEnvironmentRequest.mutation:type_name -> panel.v1.Mutation
+	31,  // 50: panel.v1.UpdateEnvironmentRequest.settings:type_name -> panel.v1.EnvironmentSettings
+	30,  // 51: panel.v1.UpdateEnvironmentResponse.environment:type_name -> panel.v1.Environment
+	24,  // 52: panel.v1.SaveEnvironmentSecretsRequest.mutation:type_name -> panel.v1.Mutation
+	61,  // 53: panel.v1.SaveEnvironmentSecretsRequest.upserts:type_name -> panel.v1.SecretValue
+	30,  // 54: panel.v1.SaveEnvironmentSecretsResponse.environment:type_name -> panel.v1.Environment
+	25,  // 55: panel.v1.ListServicesRequest.page:type_name -> panel.v1.PageRequest
+	33,  // 56: panel.v1.ListServicesResponse.services:type_name -> panel.v1.Service
+	26,  // 57: panel.v1.ListServicesResponse.page:type_name -> panel.v1.PageResponse
+	25,  // 58: panel.v1.ListReleasesRequest.page:type_name -> panel.v1.PageRequest
+	36,  // 59: panel.v1.ListReleasesResponse.releases:type_name -> panel.v1.Release
+	26,  // 60: panel.v1.ListReleasesResponse.page:type_name -> panel.v1.PageResponse
+	36,  // 61: panel.v1.GetReleaseResponse.release:type_name -> panel.v1.Release
+	24,  // 62: panel.v1.DeployEnvironmentRequest.mutation:type_name -> panel.v1.Mutation
+	37,  // 63: panel.v1.DeployEnvironmentResponse.operation:type_name -> panel.v1.Operation
+	24,  // 64: panel.v1.RollbackEnvironmentRequest.mutation:type_name -> panel.v1.Mutation
+	37,  // 65: panel.v1.RollbackEnvironmentResponse.operation:type_name -> panel.v1.Operation
+	25,  // 66: panel.v1.ListOperationsRequest.page:type_name -> panel.v1.PageRequest
+	37,  // 67: panel.v1.ListOperationsResponse.operations:type_name -> panel.v1.Operation
+	26,  // 68: panel.v1.ListOperationsResponse.page:type_name -> panel.v1.PageResponse
+	37,  // 69: panel.v1.GetOperationResponse.operation:type_name -> panel.v1.Operation
+	24,  // 70: panel.v1.BeginInstallationRequest.mutation:type_name -> panel.v1.Mutation
+	39,  // 71: panel.v1.PanelService.ListServers:input_type -> panel.v1.ListServersRequest
+	41,  // 72: panel.v1.PanelService.GetServer:input_type -> panel.v1.GetServerRequest
+	43,  // 73: panel.v1.PanelService.EnrollServer:input_type -> panel.v1.EnrollServerRequest
+	45,  // 74: panel.v1.PanelService.RemoveServer:input_type -> panel.v1.RemoveServerRequest
+	47,  // 75: panel.v1.PanelService.ListProjects:input_type -> panel.v1.ListProjectsRequest
+	49,  // 76: panel.v1.PanelService.GetProject:input_type -> panel.v1.GetProjectRequest
+	51,  // 77: panel.v1.PanelService.CreateProject:input_type -> panel.v1.CreateProjectRequest
+	53,  // 78: panel.v1.PanelService.ListEnvironments:input_type -> panel.v1.ListEnvironmentsRequest
+	55,  // 79: panel.v1.PanelService.GetEnvironment:input_type -> panel.v1.GetEnvironmentRequest
+	57,  // 80: panel.v1.PanelService.CreateEnvironment:input_type -> panel.v1.CreateEnvironmentRequest
+	59,  // 81: panel.v1.PanelService.UpdateEnvironment:input_type -> panel.v1.UpdateEnvironmentRequest
+	62,  // 82: panel.v1.PanelService.SaveEnvironmentSecrets:input_type -> panel.v1.SaveEnvironmentSecretsRequest
+	64,  // 83: panel.v1.PanelService.ListServices:input_type -> panel.v1.ListServicesRequest
+	66,  // 84: panel.v1.PanelService.ListReleases:input_type -> panel.v1.ListReleasesRequest
+	68,  // 85: panel.v1.PanelService.GetRelease:input_type -> panel.v1.GetReleaseRequest
+	80,  // 86: panel.v1.PanelService.GetDeploymentSource:input_type -> panel.v1.GetDeploymentSourceRequest
+	70,  // 87: panel.v1.PanelService.DeployEnvironment:input_type -> panel.v1.DeployEnvironmentRequest
+	72,  // 88: panel.v1.PanelService.RollbackEnvironment:input_type -> panel.v1.RollbackEnvironmentRequest
+	74,  // 89: panel.v1.PanelService.ListOperations:input_type -> panel.v1.ListOperationsRequest
+	76,  // 90: panel.v1.PanelService.GetOperation:input_type -> panel.v1.GetOperationRequest
+	7,   // 91: panel.v1.GitHubService.BeginSetup:input_type -> panel.v1.BeginSetupRequest
+	78,  // 92: panel.v1.GitHubService.BeginInstallation:input_type -> panel.v1.BeginInstallationRequest
+	9,   // 93: panel.v1.GitHubService.GetIntegration:input_type -> panel.v1.GetIntegrationRequest
+	11,  // 94: panel.v1.GitHubService.ListRepositories:input_type -> panel.v1.ListRepositoriesRequest
+	13,  // 95: panel.v1.GitHubService.SelectRepositories:input_type -> panel.v1.SelectRepositoriesRequest
+	15,  // 96: panel.v1.GitHubService.SaveRegistryCredential:input_type -> panel.v1.SaveRegistryCredentialRequest
+	17,  // 97: panel.v1.AuthService.Login:input_type -> panel.v1.LoginRequest
+	19,  // 98: panel.v1.AuthService.Logout:input_type -> panel.v1.LogoutRequest
+	21,  // 99: panel.v1.AuthService.GetSession:input_type -> panel.v1.GetSessionRequest
+	40,  // 100: panel.v1.PanelService.ListServers:output_type -> panel.v1.ListServersResponse
+	42,  // 101: panel.v1.PanelService.GetServer:output_type -> panel.v1.GetServerResponse
+	44,  // 102: panel.v1.PanelService.EnrollServer:output_type -> panel.v1.EnrollServerResponse
+	46,  // 103: panel.v1.PanelService.RemoveServer:output_type -> panel.v1.RemoveServerResponse
+	48,  // 104: panel.v1.PanelService.ListProjects:output_type -> panel.v1.ListProjectsResponse
+	50,  // 105: panel.v1.PanelService.GetProject:output_type -> panel.v1.GetProjectResponse
+	52,  // 106: panel.v1.PanelService.CreateProject:output_type -> panel.v1.CreateProjectResponse
+	54,  // 107: panel.v1.PanelService.ListEnvironments:output_type -> panel.v1.ListEnvironmentsResponse
+	56,  // 108: panel.v1.PanelService.GetEnvironment:output_type -> panel.v1.GetEnvironmentResponse
+	58,  // 109: panel.v1.PanelService.CreateEnvironment:output_type -> panel.v1.CreateEnvironmentResponse
+	60,  // 110: panel.v1.PanelService.UpdateEnvironment:output_type -> panel.v1.UpdateEnvironmentResponse
+	63,  // 111: panel.v1.PanelService.SaveEnvironmentSecrets:output_type -> panel.v1.SaveEnvironmentSecretsResponse
+	65,  // 112: panel.v1.PanelService.ListServices:output_type -> panel.v1.ListServicesResponse
+	67,  // 113: panel.v1.PanelService.ListReleases:output_type -> panel.v1.ListReleasesResponse
+	69,  // 114: panel.v1.PanelService.GetRelease:output_type -> panel.v1.GetReleaseResponse
+	81,  // 115: panel.v1.PanelService.GetDeploymentSource:output_type -> panel.v1.GetDeploymentSourceResponse
+	71,  // 116: panel.v1.PanelService.DeployEnvironment:output_type -> panel.v1.DeployEnvironmentResponse
+	73,  // 117: panel.v1.PanelService.RollbackEnvironment:output_type -> panel.v1.RollbackEnvironmentResponse
+	75,  // 118: panel.v1.PanelService.ListOperations:output_type -> panel.v1.ListOperationsResponse
+	77,  // 119: panel.v1.PanelService.GetOperation:output_type -> panel.v1.GetOperationResponse
+	8,   // 120: panel.v1.GitHubService.BeginSetup:output_type -> panel.v1.BeginSetupResponse
+	79,  // 121: panel.v1.GitHubService.BeginInstallation:output_type -> panel.v1.BeginInstallationResponse
+	10,  // 122: panel.v1.GitHubService.GetIntegration:output_type -> panel.v1.GetIntegrationResponse
+	12,  // 123: panel.v1.GitHubService.ListRepositories:output_type -> panel.v1.ListRepositoriesResponse
+	14,  // 124: panel.v1.GitHubService.SelectRepositories:output_type -> panel.v1.SelectRepositoriesResponse
+	16,  // 125: panel.v1.GitHubService.SaveRegistryCredential:output_type -> panel.v1.SaveRegistryCredentialResponse
+	18,  // 126: panel.v1.AuthService.Login:output_type -> panel.v1.LoginResponse
+	20,  // 127: panel.v1.AuthService.Logout:output_type -> panel.v1.LogoutResponse
+	22,  // 128: panel.v1.AuthService.GetSession:output_type -> panel.v1.GetSessionResponse
+	100, // [100:129] is the sub-list for method output_type
+	71,  // [71:100] is the sub-list for method input_type
+	71,  // [71:71] is the sub-list for extension type_name
+	71,  // [71:71] is the sub-list for extension extendee
+	0,   // [0:71] is the sub-list for field type_name
 }
 
 func init() { file_panel_v1_panel_proto_init() }
@@ -5592,14 +5347,14 @@ func file_panel_v1_panel_proto_init() {
 	if File_panel_v1_panel_proto != nil {
 		return
 	}
-	file_panel_v1_panel_proto_msgTypes[70].OneofWrappers = []any{}
+	file_panel_v1_panel_proto_msgTypes[67].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_panel_v1_panel_proto_rawDesc), len(file_panel_v1_panel_proto_rawDesc)),
 			NumEnums:      7,
-			NumMessages:   78,
+			NumMessages:   75,
 			NumExtensions: 0,
 			NumServices:   3,
 		},

@@ -1,16 +1,13 @@
 package githubflow
 
 import (
-	"archive/zip"
 	"bytes"
 	"context"
 	"crypto/rand"
 	"crypto/rsa"
-	"crypto/sha256"
 	"crypto/x509"
 	"database/sql"
 	"encoding/base64"
-	"encoding/hex"
 	"encoding/json"
 	"encoding/pem"
 	"errors"
@@ -18,11 +15,11 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
 
-	"github.com/google/go-github/v93/github"
 	"github.com/google/uuid"
 	"github.com/riverqueue/river"
 	"github.com/riverqueue/river/riverdriver/riversqlite"
@@ -32,30 +29,56 @@ import (
 	"github.com/aleksdotbar/vps/panel/internal/compose"
 	"github.com/aleksdotbar/vps/panel/internal/operations"
 	"github.com/aleksdotbar/vps/panel/internal/projects"
+	"github.com/aleksdotbar/vps/panel/internal/registry"
 	"github.com/aleksdotbar/vps/panel/internal/store"
 )
 
-const fixtureSHA = "0123456789abcdef0123456789abcdef01234567"
+const (
+	fixtureSHA = "0123456789abcdef0123456789abcdef01234567"
+	appImage   = "ghcr.io/example/stateless-app"
+	workImage  = "ghcr.io/example/stateless-worker"
+)
+
+// fakeImages answers digests per repository; absent repositories are not pushed yet.
+type fakeImages struct {
+	mu      sync.Mutex
+	digests map[string]string
+	err     error
+	calls   atomic.Int64
+}
+
+func (f *fakeImages) Resolve(_ context.Context, repository, tag string) (string, error) {
+	f.calls.Add(1)
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.err != nil {
+		return "", f.err
+	}
+	digest, exists := f.digests[repository+":"+tag]
+	if !exists {
+		return "", registry.ErrNotFound
+	}
+	return digest, nil
+}
+func (f *fakeImages) push(repository, tag, digest string) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.digests[repository+":"+tag] = digest
+}
 
 type buildFixture struct {
-	service            *Service
-	metadata           *projects.Service
-	builds             *Builds
-	runtime            *operations.Runtime
-	environment        *panelv1.Environment
-	files              map[string][]byte
-	archive            []byte
-	digest             string
-	runs               []*github.WorkflowRun
-	latest             []*github.WorkflowRun
-	requestID          string
-	dispatches         atomic.Int64
-	lostDispatch       bool
-	dispatched         atomic.Bool
-	tokenMints         atomic.Int64
-	sourceReads        atomic.Int64
-	failDiscovery      func()
-	dispatchConclusion string
+	service     *Service
+	metadata    *projects.Service
+	builds      *Builds
+	runtime     *operations.Runtime
+	environment *panelv1.Environment
+	files       map[string][]byte
+	images      *fakeImages
+	head        atomic.Value
+	tokenMints  atomic.Int64
+	sourceReads atomic.Int64
+	branchReads atomic.Int64
+	failBranch  atomic.Bool
 }
 
 func buildSetup(t *testing.T) *buildFixture {
@@ -92,7 +115,7 @@ func buildSetup(t *testing.T) *buildFixture {
 		t.Fatal(err)
 	}
 	metadata := projects.New(service.database, service.cipher)
-	project, err := metadata.CreateProject(ctx, &panelv1.CreateProjectRequest{Mutation: &panelv1.Mutation{RequestId: uuid.NewString()}, Name: "generic", Repository: &panelv1.Repository{GithubRepositoryId: 1, Owner: "operator", Name: "generic"}, GithubWorkflowId: 2})
+	project, err := metadata.CreateProject(ctx, &panelv1.CreateProjectRequest{Mutation: &panelv1.Mutation{RequestId: uuid.NewString()}, Name: "generic", Repository: &panelv1.Repository{GithubRepositoryId: 1, Owner: "operator", Name: "generic"}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -104,51 +127,29 @@ func buildSetup(t *testing.T) *buildFixture {
 	if err != nil {
 		t.Fatal(err)
 	}
-	fixture := &buildFixture{service: service, metadata: metadata, environment: saved.Environment, files: make(map[string][]byte)}
+	fixture := &buildFixture{service: service, metadata: metadata, environment: saved.Environment, files: make(map[string][]byte), images: &fakeImages{digests: make(map[string]string)}}
+	fixture.head.Store(fixtureSHA)
 	root, err := os.OpenRoot("../../../examples/stateless")
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer func() { _ = root.Close() }()
-	for _, name := range []string{"compose.yaml", "compose.staging.yaml", "release.json"} {
+	for _, name := range []string{"compose.yaml", "compose.staging.yaml"} {
 		data, err := root.ReadFile(name)
 		if err != nil {
 			t.Fatal(err)
 		}
 		fixture.files[name] = data
 	}
-	var archive bytes.Buffer
-	writer := zip.NewWriter(&archive)
-	file, err := writer.Create("release.json")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err := file.Write(fixture.files["release.json"]); err != nil {
-		t.Fatal(err)
-	}
-	if err := writer.Close(); err != nil {
-		t.Fatal(err)
-	}
-	fixture.archive = archive.Bytes()
-	hash := sha256.Sum256(fixture.archive)
-	fixture.digest = "sha256:" + hex.EncodeToString(hash[:])
 	service.transport = fixture.respond(t)
-	service.artifactTransport = fixtureTransport(func(request *http.Request) (*http.Response, error) {
-		if request.Header.Get("Authorization") != "" {
-			t.Fatal("artifact download received authentication")
-		}
-		return &http.Response{StatusCode: 200, Header: make(http.Header), Body: io.NopCloser(bytes.NewReader(fixture.archive)), Request: request}, nil
-	})
+	// Native Compose is only required by tests that queue releases.
 	command := os.Getenv("PANEL_TEST_COMPOSE")
 	if command == "" {
 		command = "docker-compose"
 	}
-	resolver, err := compose.New(command)
-	if err != nil {
-		t.Fatal(err)
-	}
+	resolver, _ := compose.New(command)
 	runtime, err := operations.New(ctx, service.database, nil, func(workers *river.Workers, runtime *operations.Runtime) ([]*river.PeriodicJob, error) {
-		fixture.builds = NewBuilds(service, metadata, resolver, runtime)
+		fixture.builds = NewBuilds(service, metadata, resolver, runtime, fixture.images)
 		return fixture.builds.Register(workers)
 	})
 	if err != nil {
@@ -162,79 +163,34 @@ func buildSetup(t *testing.T) *buildFixture {
 	})
 	return fixture
 }
-func fixtureRun(number int, event string) *github.WorkflowRun {
-	id := int64(100 + number)
-	repository := &github.Repository{ID: new(int64(1))}
-	return &github.WorkflowRun{ID: &id, RunNumber: &number, RunAttempt: new(1), WorkflowID: new(int64(2)), Repository: repository, HeadRepository: repository, HeadBranch: new("main"), HeadSHA: new(fixtureSHA), Path: new(".github/workflows/panel-build.yaml"), Event: &event, Status: new("completed"), Conclusion: new("success")}
+func requireCompose(t *testing.T, f *buildFixture) {
+	t.Helper()
+	if f.builds.resolver == nil {
+		t.Fatal(compose.ErrUnavailable)
+	}
 }
 func (f *buildFixture) respond(t *testing.T) http.RoundTripper {
 	return fixtureTransport(func(request *http.Request) (*http.Response, error) {
 		var value any
-		status := http.StatusOK
-		headers := make(http.Header)
 		switch path := request.URL.Path; {
 		case path == "/app/installations/10/access_tokens":
 			f.tokenMints.Add(1)
+			var body struct {
+				Permissions map[string]string `json:"permissions"`
+			}
+			if err := json.NewDecoder(request.Body).Decode(&body); err != nil || len(body.Permissions) != 1 || body.Permissions["contents"] != "read" {
+				t.Fatalf("installation token requested more than contents read: %v", body.Permissions)
+			}
 			value = map[string]any{"token": uuid.NewString(), "expires_at": time.Now().Add(time.Hour).UTC().Format(time.RFC3339)}
-		case path == "/repos/operator/generic/actions/workflows/2":
-			value = map[string]any{"id": 2, "path": ".github/workflows/panel-build.yaml", "state": "active"}
-		case path == "/repos/operator/generic/actions/workflows/2/runs":
-			if request.URL.Query().Get("event") == "push" && f.failDiscovery != nil {
-				f.failDiscovery()
+		case strings.HasPrefix(path, "/repos/operator/generic/branches/"):
+			f.branchReads.Add(1)
+			if f.failBranch.Load() {
 				return nil, errors.New("fixture provider unavailable")
 			}
-			runs := f.runs
-			if request.URL.Query().Get("head_sha") == "" {
-				runs = f.latest
-			}
-			if f.dispatched.Load() {
-				run := fixtureRun(7, "workflow_dispatch")
-				run.DisplayTitle = new("panel-build " + f.requestID)
-				if f.dispatchConclusion != "" {
-					run.Conclusion = new(f.dispatchConclusion)
-				}
-				runs = []*github.WorkflowRun{run}
-			}
-			value = map[string]any{"total_count": len(runs), "workflow_runs": runs}
-		case path == "/repos/operator/generic/branches/main":
-			value = map[string]any{"name": "main", "commit": map[string]any{"sha": fixtureSHA}}
-		case path == "/repos/operator/generic/actions/workflows/2/dispatches":
-			f.dispatches.Add(1)
-			var body struct {
-				Inputs map[string]string `json:"inputs"`
-				Return bool              `json:"return_run_details"`
-			}
-			if err := json.NewDecoder(request.Body).Decode(&body); err != nil {
-				t.Fatal(err)
-			}
-			if !body.Return {
-				t.Fatal("dispatch did not request native run details")
-			}
-			f.requestID = body.Inputs["request_id"]
-			f.dispatched.Store(true)
-			if f.lostDispatch {
-				return nil, errors.New("fixture dispatch response lost")
-			}
-			value = map[string]any{"workflow_run_id": 107}
-		case strings.Contains(path, "/actions/runs/") && (strings.HasSuffix(path, "/attempts/1") || path == "/repos/operator/generic/actions/runs/107"):
-			run := fixtureRun(7, "push")
-			if f.dispatched.Load() {
-				run.Event = new("workflow_dispatch")
-				run.DisplayTitle = new("panel-build " + f.requestID)
-				if f.dispatchConclusion != "" {
-					run.Conclusion = new(f.dispatchConclusion)
-				}
-			}
-			value = run
-		case path == "/repos/operator/generic/actions/runs/107/artifacts":
-			value = map[string]any{"total_count": 1, "artifacts": []any{map[string]any{"id": 50, "name": "panel-release-107-1", "size_in_bytes": len(f.archive), "digest": f.digest, "expired": false, "workflow_run": map[string]any{"id": 107, "repository_id": 1, "head_repository_id": 1, "head_branch": "main", "head_sha": fixtureSHA}}}}
-		case path == "/repos/operator/generic/actions/artifacts/50/zip":
-			status = http.StatusFound
-			headers.Set("Location", "https://artifacts.actions.githubusercontent.com/generic.zip")
-			value = map[string]any{}
+			value = map[string]any{"name": strings.TrimPrefix(path, "/repos/operator/generic/branches/"), "commit": map[string]any{"sha": f.head.Load().(string)}}
 		case strings.HasPrefix(path, "/repos/operator/generic/contents/"):
 			f.sourceReads.Add(1)
-			if request.URL.Query().Get("ref") != fixtureSHA {
+			if !sourceSHA(request.URL.Query().Get("ref")) {
 				t.Fatal("source read used moving ref")
 			}
 			name := strings.TrimPrefix(path, "/repos/operator/generic/contents/")
@@ -250,7 +206,7 @@ func (f *buildFixture) respond(t *testing.T) http.RoundTripper {
 		if err != nil {
 			t.Fatal(err)
 		}
-		return &http.Response{StatusCode: status, Header: headers, Body: io.NopCloser(bytes.NewReader(data)), Request: request}, nil
+		return &http.Response{StatusCode: http.StatusOK, Header: make(http.Header), Body: io.NopCloser(bytes.NewReader(data)), Request: request}, nil
 	})
 }
 func (f *buildFixture) request(t *testing.T) string {
@@ -263,42 +219,102 @@ func (f *buildFixture) request(t *testing.T) string {
 }
 func (f *buildFixture) due(t *testing.T, id string) {
 	t.Helper()
-	if err := store.New(f.service.database).ScheduleWaitingBuild(context.Background(), store.ScheduleWaitingBuildParams{ID: id, NextPollAt: 0, DiscoveryPage: 1, Failures: 0, UpdatedAt: time.Now().UnixMilli()}); err != nil {
+	if _, err := f.service.database.ExecContext(context.Background(), "UPDATE waiting_builds SET next_poll_at=0 WHERE id=?", id); err != nil {
 		t.Fatal(err)
 	}
 }
-func TestVerifiedBuildPromotesAtomicImmutableReleaseAndReplaysWithoutProvider(t *testing.T) {
+func digest(fill string) string { return "sha256:" + strings.Repeat(fill, 64) }
+
+func TestMissingImageTagWaitsThenFailsNamingTheImage(t *testing.T) {
 	f := buildSetup(t)
 	ctx := context.Background()
-	f.runs = []*github.WorkflowRun{fixtureRun(7, "push")}
+	id := f.request(t)
+	if delay, err := f.builds.PollBuild(ctx, id); err != nil || delay != pollInterval {
+		t.Fatalf("missing image did not keep waiting: %v %v", delay, err)
+	}
+	waiting, err := store.New(f.service.database).GetWaitingBuild(ctx, id)
+	if err != nil || waiting.State != "waiting" || waiting.Reason != waitingForImage+appImage+":"+fixtureSHA || waiting.Failures != 0 {
+		t.Fatalf("waiting reason does not name the missing image: %+v %v", waiting, err)
+	}
+	// One pushed image is not enough: every service tag must exist.
+	f.images.push(appImage, fixtureSHA, digest("1"))
+	f.due(t, id)
+	if _, err := f.builds.PollBuild(ctx, id); err != nil {
+		t.Fatal(err)
+	}
+	waiting, err = store.New(f.service.database).GetWaitingBuild(ctx, id)
+	if err != nil || waiting.Reason != waitingForImage+workImage+":"+fixtureSHA {
+		t.Fatalf("second service image not awaited: %+v %v", waiting, err)
+	}
+	if _, err := f.service.database.ExecContext(ctx, "UPDATE waiting_builds SET expires_at=? WHERE id=?", time.Now().Add(-time.Second).UnixMilli(), id); err != nil {
+		t.Fatal(err)
+	}
+	if delay, err := f.builds.PollBuild(ctx, id); err != nil || delay != 0 {
+		t.Fatalf("expired wait kept snoozing: %v", err)
+	}
+	waiting, err = store.New(f.service.database).GetWaitingBuild(ctx, id)
+	if err != nil || waiting.State != "failed" || waiting.Reason != imageNotFound+workImage+":"+fixtureSHA {
+		t.Fatalf("expired wait lost its image reference: %+v %v", waiting, err)
+	}
+}
+func TestIncompatibleImageFailsWithoutWaiting(t *testing.T) {
+	f := buildSetup(t)
+	ctx := context.Background()
+	f.images.err = registry.ErrIncompatible
+	id := f.request(t)
+	if delay, err := f.builds.PollBuild(ctx, id); err != nil || delay != 0 {
+		t.Fatalf("incompatible image entered backoff: %v %v", delay, err)
+	}
+	waiting, err := store.New(f.service.database).GetWaitingBuild(ctx, id)
+	if err != nil || waiting.State != "failed" || waiting.Reason != "incompatible_image" {
+		t.Fatalf("incompatible image not terminal: %+v %v", waiting, err)
+	}
+}
+func TestUnavailableRegistryBacksOffAndKeepsWaitingReason(t *testing.T) {
+	f := buildSetup(t)
+	ctx := context.Background()
+	id := f.request(t)
+	if _, err := f.builds.PollBuild(ctx, id); err != nil {
+		t.Fatal(err)
+	}
+	f.images.err = registry.ErrUnavailable
+	f.due(t, id)
+	if delay, err := f.builds.PollBuild(ctx, id); err != nil || delay <= pollInterval {
+		t.Fatalf("registry failure not backed off: %v %v", delay, err)
+	}
+	waiting, err := store.New(f.service.database).GetWaitingBuild(ctx, id)
+	if err != nil || waiting.State != "waiting" || waiting.Failures != 1 || !strings.HasPrefix(waiting.Reason, waitingForImage) {
+		t.Fatalf("transient registry failure lost wait state: %+v %v", waiting, err)
+	}
+}
+func TestResolvedImagesPromoteImmutableReleaseAndReplayWithoutProvider(t *testing.T) {
+	f := buildSetup(t)
+	requireCompose(t, f)
+	ctx := context.Background()
+	f.images.push(appImage, fixtureSHA, digest("1"))
+	f.images.push(workImage, fixtureSHA, digest("2"))
 	id := f.request(t)
 	if _, err := f.metadata.SaveSecrets(ctx, &panelv1.SaveEnvironmentSecretsRequest{Mutation: &panelv1.Mutation{RequestId: uuid.NewString()}, EnvironmentId: f.environment.Id, ExpectedVersion: f.environment.Version, Upserts: []*panelv1.SecretValue{{Name: "API_TOKEN", Value: "later-pending-private-api"}}}); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := f.builds.PollBuild(ctx, id); err != nil {
-		t.Fatal(err)
-	}
-	f.due(t, id)
 	if delay, err := f.builds.PollBuild(ctx, id); err != nil || delay != 0 {
-		t.Fatalf("verified promotion failed: %v", err)
+		t.Fatalf("resolved images not promoted: %v", err)
 	}
 	operation, err := store.New(f.service.database).GetOperation(ctx, id)
 	if err != nil || operation.ReleaseID == "" {
 		t.Fatalf("stable operation missing: %v", err)
 	}
-	waiting, err := store.New(f.service.database).GetWaitingBuild(ctx, id)
-	if err != nil || waiting.State != "queued" || waiting.ArtifactID != 50 || waiting.ArtifactDigest != f.digest {
-		t.Fatalf("artifact/operation not atomically bound: %v", err)
-	}
 	release, err := store.New(f.service.database).GetRelease(ctx, operation.ReleaseID)
-	if err != nil || release.SecretVersion != 2 {
-		t.Fatalf("captured secret selection changed: %v", err)
+	if err != nil || release.SecretVersion != 2 || release.SourceSha != fixtureSHA {
+		t.Fatalf("captured selection changed: %v", err)
 	}
-	if bytes.Contains(release.ComposeConfig, []byte("captured-private")) || bytes.Contains(release.ComposeConfig, []byte("later-pending")) {
-		t.Fatal("plaintext persisted in release")
+	for _, pinned := range []string{appImage + "@" + digest("1"), workImage + "@" + digest("2")} {
+		if !bytes.Contains(release.ComposeConfig, []byte(pinned)) {
+			t.Fatalf("release does not pin %s", pinned)
+		}
 	}
-	if f.dispatches.Load() != 0 || f.sourceReads.Load() != 2 || f.tokenMints.Load() != 1 {
-		t.Fatalf("unexpected provider work dispatch%d/source%d/token%d", f.dispatches.Load(), f.sourceReads.Load(), f.tokenMints.Load())
+	if bytes.Contains(release.ComposeConfig, []byte(":"+fixtureSHA)) || bytes.Contains(release.ComposeConfig, []byte("captured-private")) || bytes.Contains(release.ComposeConfig, []byte("later-pending")) {
+		t.Fatal("release kept a moving tag or plaintext")
 	}
 	f.service.transport = fixtureTransport(func(*http.Request) (*http.Response, error) {
 		t.Fatal("replay reached provider")
@@ -313,123 +329,24 @@ func TestVerifiedBuildPromotesAtomicImmutableReleaseAndReplaysWithoutProvider(t 
 		t.Fatalf("changed intent reused identity: %v", err)
 	}
 }
-func TestLostDispatchResponseSurvivesNativeRuntimeRestartWithoutSecondDispatch(t *testing.T) {
+func TestSharedRepositoryResolvesOnce(t *testing.T) {
 	f := buildSetup(t)
-	ctx := context.Background()
-	f.lostDispatch = true
-	id := f.request(t)
-	if err := f.runtime.Start(ctx); err != nil {
-		t.Fatal(err)
-	}
-	deadline := time.Now().Add(8 * time.Second)
-	for {
-		waiting, err := store.New(f.service.database).GetWaitingBuild(ctx, id)
-		if err == nil && waiting.State == "dispatch_unknown" && waiting.Failures > 0 {
-			break
+	f.files["compose.yaml"] = bytes.ReplaceAll(f.files["compose.yaml"], []byte(workImage), []byte(appImage))
+	f.images.push(appImage, fixtureSHA, digest("3"))
+	tree := t.TempDir()
+	for name, data := range f.files {
+		if err := os.WriteFile(tree+"/"+name, data, 0600); err != nil {
+			t.Fatal(err)
 		}
-		if time.Now().After(deadline) {
-			t.Fatalf("first runtime did not persist unknown dispatch: %v", err)
-		}
-		time.Sleep(10 * time.Millisecond)
 	}
-	stopCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
-	if err := f.runtime.Stop(stopCtx); err != nil {
-		cancel()
-		t.Fatal(err)
+	artifact, missing, err := f.builds.resolveImages(context.Background(), tree, "compose.staging.yaml", fixtureSHA)
+	if err != nil || missing != "" || f.images.calls.Load() != 1 {
+		t.Fatalf("shared repository resolved repeatedly: %v %q %d", err, missing, f.images.calls.Load())
 	}
-	cancel()
-	f.due(t, id)
-	restarted, err := operations.New(ctx, f.service.database, nil, func(workers *river.Workers, runtime *operations.Runtime) ([]*river.PeriodicJob, error) {
-		f.builds = NewBuilds(f.service, f.metadata, f.builds.resolver, runtime)
-		return f.builds.Register(workers)
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	f.runtime = restarted
-	writer, err := river.NewClient(riversqlite.New(f.service.database), &river.Config{})
-	if err != nil {
-		t.Fatal(err)
-	}
-	waiting, err := store.New(f.service.database).GetWaitingBuild(ctx, id)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err := writer.JobRetry(ctx, waiting.RiverJobID); err != nil {
-		t.Fatal(err)
-	}
-	if err := restarted.Start(ctx); err != nil {
-		t.Fatal(err)
-	}
-	deadline = time.Now().Add(8 * time.Second)
-	for {
-		waiting, err = store.New(f.service.database).GetWaitingBuild(ctx, id)
-		if err == nil && waiting.RunID == 107 {
-			break
-		}
-		if time.Now().After(deadline) {
-			t.Fatalf("restart did not reconcile dispatched run: %v", err)
-		}
-		time.Sleep(10 * time.Millisecond)
-	}
-	stopCtx, cancel = context.WithTimeout(ctx, 10*time.Second)
-	if err := restarted.Stop(stopCtx); err != nil {
-		cancel()
-		t.Fatal(err)
-	}
-	cancel()
-	f.due(t, id)
-	if delay, err := f.builds.PollBuild(ctx, id); err != nil || delay != 0 {
-		t.Fatalf("reconciled build did not promote: %v", err)
-	}
-	waiting, err = store.New(f.service.database).GetWaitingBuild(ctx, id)
-	if err != nil || waiting.State != "queued" {
-		t.Fatalf("dispatched build was not queued: %v, state%s", err, waiting.State)
-	}
-	operation, err := store.New(f.service.database).GetOperation(ctx, id)
-	if err != nil || operation.ReleaseID == "" {
-		t.Fatalf("dispatched build release missing: %v", err)
-	}
-	if _, err := store.New(f.service.database).GetRelease(ctx, operation.ReleaseID); err != nil {
-		t.Fatal(err)
-	}
-	if f.dispatches.Load() != 1 {
-		t.Fatalf("dispatch repeated %d times", f.dispatches.Load())
+	if artifact.Services["app"].Image != appImage+"@"+digest("3") || artifact.Services["worker"].Image != appImage+"@"+digest("3") || artifact.SourceSHA != fixtureSHA {
+		t.Fatalf("unexpected digest set: %+v", artifact)
 	}
 }
-
-// Keep only real domain rows and native River APIs in restart tests; no copied
-// River SQL or assertions about its lease/reclaim implementation belong here.
-
-func TestLostDispatchBindsKnownFailedRunWithoutRedispatch(t *testing.T) {
-	f := buildSetup(t)
-	ctx := context.Background()
-	f.lostDispatch = true
-	f.dispatchConclusion = "failure"
-	id := f.request(t)
-	if _, err := f.builds.PollBuild(ctx, id); err != nil {
-		t.Fatal(err)
-	}
-	f.due(t, id)
-	if _, err := f.builds.PollBuild(ctx, id); err != nil {
-		t.Fatal(err)
-	}
-	f.due(t, id)
-	if _, err := f.builds.PollBuild(ctx, id); err != nil {
-		t.Fatal(err)
-	}
-	waiting, err := store.New(f.service.database).GetWaitingBuild(ctx, id)
-	if err != nil || waiting.State != "failed" || waiting.Reason != "build_failed" {
-		t.Fatalf("known failed build remained uncertain: %v, %s/%s", err, waiting.State, waiting.Reason)
-	}
-	if f.dispatches.Load() != 1 {
-		t.Fatal("failed dispatch replayed")
-	}
-	if _, err := store.New(f.service.database).GetOperation(ctx, id); !errors.Is(err, sql.ErrNoRows) {
-		t.Fatalf("failed build reached executor: %v", err)
-	}
-}
-
 func TestAbortedWaitingAdmissionRollsBackSelectionAndNativeJob(t *testing.T) {
 	f := buildSetup(t)
 	ctx := context.Background()
@@ -447,7 +364,7 @@ func TestAbortedWaitingAdmissionRollsBackSelectionAndNativeJob(t *testing.T) {
 		_ = tx.Rollback()
 		t.Fatal(err)
 	}
-	if err := f.builds.insert(ctx, tx, intent, identity, selection, 0, 0, 0); err != nil {
+	if err := f.builds.insert(ctx, tx, intent, identity, selection); err != nil {
 		_ = tx.Rollback()
 		t.Fatal(err)
 	}
@@ -470,48 +387,11 @@ func TestAbortedWaitingAdmissionRollsBackSelectionAndNativeJob(t *testing.T) {
 		t.Fatalf("aborted native job persisted: %v", err)
 	}
 }
-func TestFreshExplicitIntentRecoversExhaustedBuildWaitAndReusesKnownDispatch(t *testing.T) {
-	f := buildSetup(t)
-	ctx := context.Background()
-	f.lostDispatch = true
-	oldID := f.request(t)
-	if _, err := f.builds.PollBuild(ctx, oldID); err != nil {
-		t.Fatal(err)
+func TestExpiredReasonNamesAwaitedImage(t *testing.T) {
+	if got := expiredReason(waitingForImage + appImage + ":" + fixtureSHA); got != imageNotFound+appImage+":"+fixtureSHA {
+		t.Fatalf("expired reason %q", got)
 	}
-	if _, err := f.service.database.ExecContext(ctx, "UPDATE waiting_builds SET failures=9 WHERE id=?", oldID); err != nil {
-		t.Fatal(err)
-	}
-	waiting, err := store.New(f.service.database).GetWaitingBuild(ctx, oldID)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err := f.builds.retry(ctx, waiting, &Failure{}); err != nil {
-		t.Fatal(err)
-	}
-	waiting, err = store.New(f.service.database).GetWaitingBuild(ctx, oldID)
-	if err != nil || waiting.State != "needs_attention" {
-		t.Fatalf("bounded polling did not expose exhaustion: %v", err)
-	}
-	id := f.request(t)
-	if id == oldID {
-		t.Fatal("new explicit intent reused exhausted identity")
-	}
-	waiting, err = store.New(f.service.database).GetWaitingBuild(ctx, oldID)
-	if err != nil || waiting.State != "superseded" {
-		t.Fatalf("explicit intent could not recover build-only uncertainty: %v", err)
-	}
-	if _, err := f.builds.PollBuild(ctx, id); err != nil {
-		t.Fatal(err)
-	}
-	f.due(t, id)
-	if _, err := f.builds.PollBuild(ctx, id); err != nil {
-		t.Fatal(err)
-	}
-	current, err := store.New(f.service.database).GetWaitingBuild(ctx, id)
-	if err != nil || current.State != "queued" {
-		t.Fatalf("verified prior manual run not reused: %v", err)
-	}
-	if f.dispatches.Load() != 1 {
-		t.Fatal("fresh intent rebuilt an existing exact successful dispatch")
+	if got := expiredReason(""); got != "build_timeout" {
+		t.Fatalf("expired reason without image %q", got)
 	}
 }

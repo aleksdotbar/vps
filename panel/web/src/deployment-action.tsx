@@ -44,7 +44,7 @@ function deploymentError(error: unknown) {
     case ErrorReason.SERVER_NOT_READY:
       return "The assigned server is not ready. Open its details and resolve setup or connectivity first.";
     case ErrorReason.INCOMPATIBLE_CONFIGURATION:
-      return "Check the GitHub installation, active panel-build.yaml workflow, retained release assignment and required Tunnel setup.";
+      return "Check the GitHub installation, the commit's Compose files and images, the retained release assignment and required Tunnel setup.";
     case ErrorReason.REQUEST_ID_REUSED:
       return "The request identity conflicts with an existing intent. Check operation history before starting another action.";
     case ErrorReason.RESOURCE_IN_USE:

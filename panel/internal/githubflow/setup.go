@@ -31,17 +31,16 @@ import (
 )
 
 type Service struct {
-	database          *sql.DB
-	cipher            *securestate.Cipher
-	vault             *securestate.Vault
-	transport         http.RoundTripper
-	artifactTransport http.RoundTripper
-	providerPermits   chan struct{}
-	tokenMu           sync.Mutex
-	tokens            map[tokenScope]installationToken
-	cooldownUntil     time.Time
-	origin            string
-	mutations         *mutations.Service
+	database        *sql.DB
+	cipher          *securestate.Cipher
+	vault           *securestate.Vault
+	transport       http.RoundTripper
+	providerPermits chan struct{}
+	tokenMu         sync.Mutex
+	tokens          map[tokenScope]installationToken
+	cooldownUntil   time.Time
+	origin          string
+	mutations       *mutations.Service
 }
 type Browser struct {
 	SessionHash []byte
@@ -52,7 +51,7 @@ func New(database *sql.DB, cipher *securestate.Cipher, origin string, transport 
 	if transport == nil {
 		transport = http.DefaultTransport
 	}
-	return &Service{database: database, cipher: cipher, vault: securestate.NewVault(database, cipher), transport: transport, artifactTransport: NewArtifactTransport(), providerPermits: make(chan struct{}, 4), tokens: make(map[tokenScope]installationToken), origin: origin, mutations: mutations.New(database, cipher)}
+	return &Service{database: database, cipher: cipher, vault: securestate.NewVault(database, cipher), transport: transport, providerPermits: make(chan struct{}, 4), tokens: make(map[tokenScope]installationToken), origin: origin, mutations: mutations.New(database, cipher)}
 }
 func decodeCredential(value []byte) (appCredential, error) {
 	var result appCredential
@@ -196,7 +195,7 @@ func (s *Service) BeginSetup(ctx context.Context, request *panelv1.BeginSetupReq
 	if err != nil {
 		return nil, err
 	}
-	manifest, err := json.Marshal(map[string]any{"name": request.GetName(), "url": s.origin, "redirect_url": s.origin + "/github/manifest", "setup_url": s.origin + "/github/installation", "public": false, "request_oauth_on_install": false, "setup_on_update": true, "hook_attributes": map[string]any{"active": false, "url": s.origin + "/github/webhook-disabled"}, "default_permissions": map[string]string{"contents": "read", "actions": "write"}, "default_events": []string{}})
+	manifest, err := json.Marshal(map[string]any{"name": request.GetName(), "url": s.origin, "redirect_url": s.origin + "/github/manifest", "setup_url": s.origin + "/github/installation", "public": false, "request_oauth_on_install": false, "setup_on_update": true, "hook_attributes": map[string]any{"active": false, "url": s.origin + "/github/webhook-disabled"}, "default_permissions": map[string]string{"contents": "read"}, "default_events": []string{}})
 	if err != nil {
 		return nil, err
 	}
@@ -283,17 +282,19 @@ func (s *Service) CompleteInstallation(ctx context.Context, token string, instal
 	if json.Unmarshal(permissionData, &permissions) != nil {
 		return ErrOwner
 	}
+	// Apps registered before images were resolved from GIT_SHA tags also hold
+	// actions access; tokens never request it.
 	for name, value := range permissions {
-		if (name == "contents" && value == "read") || (name == "actions" && value == "write") || (name == "metadata" && value == "read") {
+		if (name == "contents" && value == "read") || (name == "actions" && (value == "read" || value == "write")) || (name == "metadata" && value == "read") {
 			continue
 		}
 		return ErrOwner
 	}
-	if permissions["contents"] != "read" || permissions["actions"] != "write" {
+	if permissions["contents"] != "read" {
 		return ErrOwner
 	}
 	readPermission := "read"
-	tokenResult, response, err := client.Apps.CreateInstallationToken(ctx, installationID, &github.InstallationTokenOptions{Permissions: &github.InstallationPermissions{Contents: &readPermission, Actions: &readPermission}})
+	tokenResult, response, err := client.Apps.CreateInstallationToken(ctx, installationID, &github.InstallationTokenOptions{Permissions: &github.InstallationPermissions{Contents: &readPermission}})
 	if err != nil || tokenResult == nil {
 		return s.failure(ctx, response, err)
 	}

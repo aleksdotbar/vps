@@ -9,7 +9,7 @@ SELECT * FROM servers WHERE (created_at,id)<(sqlc.arg(cursor_time),CAST(sqlc.arg
 -- name: GetProject :one
 SELECT * FROM projects WHERE id=?;
 -- name: CreateProject :exec
-INSERT INTO projects(id,name,repository_id,repository_owner,repository_name,workflow_id,created_at) VALUES(?,?,?,?,?,?,?);
+INSERT INTO projects(id,name,repository_id,repository_owner,repository_name,created_at) VALUES(?,?,?,?,?,?);
 -- name: ListProjects :many
 SELECT * FROM projects WHERE (created_at,id)<(sqlc.arg(cursor_time),CAST(sqlc.arg(cursor_id) AS TEXT)) ORDER BY created_at DESC,id DESC LIMIT sqlc.arg(page_limit);
 -- name: GetEnvironment :one
@@ -37,19 +37,19 @@ SELECT * FROM metadata_mutations WHERE request_id=?;
 -- name: CreateMetadataMutation :exec
 INSERT INTO metadata_mutations(request_id,procedure,identity,encrypted_response,created_at) VALUES(?,?,?,?,?);
 -- name: CreateRelease :exec
-INSERT INTO releases(id,environment_id,server_id,repository_id,workflow_id,run_id,run_attempt,branch,source_sha,environment_version,binding_version,images_json,domains_json,secret_version,compose_config,secret_bindings_json,config_sha256,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?);
+INSERT INTO releases(id,environment_id,server_id,repository_id,branch,source_sha,environment_version,binding_version,images_json,domains_json,secret_version,compose_config,secret_bindings_json,config_sha256,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?);
 -- name: GetRelease :one
 SELECT * FROM releases WHERE id=?;
 -- name: ListReleases :many
-SELECT id,environment_id,server_id,repository_id,workflow_id,run_id,run_attempt,branch,source_sha,environment_version,binding_version,images_json,domains_json,secret_version,config_sha256,created_at FROM releases WHERE environment_id=sqlc.arg(environment_id) AND (created_at,id)<(sqlc.arg(cursor_time),CAST(sqlc.arg(cursor_id) AS TEXT)) ORDER BY created_at DESC,id DESC LIMIT sqlc.arg(page_limit);
+SELECT id,environment_id,server_id,repository_id,branch,source_sha,environment_version,binding_version,images_json,domains_json,secret_version,config_sha256,created_at FROM releases WHERE environment_id=sqlc.arg(environment_id) AND (created_at,id)<(sqlc.arg(cursor_time),CAST(sqlc.arg(cursor_id) AS TEXT)) ORDER BY created_at DESC,id DESC LIMIT sqlc.arg(page_limit);
 -- name: CreateReleaseService :exec
 INSERT INTO release_services(release_id,name,image_digest) VALUES(?,?,?);
 -- name: ListReleaseServices :many
 SELECT * FROM release_services WHERE release_id=? AND name>? ORDER BY name LIMIT ?;
 
 -- name: GetReleaseMetadata :one
-SELECT id,environment_id,server_id,repository_id,workflow_id,run_id,run_attempt,branch,source_sha,environment_version,binding_version,images_json,domains_json,secret_version,config_sha256,created_at FROM releases WHERE id=?;
+SELECT id,environment_id,server_id,repository_id,branch,source_sha,environment_version,binding_version,images_json,domains_json,secret_version,config_sha256,created_at FROM releases WHERE id=?;
 -- name: GetLatestRelease :one
-SELECT id,environment_id,server_id,repository_id,workflow_id,run_id,run_attempt,branch,source_sha,environment_version,binding_version,images_json,domains_json,secret_version,config_sha256,created_at FROM releases WHERE environment_id=? ORDER BY created_at DESC,id DESC LIMIT 1;
+SELECT id,environment_id,server_id,repository_id,branch,source_sha,environment_version,binding_version,images_json,domains_json,secret_version,config_sha256,created_at FROM releases WHERE environment_id=? ORDER BY created_at DESC,id DESC LIMIT 1;
 -- name: SupersedeQueuedAutomaticOperations :exec
 UPDATE operations SET state='superseded',reason='automatic_deploy_disabled',updated_at=? WHERE environment_id=? AND automatic AND state='queued' AND NOT started;

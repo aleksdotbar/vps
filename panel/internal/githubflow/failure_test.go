@@ -86,28 +86,28 @@ func TestLongProviderDeadlineSurvivesRestartButRequestStillExpires(t *testing.T)
 func TestTokenReuseSeparatesRepositoryPermissionAndAuthFailure(t *testing.T) {
 	f := buildSetup(t)
 	ctx := context.Background()
-	for _, write := range []bool{false, false, true, true} {
-		if _, err := f.service.installationClient(ctx, []int64{1}, write); err != nil {
+	for range 2 {
+		if _, err := f.service.installationClient(ctx, []int64{1}); err != nil {
 			t.Fatal(err)
 		}
 	}
-	if f.tokenMints.Load() != 2 {
-		t.Fatalf("read/write token scopes not reused separately: %d", f.tokenMints.Load())
+	if f.tokenMints.Load() != 1 {
+		t.Fatalf("repository token not reused: %d", f.tokenMints.Load())
 	}
 	if err := store.New(f.service.database).CreateGitHubRepository(ctx, store.CreateGitHubRepositoryParams{ID: 3, Owner: "operator", Name: "other"}); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := f.service.installationClient(ctx, []int64{3}, false); err != nil {
+	if _, err := f.service.installationClient(ctx, []int64{3}); err != nil {
 		t.Fatal(err)
 	}
-	if f.tokenMints.Load() != 3 {
+	if f.tokenMints.Load() != 2 {
 		t.Fatal("repository token scope was reused across repositories")
 	}
 	f.service.clearTokensOnFailure(&Failure{AuthRejected: true})
-	if _, err := f.service.installationClient(ctx, []int64{1}, false); err != nil {
+	if _, err := f.service.installationClient(ctx, []int64{1}); err != nil {
 		t.Fatal(err)
 	}
-	if f.tokenMints.Load() != 4 {
+	if f.tokenMints.Load() != 3 {
 		t.Fatal("auth failure retained a stale token")
 	}
 	// Token values remain memory-only and never become encrypted credential rows.

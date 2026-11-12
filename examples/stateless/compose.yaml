@@ -1,6 +1,6 @@
 services:
   app:
-    image: ${APP_IMAGE:?supplied by the verified release}
+    image: ghcr.io/example/stateless-app:${GIT_SHA:?set by the panel}
     user: "10001:10001"
     init: true
     read_only: true
@@ -27,7 +27,7 @@ services:
       retries: 3
       start_period: 10s
   worker:
-    image: ${WORKER_IMAGE:?supplied by the verified release}
+    image: ghcr.io/example/stateless-worker:${GIT_SHA:?set by the panel}
     user: "10001:10001"
     init: true
     read_only: true

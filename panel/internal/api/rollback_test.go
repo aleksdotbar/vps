@@ -31,7 +31,7 @@ func TestRollbackRPCRequiresAuthenticationAndOriginAndReturnsQueuedReplay(t *tes
 	ctx := t.Context()
 	release := uuid.NewString()
 	queries := store.New(installation.database)
-	if err := queries.CreateRelease(ctx, store.CreateReleaseParams{ID: release, EnvironmentID: environment.Id, ServerID: environment.Settings.ServerId, RepositoryID: 1, WorkflowID: 2, RunID: 10, RunAttempt: 1, Branch: "old", SourceSha: strings.Repeat("a", 40), EnvironmentVersion: 1, BindingVersion: 1, ImagesJson: []byte(`[]`), DomainsJson: []byte(`[]`), SecretVersion: 1, ComposeConfig: []byte(`{"services":{"app":{}}}`), SecretBindingsJson: []byte(`[]`), ConfigSha256: strings.Repeat("a", 64), CreatedAt: time.Now().UnixMilli()}); err != nil {
+	if err := queries.CreateRelease(ctx, store.CreateReleaseParams{ID: release, EnvironmentID: environment.Id, ServerID: environment.Settings.ServerId, RepositoryID: 1, Branch: "old", SourceSha: strings.Repeat("a", 40), EnvironmentVersion: 1, BindingVersion: 1, ImagesJson: []byte(`[]`), DomainsJson: []byte(`[]`), SecretVersion: 1, ComposeConfig: []byte(`{"services":{"app":{}}}`), SecretBindingsJson: []byte(`[]`), ConfigSha256: strings.Repeat("a", 64), CreatedAt: time.Now().UnixMilli()}); err != nil {
 		t.Fatal(err)
 	}
 	if err := queries.CreateReleaseService(ctx, store.CreateReleaseServiceParams{ReleaseID: release, Name: "app", ImageDigest: "ghcr.io/example/app@sha256:" + strings.Repeat("a", 64)}); err != nil {

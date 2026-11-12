@@ -283,7 +283,7 @@ func TestRetainedRouteZoneSurvivesTokenRotationAndRejectsRemoval(t *testing.T) {
 	if _, err := service.vault.UpdateEnvironment(ctx, environment, 0, nil, nil); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := service.database.ExecContext(ctx, `INSERT INTO projects(id,name,repository_id,repository_owner,repository_name,workflow_id,created_at) VALUES(?,'fixture',1,'example','fixture',2,1)`, project); err != nil {
+	if _, err := service.database.ExecContext(ctx, `INSERT INTO projects(id,name,repository_id,repository_owner,repository_name,created_at) VALUES(?,'fixture',1,'example','fixture',1)`, project); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := service.database.ExecContext(ctx, `INSERT INTO environments(id,project_id,name,server_id,branch,override_path,domains_json,auto_deploy,version,binding_version,secret_version,secret_names_json,bridge_name,created_at) VALUES(?,?,'staging',?,'main','compose.staging.yaml','[]',FALSE,1,1,1,'[]','fixture',1)`, environment, project, tunnelServerID); err != nil {

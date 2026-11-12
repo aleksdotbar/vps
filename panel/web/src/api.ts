@@ -158,12 +158,6 @@ export const repositoriesQuery = () =>
     { page: { pageSize: 100 } },
     { transport },
   );
-export const workflowsQuery = (repositoryId: bigint, cursor = "") =>
-  createQueryOptions(
-    GitHubService.method.listWorkflows,
-    { repositoryId, page: { pageSize: 50, pageToken: cursor } },
-    { transport },
-  );
 
 export function mutationRejected(error: unknown) {
   return (

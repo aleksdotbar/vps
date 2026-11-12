@@ -70,7 +70,7 @@ func setupNativeInput(t *testing.T, deadline ...time.Time) *fixture {
 	if _, err := f.vault.UpdateEnvironment(ctx, f.operation.EnvironmentID, 1, map[string]string{"API_TOKEN": "original-private-token", "UNDECLARED": "never-transfer"}, nil); err != nil {
 		t.Fatal(err)
 	}
-	artifact := releases.Artifact{SchemaVersion: 1, SourceSHA: strings.Repeat("a", 40), Services: map[string]releases.ArtifactService{"app": {ImageVariable: "APP_IMAGE", Image: f.image}}}
+	artifact := releases.Artifact{SchemaVersion: 1, SourceSHA: strings.Repeat("a", 40), Services: map[string]releases.ArtifactService{"app": {Image: f.image}}}
 	tree := t.TempDir()
 	treeRoot, err := os.OpenRoot(tree)
 	if err != nil {

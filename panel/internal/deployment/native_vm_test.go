@@ -55,7 +55,7 @@ func TestNativeDeploymentAndRecovery(t *testing.T) {
 	makeRequest := func(previous, command, startPeriod string) deployment.ExecutionRequest {
 		t.Helper()
 		identity := deployment.Identity{InstallationID: "11111111-1111-4111-8111-111111111111", ServerID: "22222222-2222-4222-8222-222222222222", EnvironmentID: environment, OperationID: uuid.NewString(), ReleaseID: uuid.NewString(), BindingVersion: 1, ExpectedCurrentReleaseID: previous, ExecutionDeadline: time.Now().Add(6*time.Minute + 40*time.Second).UnixMilli()}
-		artifact := releases.Artifact{SchemaVersion: 1, SourceSHA: strings.Repeat("a", 40), Services: map[string]releases.ArtifactService{"app": {ImageVariable: "APP_IMAGE", Image: strings.TrimSpace(string(image))}}}
+		artifact := releases.Artifact{SchemaVersion: 1, SourceSHA: strings.Repeat("a", 40), Services: map[string]releases.ArtifactService{"app": {Image: strings.TrimSpace(string(image))}}}
 		artifactData, err := json.Marshal(artifact)
 		if err != nil {
 			t.Fatal(err)

@@ -27,6 +27,7 @@ import (
 	"github.com/aleksdotbar/vps/panel/internal/githubflow"
 	"github.com/aleksdotbar/vps/panel/internal/privatefile"
 	"github.com/aleksdotbar/vps/panel/internal/projects"
+	"github.com/aleksdotbar/vps/panel/internal/registry"
 	"github.com/aleksdotbar/vps/panel/internal/securestate"
 	"github.com/aleksdotbar/vps/panel/internal/store"
 )
@@ -90,7 +91,7 @@ func setupConfigured(t *testing.T, provider http.RoundTripper, withBuilds bool) 
 			t.Fatal(err)
 		}
 		runtime, err = operations.New(ctx, database, nil, func(workers *river.Workers, runtime *operations.Runtime) ([]*river.PeriodicJob, error) {
-			builds = githubflow.NewBuilds(integration, metadata, resolver, runtime)
+			builds = githubflow.NewBuilds(integration, metadata, resolver, runtime, missingImages{})
 			return builds.Register(workers)
 		})
 		if err != nil {
@@ -246,4 +247,11 @@ func TestConfiguredOriginRejectsEmptyQueryAndFragmentDelimiters(t *testing.T) {
 			t.Fatalf("unusable configured origin accepted: %s", origin)
 		}
 	}
+}
+
+// missingImages reports every tag as not yet pushed, keeping deploys waiting.
+type missingImages struct{}
+
+func (missingImages) Resolve(context.Context, string, string) (string, error) {
+	return "", registry.ErrNotFound
 }
