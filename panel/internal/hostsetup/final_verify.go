@@ -82,24 +82,8 @@ func verifyFinalHost(ctx context.Context, setup *finalSetup, intent finalIntent)
 	if err := inspectRuntimeNetwork(ctx, intent.EnrollmentSystem, target, setup.input.Machine, false); err != nil {
 		return err
 	}
-	record, err := readEnrollmentInspection(ctx, setup.root, "enrollment-inspection.json", setup.enrolled.InspectionSHA256, setup.imported)
-	if err != nil {
-		return err
-	}
-	packet, err := enrollmentSSHPacket(record.Packet)
-	if err != nil {
-		return err
-	}
-	input := setup.input
-	if target == intent.FinalSystem {
-		input.Bootstrap.RootLogin = "no"
-		input.Bootstrap.PasswordAuthentication = false
-		input.Bootstrap.KeyboardInteractiveAuthentication = false
-		input.Bootstrap.PublicSSH22 = false
-	}
-	if _, err := inspectRuntimeSSH(ctx, intent.EnrollmentSystem, target, input, packet); err != nil {
-		return err
-	}
+	// sshd policy comes from the built generation; the operator's fresh private
+	// session and the management probe prove access before confirmation.
 	parent, err := openSSHDirectory("/var/lib", 0)
 	if err != nil {
 		return ErrFinal

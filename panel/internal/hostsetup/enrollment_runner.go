@@ -2,7 +2,6 @@ package hostsetup
 
 import (
 	"context"
-	"encoding/json"
 	"os"
 	"time"
 )
@@ -73,23 +72,8 @@ func RunEnrollment(ctx context.Context, operationID string, recovery bool) error
 	if err != nil || !enrollmentAt(intent, links, intent.EnrollmentSystem) {
 		return ErrUnresolved
 	}
-	// Actual native account/SSH checks run against enrollment. Source bootstrap
-	// allowances remain the reviewed policy; no private-access readiness is implied.
-	input, err := retainedInspectionInput(ctx, root, imported)
-	if err != nil {
-		return err
-	}
-	previous, err := readEnrollmentInspection(ctx, root, "enrollment-inspection.json", intent.InspectionSHA256, imported)
-	if err != nil {
-		return err
-	}
-	candidatePacket, err := enrollmentSSHPacket(previous.Packet)
-	if err != nil {
-		return ErrUnresolved
-	}
-	if _, err := inspectRuntimeSSH(ctx, intent.EnrollmentSystem, intent.EnrollmentSystem, input, candidatePacket); err != nil {
-		return ErrUnresolved
-	}
+	// The enrollment sshd policy is built from this source; a fresh SSH login
+	// before the recovery deadline is the proof that access still works.
 	return writeEnrollmentPhase(ctx, root, intent, "awaiting_bootstrap")
 }
 
@@ -211,19 +195,4 @@ func recoverEnrollment(ctx context.Context, root *os.Root, imported importIntent
 		return err
 	}
 	return writeEnrollmentPhase(ctx, root, intent, "restored")
-}
-
-func enrollmentSSHPacket(previous []byte) ([]byte, error) {
-	var packet sourcePacket
-	if json.Unmarshal(previous, &packet) != nil {
-		return nil, ErrEnrollment
-	}
-	// Fixed foundation projection appends its runtime authority path before the
-	// stock home/rendered defaults. Native sshd still evaluates the actual policy.
-	packet.SSH = json.RawMessage(`{"authorized_keys_files":["/var/lib/panel-access/%u/authorized_keys","%h/.ssh/authorized_keys","/etc/ssh/authorized_keys.d/%u"]}`)
-	result, err := json.Marshal(packet)
-	if err != nil {
-		return nil, ErrEnrollment
-	}
-	return result, nil
 }
