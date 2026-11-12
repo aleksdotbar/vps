@@ -349,7 +349,7 @@ export function ErrorPage({
         >
           {expired ? "Sign in" : "Try again"}
         </PendingButton>
-        <ButtonLink variant="outline" to="/projects" search={{ cursor: "" }}>
+        <ButtonLink variant="outline" to="/projects">
           Go to projects
         </ButtonLink>
       </EmptyContent>

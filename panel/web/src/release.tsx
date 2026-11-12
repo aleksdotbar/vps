@@ -44,11 +44,7 @@ export function ReleaseDetail({ id }: { id: string }) {
             <EmptyTitle>Release not found</EmptyTitle>
           </EmptyHeader>
           <EmptyContent>
-            <ButtonLink
-              variant="outline"
-              to="/projects"
-              search={{ cursor: "" }}
-            >
+            <ButtonLink variant="outline" to="/projects">
               Back to projects
             </ButtonLink>
           </EmptyContent>
@@ -85,7 +81,6 @@ function ReleaseSnapshot({
           link: {
             to: "/environments/$environmentId",
             params: { environmentId },
-            search: { services: "", releases: "" },
           },
         },
       ]}

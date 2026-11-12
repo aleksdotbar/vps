@@ -136,7 +136,6 @@ export function EnvironmentForm({
           await router.navigate({
             to: "/environments/$environmentId",
             params: { environmentId: savedId },
-            search: { services: "", releases: "" },
           });
         else await reload(isCurrent);
       } catch (refreshError) {
@@ -248,7 +247,7 @@ export function EnvironmentForm({
               size="sm"
               variant="outline"
               nativeButton={false}
-              render={<Link to="/servers" search={{ cursor: "" }} />}
+              render={<Link to="/servers" />}
             >
               Open servers
             </Button>
@@ -329,7 +328,6 @@ export function EnvironmentForm({
                 <Link
                   to="/environments/$environmentId"
                   params={{ environmentId: createdId }}
-                  search={{ services: "", releases: "" }}
                 />
               }
             >

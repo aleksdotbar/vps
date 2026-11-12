@@ -61,7 +61,6 @@ export function ProjectForm({
         await router.navigate({
           to: "/projects/$projectId",
           params: { projectId },
-          search: { cursor: "" },
         });
       } catch (navigationError) {
         if (!isCurrent()) return;
@@ -163,7 +162,6 @@ export function ProjectForm({
                 <Link
                   to="/projects/$projectId"
                   params={{ projectId: createdId }}
-                  search={{ cursor: "" }}
                   className="text-sm font-medium underline-offset-4 hover:underline"
                 >
                   Open project

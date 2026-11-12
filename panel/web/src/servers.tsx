@@ -104,9 +104,7 @@ export function Servers({ cursor }: { cursor: string }) {
         </Empty>
       )}
       <CursorPagination
-        previous={
-          cursor ? { to: "/servers", search: { cursor: "" } } : undefined
-        }
+        previous={cursor ? { to: "/servers" } : undefined}
         next={next ? { to: "/servers", search: { cursor: next } } : undefined}
       />
     </Page>
@@ -128,7 +126,7 @@ export function Server({ id }: { id: string }) {
             <EmptyTitle>Server not found</EmptyTitle>
           </EmptyHeader>
           <EmptyContent>
-            <ButtonLink variant="outline" to="/servers" search={{ cursor: "" }}>
+            <ButtonLink variant="outline" to="/servers">
               Back to servers
             </ButtonLink>
           </EmptyContent>
@@ -146,11 +144,7 @@ export function Server({ id }: { id: string }) {
           : "Managed over private SSH through Tailscale."
       }
       actions={
-        <ButtonLink
-          variant="outline"
-          to="/operations"
-          search={{ environment: "", server: id, cursor: "" }}
-        >
+        <ButtonLink variant="outline" to="/operations" search={{ server: id }}>
           <ActivityIcon data-icon="inline-start" />
           Activity
         </ButtonLink>

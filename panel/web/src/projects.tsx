@@ -76,7 +76,7 @@ export function Projects({ cursor }: { cursor: string }) {
       title="Projects"
       description="Apps deployed from your GitHub repositories."
       actions={
-        <ButtonLink to="/projects/new" search={{ repository: "" }}>
+        <ButtonLink to="/projects/new">
           <PlusIcon data-icon="inline-start" />
           New project
         </ButtonLink>
@@ -109,16 +109,12 @@ export function Projects({ cursor }: { cursor: string }) {
             </EmptyDescription>
           </EmptyHeader>
           <EmptyContent>
-            <ButtonLink to="/projects/new" search={{ repository: "" }}>
-              New project
-            </ButtonLink>
+            <ButtonLink to="/projects/new">New project</ButtonLink>
           </EmptyContent>
         </Empty>
       )}
       <CursorPagination
-        previous={
-          cursor ? { to: "/projects", search: { cursor: "" } } : undefined
-        }
+        previous={cursor ? { to: "/projects" } : undefined}
         next={
           data.page?.nextPageToken
             ? { to: "/projects", search: { cursor: data.page.nextPageToken } }
@@ -142,7 +138,6 @@ function ProjectCard({ project }: { project: ProjectRecord }) {
             className={stretchedLink}
             to="/projects/$projectId"
             params={{ projectId: project.id }}
-            search={{ cursor: "" }}
           >
             {project.name}
           </Link>
@@ -200,7 +195,6 @@ function EnvironmentCard({
             className={stretchedLink}
             to="/environments/$environmentId"
             params={{ environmentId: environment.id }}
-            search={{ services: "", releases: "" }}
           >
             {settings?.name ?? "Environment"}
           </Link>
@@ -305,7 +299,7 @@ function ChecklistView({
           Open server
         </Link>
       ) : (
-        <Link className={linkClass} to="/servers" search={{ cursor: "" }}>
+        <Link className={linkClass} to="/servers">
           Open servers
         </Link>
       ),
@@ -315,11 +309,7 @@ function ChecklistView({
       title: "Add a project",
       detail: "Pick a repository whose CI pushes images.",
       link: (
-        <Link
-          className={linkClass}
-          to="/projects/new"
-          search={{ repository: "" }}
-        >
+        <Link className={linkClass} to="/projects/new">
           New project
         </Link>
       ),
@@ -389,9 +379,7 @@ export function Project({ id, cursor }: { id: string; cursor: string }) {
             <EmptyDescription>It may have been removed.</EmptyDescription>
           </EmptyHeader>
           <EmptyContent>
-            <ButtonLink to="/projects" search={{ cursor: "" }}>
-              Back to projects
-            </ButtonLink>
+            <ButtonLink to="/projects">Back to projects</ButtonLink>
           </EmptyContent>
         </Empty>
       </Page>
@@ -421,7 +409,7 @@ export function Project({ id, cursor }: { id: string; cursor: string }) {
         <ButtonLink
           to="/projects/$projectId/environments/new"
           params={{ projectId: id }}
-          search={{ preset: "staging", servers: "" }}
+          search={{ preset: "staging" }}
         >
           <PlusIcon data-icon="inline-start" />
           New environment
@@ -456,7 +444,7 @@ export function Project({ id, cursor }: { id: string; cursor: string }) {
             <ButtonLink
               to="/projects/$projectId/environments/new"
               params={{ projectId: id }}
-              search={{ preset: "production", servers: "" }}
+              search={{ preset: "production" }}
             >
               Add an environment
             </ButtonLink>
@@ -469,7 +457,6 @@ export function Project({ id, cursor }: { id: string; cursor: string }) {
             ? {
                 to: "/projects/$projectId",
                 params: { projectId: id },
-                search: { cursor: "" },
               }
             : undefined
         }

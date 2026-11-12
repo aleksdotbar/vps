@@ -59,10 +59,7 @@ export function Shell() {
         <SidebarHeader>
           <SidebarMenu>
             <SidebarMenuItem>
-              <SidebarMenuButton
-                size="lg"
-                render={<Link to="/projects" search={{ cursor: "" }} />}
-              >
+              <SidebarMenuButton size="lg" render={<Link to="/projects" />}>
                 <BoxIcon />
                 <span className="font-semibold">Panel</span>
               </SidebarMenuButton>

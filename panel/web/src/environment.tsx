@@ -122,9 +122,7 @@ export function Environment({
             <EmptyTitle>Environment not found</EmptyTitle>
           </EmptyHeader>
           <EmptyContent>
-            <ButtonLink to="/projects" search={{ cursor: "" }}>
-              Back to projects
-            </ButtonLink>
+            <ButtonLink to="/projects">Back to projects</ButtonLink>
           </EmptyContent>
         </Empty>
       </Page>
@@ -198,14 +196,13 @@ function EnvironmentView({
           crumbs={[
             {
               label: "Projects",
-              link: { to: "/projects", search: { cursor: "" } },
+              link: { to: "/projects" },
             },
             {
               label: project?.name ?? "Project",
               link: {
                 to: "/projects/$projectId",
                 params: { projectId: environment.projectId },
-                search: { cursor: "" },
               },
             },
           ]}
@@ -216,7 +213,6 @@ function EnvironmentView({
                 variant="outline"
                 to="/environments/$environmentId/settings"
                 params={{ environmentId: id }}
-                search={{ servers: "" }}
               >
                 <SettingsIcon data-icon="inline-start" />
                 Settings
@@ -261,10 +257,7 @@ function EnvironmentView({
                       size="sm"
                       nativeButton={false}
                       render={
-                        <Link
-                          to="/operations"
-                          search={{ environment: id, server: "", cursor: "" }}
-                        />
+                        <Link to="/operations" search={{ environment: id }} />
                       }
                     >
                       <ActivityIcon data-icon="inline-start" />

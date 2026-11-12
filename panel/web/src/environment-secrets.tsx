@@ -72,9 +72,7 @@ export function EnvironmentSecrets({ id }: { id: string }) {
             <EmptyTitle>Environment not found</EmptyTitle>
           </EmptyHeader>
           <EmptyContent>
-            <ButtonLink to="/projects" search={{ cursor: "" }}>
-              Back to projects
-            </ButtonLink>
+            <ButtonLink to="/projects">Back to projects</ButtonLink>
           </EmptyContent>
         </Empty>
       </Page>
@@ -89,7 +87,6 @@ export function EnvironmentSecrets({ id }: { id: string }) {
           link: {
             to: "/environments/$environmentId",
             params: { environmentId: id },
-            search: { services: "", releases: "" },
           },
         },
       ]}

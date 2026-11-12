@@ -175,7 +175,6 @@ export function Operations({
               className="text-foreground underline-offset-4 hover:underline"
               to="/environments/$environmentId"
               params={{ environmentId: environment }}
-              search={{ services: "", releases: "" }}
             >
               <EnvironmentLabel id={environment} />
             </Link>
@@ -192,7 +191,6 @@ export function Operations({
           <Link
             className="text-foreground underline-offset-4 hover:underline"
             to="/operations"
-            search={{ environment: "", server: "", cursor: "" }}
           >
             Show all
           </Link>
@@ -301,11 +299,7 @@ export function OperationDetail({ id }: { id: string }) {
             <EmptyTitle>Operation not found</EmptyTitle>
           </EmptyHeader>
           <EmptyContent>
-            <ButtonLink
-              variant="outline"
-              to="/operations"
-              search={{ environment: "", server: "", cursor: "" }}
-            >
+            <ButtonLink variant="outline" to="/operations">
               Back to activity
             </ButtonLink>
           </EmptyContent>
@@ -418,7 +412,6 @@ export function OperationDetail({ id }: { id: string }) {
                     className="underline-offset-4 hover:underline"
                     to="/environments/$environmentId"
                     params={{ environmentId: operation.environmentId }}
-                    search={{ services: "", releases: "" }}
                   >
                     <EnvironmentLabel id={operation.environmentId} />
                   </Link>

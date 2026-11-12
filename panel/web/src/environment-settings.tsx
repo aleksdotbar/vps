@@ -52,9 +52,7 @@ function NotFound({ title }: { title: string }) {
           <EmptyTitle>{title}</EmptyTitle>
         </EmptyHeader>
         <EmptyContent>
-          <ButtonLink to="/projects" search={{ cursor: "" }}>
-            Back to projects
-          </ButtonLink>
+          <ButtonLink to="/projects">Back to projects</ButtonLink>
         </EmptyContent>
       </Empty>
     </Page>
@@ -81,14 +79,13 @@ export function CreateEnvironment({
       crumbs={[
         {
           label: "Projects",
-          link: { to: "/projects", search: { cursor: "" } },
+          link: { to: "/projects" },
         },
         {
           label: data.project.name,
           link: {
             to: "/projects/$projectId",
             params: { projectId },
-            search: { cursor: "" },
           },
         },
       ]}
@@ -102,7 +99,6 @@ export function CreateEnvironment({
                 params: { projectId },
                 search: {
                   preset: value === "production" ? "production" : "staging",
-                  servers: "",
                 },
               })
             }
@@ -157,7 +153,6 @@ export function EditEnvironment({
           link: {
             to: "/environments/$environmentId",
             params: { environmentId: id },
-            search: { services: "", releases: "" },
           },
         },
       ]}

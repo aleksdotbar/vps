@@ -53,7 +53,6 @@ export function Login() {
         queryClient.clear();
         await router.navigate({
           to: "/projects",
-          search: { cursor: "" },
           replace: true,
         });
       } catch (error) {

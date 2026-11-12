@@ -5,6 +5,7 @@ import {
   lazyRouteComponent,
   Outlet,
   redirect,
+  stripSearchParams,
 } from "@tanstack/react-router";
 import { z } from "zod";
 
@@ -43,6 +44,7 @@ import { Server, Servers } from "./servers";
 import { Login } from "./session";
 import { NavigationProgress, RouteEffects, Shell } from "./shell";
 
+// Defaults are stripped from URLs by each route's stripSearchParams middleware.
 const cursor = z.string().max(512).catch("");
 const pageSearch = z.object({ cursor: cursor.default("") });
 const environmentSearch = z.object({
@@ -103,9 +105,7 @@ const root = createRootRoute({
         </EmptyDescription>
       </EmptyHeader>
       <EmptyContent>
-        <ButtonLink to="/projects" search={{ cursor: "" }}>
-          Go to projects
-        </ButtonLink>
+        <ButtonLink to="/projects">Go to projects</ButtonLink>
       </EmptyContent>
     </Empty>
   ),
@@ -119,8 +119,7 @@ const login = createRoute({
       ...sessionQuery(),
       staleTime: 0,
     });
-    if (session.authenticated)
-      throw redirect({ to: "/projects", search: { cursor: "" } });
+    if (session.authenticated) throw redirect({ to: "/projects" });
   },
   component: Login,
 });
@@ -146,13 +145,14 @@ const index = createRoute({
   getParentRoute: () => privateRoute,
   path: "/",
   beforeLoad: () => {
-    throw redirect({ to: "/projects", search: { cursor: "" } });
+    throw redirect({ to: "/projects" });
   },
 });
 const projects = createRoute({
   getParentRoute: () => privateRoute,
   path: "/projects",
-  validateSearch: (search) => pageSearch.parse(search),
+  validateSearch: pageSearch,
+  search: { middlewares: [stripSearchParams({ cursor: "" })] },
   loaderDeps: ({ search }) => search,
   loader: ({ deps }) =>
     required(
@@ -177,7 +177,8 @@ function ProjectsRoute() {
 const newProject = createRoute({
   getParentRoute: () => privateRoute,
   path: "/projects/new",
-  validateSearch: (search) => newProjectSearch.parse(search),
+  validateSearch: newProjectSearch,
+  search: { middlewares: [stripSearchParams({ repository: "" })] },
   loader: () =>
     required(
       (async () => {
@@ -197,7 +198,8 @@ const project = createRoute({
   getParentRoute: () => privateRoute,
   path: "/projects/$projectId",
   params: { parse: (params) => ({ projectId: id.parse(params.projectId) }) },
-  validateSearch: (search) => pageSearch.parse(search),
+  validateSearch: pageSearch,
+  search: { middlewares: [stripSearchParams({ cursor: "" })] },
   loaderDeps: ({ search }) => search,
   loader: ({ params, deps }) =>
     required(
@@ -224,7 +226,10 @@ const newEnvironment = createRoute({
   getParentRoute: () => privateRoute,
   path: "/projects/$projectId/environments/new",
   params: { parse: (params) => ({ projectId: id.parse(params.projectId) }) },
-  validateSearch: (search) => newEnvironmentSearch.parse(search),
+  validateSearch: newEnvironmentSearch,
+  search: {
+    middlewares: [stripSearchParams({ servers: "", preset: "staging" })],
+  },
   loaderDeps: ({ search }) => search,
   loader: ({ params, deps }) =>
     required(
@@ -245,7 +250,8 @@ const environmentSettings = createRoute({
   params: {
     parse: (params) => ({ environmentId: id.parse(params.environmentId) }),
   },
-  validateSearch: (search) => environmentFormSearch.parse(search),
+  validateSearch: environmentFormSearch,
+  search: { middlewares: [stripSearchParams({ servers: "" })] },
   loaderDeps: ({ search }) => search,
   loader: ({ params, deps }) =>
     required(
@@ -288,7 +294,8 @@ const environmentSecrets = createRoute({
 const servers = createRoute({
   getParentRoute: () => privateRoute,
   path: "/servers",
-  validateSearch: (search) => pageSearch.parse(search),
+  validateSearch: pageSearch,
+  search: { middlewares: [stripSearchParams({ cursor: "" })] },
   loaderDeps: ({ search }) => search,
   loader: ({ deps }) =>
     required(queryClient.ensureQueryData(serversQuery(deps.cursor))),
@@ -322,7 +329,8 @@ const environment = createRoute({
   params: {
     parse: (params) => ({ environmentId: id.parse(params.environmentId) }),
   },
-  validateSearch: (search) => environmentSearch.parse(search),
+  validateSearch: environmentSearch,
+  search: { middlewares: [stripSearchParams({ services: "", releases: "" })] },
   loaderDeps: ({ search }) => search,
   loader: async ({ params, deps }) =>
     required(
@@ -363,7 +371,12 @@ function EnvironmentRoute() {
 const operations = createRoute({
   getParentRoute: () => privateRoute,
   path: "/operations",
-  validateSearch: (search) => operationsSearch.parse(search),
+  validateSearch: operationsSearch,
+  search: {
+    middlewares: [
+      stripSearchParams({ environment: "", server: "", cursor: "" }),
+    ],
+  },
   loaderDeps: ({ search }) => search,
   loader: ({ deps }) =>
     required(
