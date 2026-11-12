@@ -92,7 +92,8 @@ export function Shell() {
           <Logout />
         </SidebarFooter>
       </Sidebar>
-      <SidebarInset id="main" tabIndex={-1}>
+      {/* Focus target for route changes and the skip link; it is not interactive, so no outline. */}
+      <SidebarInset id="main" tabIndex={-1} className="outline-none">
         <Outlet />
       </SidebarInset>
     </SidebarProvider>
