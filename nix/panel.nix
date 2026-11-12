@@ -40,7 +40,7 @@ in
   pname = "panel";
   version = rev;
   inherit src;
-  vendorHash = "sha256-JC5fmCWzoNCXVbKQrD74cbsNa/beixbq0zbVktnpjy0=";
+  vendorHash = "sha256-TiUqSkV++jV+aKhbxgQavOLlPWkRyjMzlTWbhLB1RtA=";
   subPackages = [ "cmd/panel" ];
   tags = [ "webassets" ];
   env.CGO_ENABLED = "0";
